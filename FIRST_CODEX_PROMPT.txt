@@ -1,0 +1,43 @@
+Read `AGENTS.md`, every document under `Docs/`, and `.agent/PLANS.md`.
+
+This is the first repository-analysis task for a new Unity mobile game.
+Do not implement gameplay yet.
+Do not modify production code, scenes, prefabs, packages, assets, or ProjectSettings.
+
+First inspect the actual repository, including:
+
+- `ProjectSettings/ProjectVersion.txt`;
+- `Packages/manifest.json` and package lock information;
+- render pipeline and 2D template setup;
+- input configuration;
+- current scenes and build settings;
+- folder structure;
+- assembly definitions, if any;
+- existing tests;
+- Git status and ignore rules;
+- Android/iOS-related modules present in the Unity installation where repository evidence is available.
+
+Then create:
+
+`.agent/plans/001-vertical-slice.md`
+
+Follow `.agent/PLANS.md`.
+
+The plan must include:
+
+- concrete repository findings;
+- a proposed architecture for the vertical slice;
+- how gameplay logic remains independent from sprite/audio/VFX presentation;
+- the recommended threat movement and collision strategy, with alternatives;
+- the room-splitting and capture-area strategy;
+- the input approach for Editor mouse and mobile touch;
+- phone/tablet layout strategy using a fixed logical board;
+- proposed Unity folder and assembly structure;
+- test strategy;
+- milestone order that reaches a playable result early;
+- expected files, prefabs, ScriptableObjects, scenes, and Editor setup work;
+- risks, unknowns, and manual Unity steps;
+- explicit conflicts between the docs and the actual project, if any.
+
+Do not begin implementation after writing the plan.
+Finish by summarizing the plan, the top risks, and the decisions that require human review.
