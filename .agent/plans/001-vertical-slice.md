@@ -21,186 +21,247 @@ The finished decision build should be visibly testable as a small mobile game:
 - a successful capture has a clear, satisfying lock-and-fill moment;
 - mouse input in the Editor and one-finger touch on a device produce the same
   gameplay intent;
-- the same level has the same logical board, travel distances, and target on a
-  common phone, tall phone, and 4:3 tablet;
+- the same level has the same 10-by-16 logical board, travel distances, and
+  target on a common phone, tall phone, and 4:3 tablet;
 - approximately 10–12 standard levels and one final special level exercise
   three threat behaviors and two powers without requiring a scene load between
-  each level.
+  each level;
+- full content production begins only after a positive Milestone 3 core-fun
+  review.
 
 Terms used in this plan:
 
 - **Logical board:** the device-independent rectangle in which gameplay
-  calculations occur. It is measured in game units, never pixels.
+  calculations occur. It is measured in game units, never pixels. The initial
+  vertical-slice board is 10 units wide by 16 units high on every device.
 - **Active room:** an uncaptured axis-aligned rectangle that can contain threats
   and accept a new barrier.
 - **Barrier:** a zero-area logical split line with a separate configurable
   gameplay collision half-width while it is growing.
 - **Threat:** a moving circle defined by logical position, velocity, and
   collision radius. Its sprite may have any shape or size.
+- **Geometry tolerance policy:** one project-owned, explicitly supplied policy
+  that owns the named tolerances and comparison rules used by geometry and
+  collision code. Individual systems must not invent local epsilon constants.
 - **Presentation:** sprites, materials, animation, UI, audio, particles,
   camera emphasis, and haptics that display simulation events but do not decide
   gameplay outcomes.
+- **Git checkpoint:** a recommended focused commit made only after the
+  milestone's automated and manual acceptance checks pass. A checkpoint is not
+  a substitute for validation.
 
 ## Current Repository Findings
 
-### Facts established on 2026-07-30
+### Verified facts from the 2026-07-30 re-audit
 
-The repository instructions and all six files under `Docs/` were read before
-this plan was written. The current repository is an almost untouched Universal
-2D template rather than a partially implemented game.
+The repository instructions, `.agent/PLANS.md`, this complete ExecPlan, and
+every file under `Docs/` were read before this revision. The project is a newly
+recreated and almost untouched Universal 2D template. It contains no gameplay
+implementation.
 
-**Engine and local Unity installation**
+#### Engine and template
 
-- `ProjectSettings/ProjectVersion.txt` records Unity `6000.5.2f1`, revision
-  `eb73d3b415a1`.
-- `ProjectSettings/ProjectSettings.asset` identifies the source template as
-  `com.unity.template.universal-2d@6.1.5`.
+- `ProjectSettings/ProjectVersion.txt` records Unity `6000.3.21f1`, revision
+  `c02631ffc030`.
+- `ProjectSettings/ProjectSettings.asset` records template package
+  `com.unity.template.universal-2d@6.1.2`. The creation-time Editor log names
+  its source archive `com.unity.template.2d-cross-platform-2d-6.1.2.tgz`; the
+  serialized render assets and scene are the expected Universal 2D setup.
 - The matching Editor exists at
-  `C:\Program Files\Unity\Hub\Editor\6000.5.2f1\Editor`.
-- That installation contains Android, WebGL, and Windows Standalone playback
-  engines. It does not contain `iOSSupport`.
-- Android Build Support includes its SDK, NDK, OpenJDK, and Gradle tooling.
-  Repository-machine evidence shows Android build tools `36.0.0`, platforms
-  `android-34` and `android-36`, NDK `27.2.12479018` (`r27c`), and Temurin
-  OpenJDK `17.0.18+8`.
-- Android Player settings currently specify minimum SDK 26, automatic target
-  SDK selection, ARM64 only (`AndroidTargetArchitectures: 2`), and IL2CPP.
-  iOS currently specifies deployment target 15.0.
+  `C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor`, and the Editor log
+  confirms that exact version and revision loaded this project.
+- Unity `6000.3.21f1` is the accepted project baseline. Opening or saving the
+  project in another Unity version is outside this plan unless separately
+  approved.
 
-**Packages**
+#### Packages and resolved URP
 
-- `Packages/manifest.json` includes Input System `1.19.0`, Unity Test Framework
-  `1.7.0`, uGUI `2.5.0`, and the expected Unity 2D packages.
-- The manifest requests Universal Render Pipeline `17.6.0`.
-- `Packages/packages-lock.json` and the actual `Library/PackageCache` resolve
-  Universal Render Pipeline `17.5.0`, not `17.6.0`.
-- `Logs/upm.log` explicitly reports that requested URP `17.6.0` was overridden
-  by built-in URP `17.5.0`. It also records transitive minimum-version
-  overrides for Searcher, Burst, and the performance test framework.
-- The template also includes first-party packages not currently needed by the
-  slice, including Collaborate/Version Control, Multiplayer Center, Visual
-  Scripting, Timeline, and several 2D authoring packages. No third-party
-  production package is present.
+- `Packages/manifest.json` directly requests Universal Render Pipeline
+  `17.3.0`, Input System `1.20.0`, Unity Test Framework `1.6.0`, uGUI `2.0.0`,
+  and the template's first-party 2D packages.
+- `Packages/packages-lock.json` resolves URP `17.3.0` as a built-in package.
+  `Library/PackageCache` contains URP `17.3.0`; its `package.json` declares
+  compatibility with Unity `6000.3`.
+- URP Core and Shader Graph also resolve to `17.3.0`.
+  `com.unity.render-pipelines.universal-config` is a transitive built-in
+  dependency at `17.0.3`; that is not evidence of a URP mismatch.
+- Manifest, lock, cache, and the Editor log agree on URP `17.3.0`. This is the
+  accepted template-compatible URP 17.3.x resolution. Do not manually pin,
+  remove, or upgrade URP.
+- The package-manager log records a successful resolution. It reports only
+  transitive minimum-version overrides for Mathematics `1.3.3`, Collections
+  `2.6.8`, Searcher `4.9.4`, Burst `1.8.30`, and Performance Test Framework
+  `3.5.0`; it does not report a URP override or package-resolution failure.
+- The template includes several first-party packages that are not required by
+  early milestones, including Version Control, Multiplayer Center, Visual
+  Scripting, Timeline, and 2D authoring packages. No third-party production
+  dependency is present. Package cleanup is not part of this plan.
 
-**Rendering and template setup**
+#### Rendering setup
 
-- `Assets/Settings/UniversalRP.asset` points to
+- `Assets/Settings/UniversalRP.asset` references
   `Assets/Settings/Renderer2D.asset` as renderer index 0.
-- Every quality tier from Very Low through Ultra points to that same URP asset.
-  The current quality index is 0, Very Low.
-- The URP asset uses render scale 1, MSAA value 1, HDR enabled, and SRP Batcher
-  enabled. The 2D renderer has no renderer features.
-- `ProjectSettings/GraphicsSettings.asset` has no global custom pipeline asset,
-  but its URP global settings reference is valid. The per-quality pipeline
-  references make URP active.
-- `Assets/Settings/DefaultVolumeProfile.asset`, the URP global settings asset,
-  a Universal 2D scene template, and the default Input Actions asset are
-  present.
-- The imported Editor log contains template terrain shader warnings. No
-  project gameplay scripts exist, so there are no project script compiler
-  results to validate yet.
+- All six quality tiers, from Very Low through Ultra, reference the same URP
+  asset. The current quality index is 0, Very Low.
+- `ProjectSettings/GraphicsSettings.asset` has no global custom render-pipeline
+  asset, but it has a valid Universal Render Pipeline global-settings
+  reference. The quality-tier references make URP active.
+- The URP asset has render scale 1, MSAA value 1, HDR enabled, and SRP Batcher
+  enabled. Depth and opaque textures are not required.
+- The 2D Renderer has no renderer features. It uses the 2D renderer data with a
+  depth/stencil buffer and the template's 2D lighting/material resources.
+- `Assets/UniversalRenderPipelineGlobalSettings.asset` validly references
+  `Assets/DefaultVolumeProfile.asset`.
+- The imported scene has an orthographic Main Camera with URP additional camera
+  data and one Global Light 2D. No custom render feature or shader is needed for
+  the proposed core gameplay.
 
-**Scenes and build settings**
+#### Input System setup
 
-- The only scene in `Assets/Scenes/` is `SampleScene.unity`.
-- It is the only enabled build scene.
-- It contains two GameObjects: an orthographic Main Camera with URP additional
-  camera data, and a Global Light 2D. There is no board, EventSystem, Canvas,
-  gameplay object, prefab instance, or composition root.
-- `Assets/Settings/Scenes/URP2DSceneTemplate.unity` contains the same two root
-  objects. `SampleScene` differs only in template/import-era lightmap settings
-  and serialized transform fields.
-
-**Input**
-
-- Input System `1.19.0` is installed and `activeInputHandler: 1` selects the new
+- Input System `1.20.0` is installed and `activeInputHandler: 1` selects the
   Input System rather than both input stacks.
-- `Assets/Settings/InputSystem_Actions.inputactions` is the generic template
-  asset. Its Player map contains Move, Look, Attack, Interact, Crouch, Jump,
-  Previous, Next, and Sprint. Attack has mouse-left and primary-touch tap
-  bindings. Its UI map has mouse, pen, and touch Point/Click bindings.
-- The input asset is registered in `EditorBuildSettings`, but no generated C#
-  wrapper is enabled and no scene object consumes the actions.
-- The current scene has no EventSystem or Input System UI Input Module, so it
-  cannot yet reject gameplay input that starts over HUD UI.
+- `Assets/InputSystem_Actions.inputactions` is the generic template asset. Its
+  Player map has Move, Look, Attack, Interact, Crouch, Jump, Previous, Next, and
+  Sprint. Its UI map has pointer, click, navigation, submit, and cancel actions.
+- Template Attack includes mouse-left and primary-touch tap bindings. The UI
+  map includes mouse, pen, and touch point/click bindings.
+- The asset is registered in `ProjectSettings/EditorBuildSettings.asset`.
+  Generated C# wrapper code is disabled.
+- No scene object consumes the input actions. There is no EventSystem,
+  `InputSystemUIInputModule`, Canvas, gameplay input adapter, or UI hit-test
+  blocker.
+- A dedicated Cutrium action asset and input adapter are therefore planned.
+  The generic Player/Attack map must not become the gameplay contract.
 
-**Player, layout, and Editor settings**
+#### Scenes and build settings
 
-- Player settings are not portrait-locked. The stored default size is
-  1920×1080, all four autorotation flags are enabled, and OS autorotation is
-  enabled.
-- Android rendering outside the safe area is enabled. Runtime layout must
-  therefore use `Screen.safeArea`; orientation and platform settings also need
-  an approved Editor configuration pass.
-- The product name is `Cutrium`, the company is still `DefaultCompany`, and
-  the serialized standalone identifier is the template value
-  `com.DefaultCompany.2D-URP`.
-- Asset serialization is Force Text.
-- Enter Play Mode Options are enabled with domain reload disabled. Runtime
-  systems must initialize and dispose explicitly; correctness must not depend
-  on static state being cleared by a domain reload.
+- The repository has two `.unity` files:
+  `Assets/Scenes/SampleScene.unity` and the template scene
+  `Assets/Settings/Scenes/URP2DSceneTemplate.unity`.
+- `SampleScene.unity` is the only enabled build scene.
+- `SampleScene` has exactly two root GameObjects: an orthographic Main Camera
+  and a Global Light 2D. It has no board, Canvas, EventSystem, prefab instance,
+  gameplay object, or composition root.
+- No gameplay scene, build profile, or level-specific scene exists.
 
-**Folders, assemblies, and tests**
+#### Player and Editor settings
 
-- Outside metadata, `Assets/` contains four `.asset` files, two `.unity`
-  scenes, one `.scenetemplate`, and one `.inputactions` file.
-- The only project content folders are `Assets/Scenes` and `Assets/Settings`
-  plus the nested template scene folder.
-- There are no C# files, assembly definitions, assembly references, tests,
-  prefabs, sprites, materials, audio clips, or game-specific ScriptableObjects.
-- `Cutrium.slnx` is an empty solution shell.
-- Unity Test Framework is installed, but there is no repository test command
-  and no test assembly to run.
+- The product name is already `Cutrium`.
+- The company name remains `DefaultCompany`.
+- `EditorSettings` has a blank project-generation root namespace.
+- The only serialized application identifier is the template standalone value
+  `com.DefaultCompany.2D-URP`; the accepted Android/iOS development identifier
+  `com.tayackgames.cutrium` has not yet been applied.
+- Orientation is not portrait locked. All four autorotation directions are
+  enabled, OS autorotation is enabled, and the stored default size is
+  1920-by-1080.
+- Android rendering outside the safe area is enabled. Runtime layout must use
+  `Screen.safeArea` and reject non-playable presentation margins.
+- Android currently uses minimum SDK 25, automatic target SDK selection, ARM64
+  only (`AndroidTargetArchitectures: 2`), and IL2CPP. The application entry
+  setting is the template value 2, and the activity is resizable.
+- iOS currently records deployment target 15.0.
+- Color space is Linear. Asset serialization is Force Text and version control
+  uses visible meta files.
+- Enter Play Mode Options are enabled with serialized options value 0; no
+  domain-reload or scene-reload disabling flag is set in the current project.
+  Runtime code should still avoid hidden static state and clean up subscriptions.
+- `ProjectSettings/TimeManager.asset` stores Unity's default fixed timestep as
+  0.02 seconds (50 Hz). The planned deterministic gameplay loop will own a
+  separate initial 1/60-second interval rather than silently relying on
+  `Time.fixedDeltaTime`.
 
-**Git**
+#### Installed platform modules
 
-- Before this plan was created, branch `master` was clean at commit
-  `1097ee510c055a7d5819c34914b90fb1062d9908`
-  (`chore: initialize Cutrium Unity project`).
-- The process account differs from the repository owner, so Git requires the
-  non-mutating per-command override
-  `-c safe.directory=S:/Tayacknity/Cutrium`. The user-level global ignore file
-  is also unreadable to this process; repository ignore behavior was inspected
-  directly from `.gitignore`.
-- `.gitignore` correctly excludes the normal Unity generated folders, IDE
-  state, generated solutions/projects, builds, logs, user settings, Gradle
-  data, and prospective Addressables artifacts. Unity `.meta` files and
-  game assets are not broadly ignored.
+- The matching Unity installation contains Android, WebGL, and Windows
+  Standalone playback engines. It does not contain `iOSSupport`.
+- Android Build Support is present with Unity-managed SDK, NDK, OpenJDK, Gradle,
+  and platform variations.
+- Installed Android tools include build tools `36.0.0`, platforms `android-34`,
+  `android-35`, and `android-36`, command-line tools `16.0`, NDK
+  `27.2.12479018` (`r27c`), Temurin OpenJDK `17.0.18+8`, and Gradle `9.1.0`.
+- This verifies local Android tooling presence, not that an Android build or
+  device run succeeds.
+- Final iPhone/iPad validation still requires matching iOS Build Support and a
+  compatible macOS/Xcode environment.
 
-### Explicit documentation/project conflicts and setup gaps
+#### Existing files, tests, and Git
 
-| Topic | Documentation or intended state | Actual repository/machine state | Required resolution |
+- `Assets/` contains 19 files including metadata: four `.asset` files, two
+  `.unity` scenes, one `.scenetemplate`, one `.inputactions` file, and their
+  `.meta` files/folder metadata.
+- There are no project `.cs`, `.asmdef`, `.asmref`, test, prefab, material,
+  shader, sprite, audio, or game-specific ScriptableObject files.
+- `Cutrium.slnx` is a 28-byte empty solution shell.
+- Unity Test Framework is installed, but no test assembly or verified
+  repository test command exists.
+- Before this documentation revision, branch `master` was clean at commit
+  `8e1bd5cb87918f7ca9523b38cde7effdebc6e9cb`
+  (`chore: initialize Cutrium on Unity 6.3 LTS`).
+- Git inspection requires the non-mutating per-command safe-directory override
+  `-c safe.directory=S:/Tayacknity/Cutrium` in this execution environment.
+  The user-level global ignore file is unreadable to this process, but the
+  repository `.gitignore` correctly excludes normal Unity/IDE generated paths.
+- Creation/import logs contain no C# compiler failure or package-resolution
+  failure. Asset-worker logs contain transient curl diagnostics, and shader
+  compiler logs contain template/package shader diagnostics. These logs are not
+  a substitute for checking the Unity Console after a clean future compile.
+
+### Superseded audit — historical only, do not use for implementation
+
+The earlier version of this plan audited a different project state at commit
+`1097ee510c055a7d5819c34914b90fb1062d9908`. It reported Unity `6000.5.2f1`,
+a manifest request for URP `17.6.0`, a built-in resolution to URP `17.5.0`,
+Input System `1.19.0`, Unity Test Framework `1.7.0`, and template package
+`com.unity.template.universal-2d@6.1.5`.
+
+Those findings were accurate only for the replaced repository state. The
+project was recreated from scratch. They are now **superseded** by the verified
+6000.3.21f1/URP 17.3.0 findings above and must not be treated as current facts,
+upgrade targets, or migration work.
+
+### Current configuration gaps and documentation conflicts
+
+| Topic | Accepted or required state | Actual state | Planned resolution |
 | --- | --- | --- | --- |
-| Unity baseline | Unity 6.3 LTS | Project and installed Editor are 6000.5.2f1 | Human must choose the supported baseline before implementation. Do not rewrite `ProjectVersion.txt` or open in another Editor casually. |
-| URP version | Use the selected 2D/URP setup consistently; do not upgrade packages without approval | Manifest requests 17.6.0 while lock/cache use built-in 17.5.0 | Resolve only after the Editor-baseline decision, through Unity Package Manager, and review the resulting manifest/lock diff. |
-| Orientation | Portrait-only | Landscape-shaped default size, all autorotation directions enabled | Set and verify portrait-only in Player Settings during the approved setup milestone. |
-| Safe area | Safe-area-aware HUD | Android may render outside safe area and the scene has no safe-area component | Add a safe-area layout component and test cutout/inset simulations. |
-| Core input | Mouse and single touch; ignore starts over UI | Generic actions exist, but no game-specific action map, EventSystem, or consumer exists | Add a dedicated action map and injected UI-hit-test adapter. |
-| Fixed board | Same logical board/difficulty across devices | No board or viewport setup exists | Add a fixed logical board and fit it into a safe gameplay viewport. |
-| Automated tests | Deterministic gameplay logic should be tested | Test Framework exists, but there are no tests or asmdefs | Create isolated Edit Mode and Play Mode test assemblies before claiming gameplay correctness. |
-| iOS target | iPhone and iPad are primary targets | This Windows Editor installation has no iOS Build Support; no Mac/Xcode evidence is in the repository | Install matching iOS Build Support for export if supported, and schedule final build/sign/device validation on macOS/Xcode. |
-| Product identity | Working title is Containment and may change | Unity product is Cutrium; company and identifier remain template defaults | Keep code namespaces title-neutral or `Cutrium` for now; approve product identifiers before device distribution. |
+| Unity baseline | Unity 6000.3.21f1 LTS | Exact match | Preserve; do not migrate or upgrade. |
+| URP | Template-compatible URP 17.3.x; no manual pin/upgrade | Manifest, lock, cache, and Editor log agree on 17.3.0 | Preserve. Any unexpected package diff is a stop-and-review condition. |
+| Orientation | Upright Portrait only | Autorotation permits all directions | Apply through Player Settings in Milestone 1A; disable Landscape and Portrait Upside Down. |
+| Product identity | Product and code namespace `Cutrium`; development identifier `com.tayackgames.cutrium` | Product name matches; root namespace is blank and template identifier remains | Apply accepted namespace and identifiers through normal Editor settings in Milestone 1A. Company display name remains a separate human decision. |
+| Product vision title | Cutrium is accepted | `Docs/PRODUCT_VISION.md` still calls Containment a temporary working title | ADR-004 supersedes that naming statement; a later focused product-doc wording cleanup may remove the historical title. |
+| Fixed board | One 10-by-16 logical board; extra tablet space is non-playable | No board or viewport exists | Establish the scene/layout shell in Milestone 1B and gameplay bounds in Milestone 2. |
+| Gameplay tick | Initial deterministic interval 1/60 second | Unity TimeManager is 0.02 second; no gameplay loop exists | Give the game session its own accumulator/interval in Milestone 2; do not change ProjectSettings merely to implement it. |
+| Core input | Press in active room, dominant-axis drag, commit on release; UI starts blocked | Generic actions exist but no consumer/EventSystem exists | Add dedicated actions and infrastructure in Milestone 1B; enforce active-room/gesture rules in Milestone 2. |
+| Automated tests | Deterministic core and focused Unity integration tests | Test package exists, no tests/asmdefs/command | Create the test structure and verify commands in Milestone 1A. |
+| Android build | Android phone/tablet are primary targets | Required modules are installed, but no build has been made | Preserve tooling and perform build/device validation in later milestones. |
+| iOS build | iPhone/iPad are primary targets | No local iOS module or macOS/Xcode evidence | Schedule external iOS export/build/device validation; do not claim it from Windows. |
 
 ## Scope
 
 ### Included in the implementation described by this plan
 
-- one portrait gameplay scene with a fixed logical board and safe-area HUD;
+- one upright-portrait gameplay scene with a fixed 10-by-16 logical board and
+  safe-area-aware HUD;
 - deterministic rectangular rooms, barrier growth, barrier failure, room split,
   captured-area calculation, target completion, retry, and next-level flow;
 - predictable normal threats plus hunter and pulse behavior definitions;
 - Freeze Pulse and Instant Barrier powers;
 - mouse and primary-touch input through one normalized input path;
+- the accepted dominant-axis drag-and-release gesture with no tap fallback in
+  the first prototype;
 - large-capture, near-miss, combo, failure, capture, and level-complete feedback;
 - replaceable theme, threat, barrier, captured-region, audio, and haptic
   presentation with readable fallbacks;
+- haptic interfaces, event hooks, and a no-op implementation only;
 - approximately 10–12 standard levels and one special final level, gated by a
-  core-fun review before content production;
-- Edit Mode tests for deterministic logic, targeted Play Mode integration
-  tests, manual aspect-ratio checks, and Android/iOS device validation as
-  environments permit;
+  positive Milestone 3 core-fun review;
+- a final special level composed only from already approved gameplay systems;
+- Edit Mode tests for deterministic logic, focused Play Mode integration tests,
+  manual aspect-ratio checks, and Android/iOS device validation as environments
+  permit;
 - focused Editor setup utilities only where repeatability is valuable. Any
-  setup utility must be idempotent or warn before a non-idempotent operation.
+  setup utility must be idempotent or explicitly warn before a non-idempotent
+  operation.
 
 ### Excluded
 
@@ -210,14 +271,19 @@ this plan was written. The current repository is an almost untouched Universal
   localization pipeline, and a large cosmetic inventory;
 - third-party tweening, haptic, pooling, ECS, or geometry dependencies unless
   separately proposed and approved;
+- a native Android/iOS haptic implementation or haptic plugin in the current
+  vertical-slice plan;
+- a boss framework, final-level-only gameplay framework, or unapproved new
+  gameplay rule for the final level;
 - a final art direction or multiple finished worlds;
-- physics or collision that derives dimensions from sprite bounds;
-- implementation during this planning task. This file is the only requested
-  repository change now.
+- physics or collision dimensions derived from sprite bounds;
+- gameplay implementation during this planning task;
+- production scripts, scenes, prefabs, assets, packages, package version
+  changes, or ProjectSettings changes during this planning task.
 
 ## Architecture Proposal
 
-### Proposed decisions
+### Accepted architecture and dependency direction
 
 Use a small deterministic gameplay core, a Unity orchestration/content layer,
 and a separate presentation layer.
@@ -233,33 +299,47 @@ Pointer adapter -> GameSession controller -> Pure gameplay simulation
                                                 v
                                Board/Threat/HUD/Feedback presenters
                                   |       |        |       |
-                               sprites  audio     VFX   haptics
+                               sprites  audio     VFX   haptic hooks
 ```
 
-The gameplay assembly should have no `UnityEngine` reference. It should use
-small project-owned numeric types such as `LogicalPoint` and `LogicalRect`,
-backed by `double` for calculations. Unity content converts serialized floats
-and vectors to logical types at the composition boundary. This makes room
-division, movement, tolerances, and state transitions executable in fast Edit
-Mode tests without a scene or physics world.
+The deterministic gameplay assembly must have no `UnityEngine` reference. It
+uses project-owned `float`-backed logical types such as `LogicalPoint`,
+`LogicalVector`, and `LogicalRect`. Normal gameplay state, serialized content
+conversion, and state snapshots remain float-backed.
 
-The Unity-facing assemblies may depend on the gameplay assembly:
+All geometry code receives one project-owned `GeometryTolerancePolicy` that
+contains named comparisons for distance, time ordering, corners, minimum cuts,
+and area conservation. The policy is supplied explicitly to the session and
+solvers; it is not a mutable singleton, a grab bag of scattered constants, or
+`Mathf.Epsilon`.
+
+Local `double` intermediates may be introduced inside a solver only when a
+specific test demonstrates that float intermediates cannot robustly resolve a
+required case. Any such use must:
+
+- remain local to the calculation rather than becoming stored gameplay state;
+- convert back to float at a documented boundary;
+- include a regression test for the motivating case;
+- be recorded in this plan's Decision Log and `Docs/DECISIONS.md` if it changes
+  the architectural policy.
+
+Unity-facing assemblies may depend on the gameplay assembly:
 
 - **Unity runtime/orchestration** reads ScriptableObjects, normalizes input,
   advances a fixed-step `GameSession`, owns level/retry transitions, and
   exposes state/events to presenters.
 - **Presentation** creates and updates SpriteRenderer/uGUI views, audio, VFX,
-  camera emphasis, and haptics. It can be disabled or have missing assets
+  camera emphasis, and haptic hooks. It can be disabled or have missing assets
   without changing a simulation result.
 - **Editor** contains optional validation/setup tools and custom inspectors.
 - **Tests** reference only the assemblies required by each test category.
 
-`GameCompositionRoot` in the gameplay scene will receive its dependencies
-through serialized fields and construct the session explicitly. Avoid service
+`GameCompositionRoot` in the gameplay scene receives dependencies through
+serialized fields and constructs the session explicitly. Avoid service
 locators, runtime object searches, persistent global managers, and duplicated
-singletons. Because domain reload is disabled in the current Editor settings,
-all subscriptions and session state must be disposed/reset on disable and
-play-mode exit.
+singletons. All subscriptions and session state must be disposed/reset
+explicitly even though the current Editor reload settings do not disable
+domain or scene reload.
 
 ### Core model and state flow
 
@@ -280,11 +360,18 @@ The gameplay core should contain:
   `BarrierLocked`, `RegionCaptured`, `LargeCapture`, `NearMiss`,
   `ComboChanged`, and `LevelCompleted`.
 
-The controller applies one command at a time, advances the core using a fixed
-simulation interval, and drains an ordered event buffer. Presenters react to
-events but never call back to alter a result already decided by the core.
-Presentation time may use unscaled time for a short emphasis pulse while
-simulation time remains explicit and testable.
+The controller applies one command at a time, advances the core with an
+accumulator using an initial fixed interval of exactly 1/60 second, and drains
+an ordered event buffer. Rendering frame rate must not alter the number or
+order of processed simulation ticks for the same elapsed time. Bound
+catch-up work and report a diagnostic rather than allowing an unbounded
+spiral. Do not move to 1/120 unless solver tests demonstrate a correctness need
+that cannot be addressed at 1/60 and profiling shows the target devices can
+afford it.
+
+Presenters react to events but never call back to alter a result already
+decided by the core. Presentation may use unscaled time for a short emphasis
+pulse while simulation time remains explicit and testable.
 
 ### Gameplay/presentation independence
 
@@ -298,60 +385,48 @@ simulation time remains explicit and testable.
   flat-color rectangle is the fallback; a material reveal may enhance it but
   cannot determine whether or how much area was captured.
 - Audio, particles, camera feedback, and haptics subscribe to focused gameplay
-  events through interfaces. Null/no-op implementations are valid.
+  events through interfaces. Missing resources and no-op implementations are
+  valid.
 - Theme references live in `ThemeDefinition` and presentation prefabs. Level
   rules do not inspect a theme.
-- Prefab factories are owned by presentation and use bounded reuse where
+- Prefab factories are owned by presentation and use bounded reuse only where
   profiling justifies it. Core state never holds GameObjects or Components.
 
 ### Threat movement and collision strategy
 
-**Recommendation: an authoritative fixed-step analytic swept-circle solver
-over axis-aligned rooms and barriers.**
+The authoritative prototype is a fixed-step analytic swept-circle solver over
+axis-aligned rooms and growing barriers:
 
-This geometry is simpler and more reliable than a general-purpose dynamic
-physics scene:
-
-1. Each threat is a circle inside exactly one active rectangular room. For
-   wall motion, inset the room by the threat radius.
-2. During a fixed tick, compute the earliest time the moving center reaches an
+1. Each threat is a logical circle inside exactly one active rectangular room.
+   Wall motion uses the room inset by the threat radius.
+2. During a 1/60 tick, calculate the earliest time the moving center reaches an
    inset x or y boundary. Move to that time, reflect the corresponding velocity
    component, consume the remaining tick, and repeat.
-3. If x and y impact times are equal within a named corner epsilon, reflect
-   both components once. Cap impacts per tick and report a diagnostic if the
-   cap is reached; do not silently tunnel.
+3. If x and y impacts are equal under the centralized corner comparison,
+   reflect both components once. Cap impacts per tick and report a diagnostic
+   if the cap is reached; do not silently tunnel.
 4. Treat the growing barrier as two axis-aligned capsules with a numeric
-   collision half-width. For continuous barrier contact, test:
-   - crossing of the capsule body at candidate perpendicular contact times,
-     accepting only axial positions that the barrier has reached at that time;
-   - moving-circle versus moving-tip contact using relative motion;
-   - static body/tip contact after a half reaches its room boundary.
-5. Use `threat radius + barrier half-width` as the contact radius. Split a tick
-   at a barrier-half completion time when necessary. A contact before the
-   second half completes fails the barrier; completion first locks it.
-6. Drive normal reflection from the solver. Apply behavior steering before
-   solving motion: hunter makes a small capped direction adjustment on barrier
-   start, while pulse changes a speed multiplier on a deterministic phase.
-7. Run the simulation with an accumulator and fixed interval independent of
-   render frame rate. Start with 1/120 second as a measured assumption because
-   threat counts are small; retain 1/60 as a fallback if profiling shows a
-   device cost. Test both rates before finalizing.
+   collision half-width. Test the swept circle against reached barrier bodies,
+   moving growth tips, and completed halves in time order.
+5. Use `threat radius + barrier half-width` as the contact radius. Split the
+   calculation at a barrier-half completion time when necessary. Contact while
+   the barrier is vulnerable fails it; completion first locks it.
+6. Drive normal reflection from the same solver. Apply hunter steering before
+   solving movement and apply pulse speed from deterministic state.
+7. Test high speeds, repeated impacts, corners, completion/contact ties, and
+   varied render deltas at the accepted 1/60 interval.
 
-This approach prevents wall tunneling even when a threat travels through more
-than one room width in a tick, handles corners explicitly, and does not require
-collider GameObjects. It also makes frame-rate-variation tests practical.
-
-Fallback if growing-capsule time-of-impact proves too costly or error-prone:
-use controlled kinematic `Physics2D.CircleCast`/`Rigidbody2D.Cast` calls with
-explicit logical colliders and a bounded non-allocating hit buffer. The core
-would still own state and collision radii, and the cast adapter would return
-plain hit data. Do not fall back to unconstrained Rigidbody2D velocity and
-collision callbacks.
+This analytic path is authoritative for the first prototype. Controlled,
+bounded, non-allocating `Physics2D.CircleCast` or `Rigidbody2D.Cast` calls are
+the approved fallback if the growing-capsule analytic prototype cannot meet
+the acceptance tests. The core would still own state, dimensions, and
+ordering, while the adapter returns plain hit data. Unconstrained Rigidbody2D
+velocity and collision callbacks are not an approved authority.
 
 ### Room splitting and captured area
 
-Keep a flat collection of disjoint active rectangles; no polygon library,
-tile grid, or quadtree is required for the slice.
+Keep a flat collection of disjoint active rectangles. A polygon library, tile
+grid, and quadtree are unnecessary for the slice.
 
 When a barrier locks:
 
@@ -359,114 +434,121 @@ When a barrier locks:
 2. Split the parent at the barrier x coordinate for a vertical barrier or y
    coordinate for a horizontal barrier, producing two child rectangles.
 3. Reject cuts closer than a configurable minimum logical margin to a parent
-   edge. Enforce a named geometric epsilon rather than scattered comparisons.
+   edge, using the centralized tolerance policy.
 4. Classify every threat from the parent into one child by center position.
    A successfully locked barrier means a threat circle cannot straddle the
-   split. If a center falls within epsilon of the line, assert/report the
-   invariant and use a documented deterministic tie-breaker so a release build
-   remains recoverable.
+   split. If a center reaches a tie case under tolerance, report the invariant
+   and apply a documented deterministic fallback.
 5. A child with threats remains active. A child without threats becomes
    captured. If both have threats, both remain active and no area is captured.
-   If no threats remain, both may be captured and the level can complete.
-6. Store the completed barrier as a logical boundary for presentation/history,
-   but use the child room rectangles as the authoritative motion bounds.
+6. Store the completed barrier for presentation/history, but use child room
+   rectangles as authoritative motion bounds.
 7. Calculate capture fraction from logical area. The split line has zero area;
-   visual barrier thickness does not alter scoring. Prefer
-   `1 - activeArea / initialBoardArea`, cross-checked against accumulated
-   captured rectangles, to limit drift.
+   visible barrier thickness does not alter scoring. Use
+   `1 - activeArea / initialBoardArea` and cross-check captured area.
 
-Every split must preserve:
+Every split must preserve within the centralized tolerance policy:
 
-- child areas sum to the parent area within tolerance;
+- child areas sum to parent area;
 - active and captured rectangles do not overlap except at shared edges;
 - every live threat belongs to exactly one active room;
-- active area plus captured area equals initial board area within tolerance;
-- capture percentage is monotonic and device independent.
+- active area plus captured area equals initial board area;
+- capture percentage is monotonic and device-independent.
 
-### Input approach
+### Accepted input gesture
 
-Keep the existing Input System as the sole active stack, but create a dedicated
-game action map rather than repurposing the generic Player/Attack actions.
+Keep the Input System as the sole active stack and create a dedicated Cutrium
+action map rather than repurposing template Player/Attack actions.
 
-Proposed actions:
+Planned gameplay actions:
 
-- `Point` (`PassThrough`, Vector2): `<Pointer>/position`;
-- `Press` (Button): `<Pointer>/press`;
+- `Point` (`PassThrough`, Vector2): pointer position;
+- `Press` (Button): primary pointer press;
 - `Cancel` (Button): Escape/right-click for Editor convenience only;
 - separate UI actions consumed by `InputSystemUIInputModule`.
 
-`BarrierPointerInput` will normalize mouse and primary touch into press-start,
-position, and release samples. It will convert screen position through the
-gameplay camera/viewport to a logical point and submit an intent only if:
+`BarrierPointerInput` normalizes mouse and primary touch into press, move, and
+release samples. It converts screen position through the gameplay
+camera/viewport to a logical point and accepts an interaction only if:
 
-- the press started inside an active room and inside the playable board;
-- the press did not start over UI, using an injected `IPointerUiBlocker`
-  adapter around the EventSystem and the correct mouse/touch pointer ID;
+- the press starts inside an active room and inside the playable board;
+- the press does not start over UI, using an injected `IPointerUiBlocker`
+  adapter around the EventSystem and the correct pointer ID;
 - the session accepts input and no barrier is already active.
 
-Recommended first gesture:
+The first prototype gesture is fixed for implementation:
 
-- press at the barrier origin and preview the last-used orientation;
-- a short drag chooses the dominant axis with a configurable
-  screen-density-aware dead zone and hysteresis;
-- release commits the previewed orientation;
-- a tap without a directional drag uses the clearly displayed last-used
-  orientation.
+1. Press inside an active room to establish the barrier origin.
+2. Drag far enough to cross a short configurable dead zone.
+3. Select horizontal or vertical from the dominant drag axis, with limited
+   hysteresis so small finger noise does not flicker the preview.
+4. Commit the barrier on release only after an orientation was selected.
+5. Cancel a release that never selected an orientation.
 
-This keeps a single tap viable while allowing orientation choice without a
-second finger. Playtesting must compare it with the simpler alternative of a
-persistent HUD orientation toggle plus tap-to-place. The input adapter should
-emit only `BarrierIntent(origin, orientation)` so changing the gesture does not
-change gameplay.
+There is no tap-with-last-orientation behavior in the first prototype. The
+input adapter emits only `BarrierIntent(origin, orientation)` after a valid
+release so future gesture revisions do not change gameplay rules.
 
-### Phone/tablet layout with a fixed logical board
+### Phone/tablet layout
 
-Use one board size for a given level on every device. The initial tuning
-assumption is 10 logical units wide by 16 high; this is not final balance and
-requires human approval/playtesting.
+Use one 10-by-16 logical board for a level on every device:
 
-- A safe-area root RectTransform follows `Screen.safeArea`.
-- Anchored uGUI layout reserves a HUD region and a `BoardViewport` region.
-- A `BoardCameraFitter` maps the camera viewport to `BoardViewport` and sets
-  orthographic size to contain the complete logical board with a small
-  configured margin.
-- The board is never cropped or expanded to fill a wider device. Remaining
-  width or height shows non-interactive frame/background presentation.
-- Screen-to-logical input uses the same viewport transform and rejects
-  decorative margins.
+- a safe-area root follows `Screen.safeArea`;
+- anchored uGUI layout reserves a HUD region and a `BoardViewport` region;
+- `BoardCameraFitter` maps the camera viewport to `BoardViewport` and sets
+  orthographic size to contain the complete board with a configured margin;
+- the board is never cropped or widened to fill a device;
+- all extra tablet or safe-area space is non-playable presentation space;
+- screen-to-logical input uses the same viewport transform and rejects
+  decorative margins;
 - HUD uses anchors/layout groups and a Canvas Scaler, not device-specific
-  coordinates. Touch target sizing is evaluated in physical/Canvas units.
-- No gameplay spawn, speed, radius, growth speed, area target, or room bound is
+  coordinates;
+- no gameplay spawn, speed, radius, growth speed, target, or room bound is
   derived from pixels, DPI, safe area, or camera aspect.
 
 Minimum Game view matrix:
 
-- common phone: 1080×1920 (9:16);
-- tall phone: 1080×2400 (9:20);
-- tablet: 1536×2048 (3:4);
+- common phone: 1080-by-1920 (9:16);
+- tall phone: 1080-by-2400 (9:20);
+- tablet: 1536-by-2048 (3:4);
 - at least one simulated notched/cutout safe area;
-- portrait orientation on Android and iOS device builds when available.
+- upright Portrait on Android and iOS device builds when available.
 
 ### Content definitions
 
 Use ScriptableObjects only at the Unity boundary:
 
-- `LevelDefinition`: fixed board size, target fraction, threat spawn records,
-  threat definitions, available powers, optional level-rule overrides, and
-  presentation/theme reference;
+- `LevelDefinition`: the 10-by-16 board, target fraction, threat spawn records,
+  threat definitions, available powers, approved level-rule configuration, and
+  theme reference;
 - `ThreatDefinition`: radius, base speed, behavior kind/configuration, and
-  presentation prefab/reference;
-- `ThemeDefinition`: optional sprites, materials, colors, view prefabs, effect
-  prefabs, AudioClips, and UI accents with safe fallbacks;
+  presentation reference;
+- `ThemeDefinition`: optional sprites, materials, colors, view/effect prefabs,
+  AudioClips, and UI accents with safe fallbacks;
 - `PowerDefinition`: power kind, charges, duration/strength, and presentation
   references;
 - `FeedbackTuningDefinition`: capture timing, near-miss distance/time window,
   large-capture threshold, combo tuning, camera emphasis, and optional
-  audio/haptic mappings.
+  audio/haptic event mappings.
 
-Validate definitions in `OnValidate` and with Edit Mode content-validation
-tests, but convert them to plain immutable runtime configuration before a level
-starts.
+Validate definitions in `OnValidate` and Edit Mode content tests, then convert
+them to plain immutable runtime configuration before a level begins.
+
+The final special level must be a distinctive configuration of the approved
+board, threats, powers, target, and feedback systems. It must not introduce a
+boss framework or a final-level-only gameplay system.
+
+### Haptic boundary
+
+The initial slice includes:
+
+- `IHapticFeedback` or an equivalently focused interface;
+- event hooks for barrier lock/break, capture, large capture, near miss, level
+  complete, and UI press where appropriate;
+- a no-op fallback that is always safe.
+
+It does not include a plugin, native Android/iOS bridge, or guaranteed tactile
+output. A richer implementation requires a later separately approved decision.
 
 ### Proposed Unity folders and assemblies
 
@@ -527,132 +609,90 @@ Assets/Cutrium/
 Assembly dependency direction:
 
 - `Cutrium.Gameplay`: no Engine references and no project assembly dependency;
-- `Cutrium.Unity`: `Cutrium.Gameplay`, Unity Input System, and uGUI;
+- `Cutrium.Unity`: `Cutrium.Gameplay`, Input System, and uGUI;
 - `Cutrium.Presentation`: `Cutrium.Gameplay` and `Cutrium.Unity`;
-- `Cutrium.Editor`: Editor-only references to runtime assemblies;
+- `Cutrium.Editor`: Editor-only references to required project assemblies;
 - Edit Mode tests: `Cutrium.Gameplay` plus Test Framework;
-- Play Mode tests: all three runtime assemblies plus Test Framework and Input
+- Play Mode tests: required runtime assemblies plus Test Framework and Input
   System test utilities where appropriate.
 
-Do not create an assembly per feature. The separation above exists to enforce
-the simulation/presentation boundary, not to maximize assembly count.
-
-### Expected implementation assets and setup work
-
-Expected code includes, at minimum:
-
-- geometry/state: `LogicalPoint.cs`, `LogicalRect.cs`, `GeometryTolerance.cs`,
-  `BoardState.cs`, `RoomState.cs`, `ThreatState.cs`, `BarrierState.cs`;
-- simulation: `GameSession.cs`, `BoardSimulation.cs`, `ThreatMotionSolver.cs`,
-  `GrowingBarrierCollision.cs`, `RoomSplitter.cs`, `CaptureCalculator.cs`,
-  `GameplayEvent.cs`;
-- behavior/powers: `IThreatBehavior.cs`, normal/hunter/pulse implementations,
-  `FreezePulseRule.cs`, and `InstantBarrierRule.cs`;
-- Unity boundary: `GameCompositionRoot.cs`, `GameSessionController.cs`,
-  ScriptableObject definitions and converters, `BarrierPointerInput.cs`,
-  `EventSystemPointerUiBlocker.cs`, `SafeAreaFitter.cs`, and
-  `BoardCameraFitter.cs`;
-- presentation: `BoardPresenter.cs`, `ThreatPresenter.cs`,
-  `BarrierPresenter.cs`, `CapturedRegionPresenter.cs`, `HudPresenter.cs`,
-  `FeedbackDirector.cs`, `AudioFeedbackService.cs`, and
-  `HapticFeedbackService.cs`.
-
-Expected prefabs:
-
-- `GameRoot.prefab`, `BoardView.prefab`, fallback `ThreatView.prefab`,
-  `BarrierView.prefab`, `CapturedRegionView.prefab`, `Hud.prefab`, and small
-  capture/failure/near-miss feedback prefabs;
-- no gameplay calculation may depend on a prefab or prefab renderer.
-
-Expected content:
-
-- one fallback cleanup-chamber `ThemeDefinition`;
-- normal, hunter, and pulse `ThreatDefinition` assets;
-- Freeze Pulse and Instant Barrier `PowerDefinition` assets;
-- default `FeedbackTuningDefinition`;
-- level assets `Level_001` through approximately `Level_012` plus
-  `Level_Final`, with the exact count gated by playtest value.
-
-Expected Editor work, performed through the Unity Editor or a reviewed
-idempotent setup tool rather than blind YAML editing:
-
-- resolve the approved Unity/URP baseline;
-- set portrait orientation and supported rotations;
-- set real company/application identifiers before device distribution;
-- create the dedicated Input Actions asset and EventSystem/Input System UI
-  module references;
-- create `VerticalSlice.unity`, instantiate the composition root and prefabs,
-  assign serialized dependencies, and add only that scene to build settings
-  once it is ready;
-- create and validate content assets;
-- configure Android/iOS target settings and test builds;
-- install matching iOS Build Support and use macOS/Xcode for final iOS build,
-  signing, and device checks.
+Do not create an assembly per feature. This separation exists to enforce the
+simulation/presentation boundary.
 
 ## Alternatives Considered
 
-| Decision | Recommended choice | Alternative | Why not primary |
+| Decision | Accepted choice | Alternative | Why the alternative is not primary |
 | --- | --- | --- | --- |
-| Threat movement | Pure fixed-step swept-circle solver against rectangle bounds and growing axis-aligned capsules | Rigidbody2D velocity/collision callbacks | Harder to make deterministic, more vulnerable to tunneling/order differences, and scene colliders become authoritative. |
-| Threat movement fallback | Controlled non-allocating CircleCast/Rigidbody2D.Cast adapter | Fixed microsteps with overlap tests only | Microsteps can still tunnel or create early/late barrier contacts unless set excessively small. |
-| Room representation | Flat set of disjoint axis-aligned rectangles | Grid occupancy | A grid introduces resolution-dependent area and collision artifacts for geometry that is exactly rectangular. |
-| Room representation | Flat rectangles | Arbitrary polygon clipping | Explicitly out of scope and adds unnecessary numerical and presentation complexity. |
-| Core numeric types | Project-owned double-backed logical structs | `UnityEngine.Vector2`/`Rect` in core | Unity types are convenient, but they prevent a no-Engine gameplay assembly and blur the boundary. |
-| Gesture | Tap or drag from origin, last orientation as tap default | HUD orientation toggle plus tap | Toggle is very readable but adds an extra action to each cut; retain it as the first playtest fallback. |
-| Level flow | One persistent gameplay scene, data-driven session reset | One scene per level | Separate scenes duplicate setup and make retry/next-level flow heavier and more error-prone. |
-| Presentation | SpriteRenderer/uGUI fallbacks plus optional effects | Shader-dependent capture correctness | Shaders can improve the fill, but mobile compatibility and capture rules must survive without them. |
-| Architecture | Three focused runtime assemblies | One default `Assembly-CSharp` or many micro-assemblies | One assembly cannot enforce the boundary; many small assemblies add friction without slice value. |
-| Performance | Bounded direct presenters, pooling only after evidence | Generic pooling/ECS framework immediately | Expected object counts are small and the docs require evidence-driven optimization. |
+| Unity/URP baseline | Unity 6000.3.21f1 with template-resolved URP 17.3.0 | Migrate to 6000.5 or manually upgrade URP | The recreated baseline is accepted and internally consistent; an upgrade adds risk without slice value. |
+| Core dependency | No-UnityEngine deterministic assembly | Use `UnityEngine.Vector2`, `Rect`, or scene physics as core state | It weakens deterministic tests and presentation/logic separation. |
+| Normal numeric state | Project-owned float-backed logical types and one tolerance policy | Double-backed state everywhere | Float matches Unity/content boundaries and the accepted architecture; local double remains available only for a proven solver need. |
+| Tolerance handling | Explicit injected policy with named comparisons | `Mathf.Epsilon` or local magic epsilons | Central policy makes boundary behavior reviewable and testable. |
+| Simulation interval | Start at 1/60 second | Start at 1/120 or use variable render delta | 1/60 matches the product target and avoids unproven mobile cost; 1/120 needs test evidence. |
+| Threat movement | Analytic swept-circle solver against rectangle bounds and growing axis-aligned capsules | Rigidbody2D velocity/callback authority | Harder to make deterministic, more vulnerable to tunneling/order differences, and scene colliders become authoritative. |
+| Movement fallback | Controlled non-allocating CircleCast/Rigidbody2D.Cast adapter | Fixed microsteps with overlap tests | Microsteps can still tunnel or misorder contact unless excessively small. |
+| Room representation | Flat set of disjoint axis-aligned rectangles | Grid occupancy or arbitrary polygons | A grid adds resolution artifacts; polygons are explicitly out of scope. |
+| Initial gesture | Press, dominant-axis drag, release to commit; short release cancels | Tap with last orientation | A tap fallback is explicitly excluded from the first prototype and can hide orientation ambiguity. |
+| Level flow | One persistent gameplay scene, data-driven session reset | One scene per level | Separate scenes duplicate setup and make retry/next flow heavier. |
+| Haptics | Interface, event hooks, no-op fallback | Plugin or native bridge now | Platform work is not required to evaluate the core reward loop. |
+| Final special level | Existing approved systems configured distinctively | New boss framework or one-off rule system | It expands architecture and content risk after the decision-build scope is already sufficient. |
+| Presentation | SpriteRenderer/uGUI fallbacks plus optional effects | Shader-dependent capture correctness | Core correctness must survive shader/resource absence. |
+| Performance | Bounded direct presenters, pooling only after evidence | Generic pooling/ECS framework immediately | Expected object counts are small and optimization must be evidence-driven. |
 
 ## Test Strategy
 
-There is no test command in the repository today. Do not claim a command until
-the test assemblies exist and a batch-mode invocation has been run successfully
-on this machine. During milestone 1, record the verified Unity Test Runner
-command in `Validation Record`; until then, use the Unity Test Runner UI.
+There is no verified test command in the repository today. Milestone 1A must
+create the test assemblies and record a successfully executed Unity Test Runner
+UI workflow and batch-mode command before later milestones cite that command.
+Until then, do not claim an automated test invocation.
 
 ### Edit Mode deterministic tests
 
+- construction and validation of float-backed logical points, vectors, and
+  rectangles;
+- centralized tolerance comparisons at, below, and above each named boundary;
 - horizontal and vertical split coordinates and child bounds;
 - area conservation and non-overlap across long sequences of cuts;
 - invalid origin, edge margin, stale room ID, and second-active-barrier
   rejection;
 - zero-threat, one-side-threat, and both-sides-threat child classification;
-- threat centers at/near tolerances with deterministic handling;
+- threat centers at/near tolerance boundaries with deterministic handling;
 - captured fraction monotonicity, exact known cases, and tolerance behavior;
 - barrier lifecycle: idle, growing, one-half-complete,
-  both-halves-complete/finalize, contact/fail, and immediate/instant completion;
+  both-halves-complete/finalize, contact/fail, and instant completion;
 - normal wall reflection, shallow angles, exact corners, repeated collisions in
-  one tick, high speed, and iteration-cap diagnostics;
+  one tick, high speed, and iteration-cap diagnostics at 1/60;
 - equivalent final states across render-frame delta sequences when the same
   fixed ticks are processed;
 - continuous threat contact with stationary barrier bodies, moving tips,
   growing body interiors, and completion/contact ordering;
+- regression tests for any solver calculation that justifies local double
+  intermediates;
 - hunter direction adjustment bounds and pulse phase/speed determinism;
 - freeze duration and Instant Barrier consumption;
-- near-miss time/distance threshold boundaries, large-capture threshold, and
-  combo reset/increment rules;
-- randomized seeded split/movement sequences checking invariants without adding
-  a third-party property-test dependency;
+- near-miss time/distance boundaries, large-capture threshold, and combo rules;
+- seeded randomized split/movement sequences checking invariants without a
+  third-party property-test dependency;
 - ScriptableObject validation/conversion tests after content types exist.
 
 ### Play Mode/integration tests
 
 - composition root builds a session without runtime searches or missing
   required references;
-- mouse and simulated primary touch yield the same `BarrierIntent`;
-- press-start over UI is rejected while a board press is accepted;
+- mouse and simulated primary touch produce the same press/drag/release intent;
+- press-start over UI is rejected while a valid active-room press is accepted;
+- release below the orientation threshold cancels and does not reuse a previous
+  orientation;
 - only one barrier can be active;
 - presenters create/update/remove views for stable IDs and tolerate absent
   optional sprites, clips, particles, materials, and haptics;
-- retry and next-level reset state without loading another heavy scene or
-  retaining event subscriptions;
-- domain-reload-disabled play cycles do not retain session/static state;
+- retry and next-level reset state without a heavy scene load or retained event
+  subscription;
+- repeated play cycles do not retain session/static state;
 - safe-area and board-camera mapping keeps all four logical board corners
-  visible and maps decorative margins outside the board;
+  visible and maps decorative margins outside gameplay;
 - no managed allocations occur per fixed tick after warm-up in a representative
-  level, measured with profiling/`ProfilerRecorder` rather than assumed;
-- a scene/build content validator reports missing required definitions and
+  level, measured rather than assumed;
+- scene/build content validation reports missing required definitions and
   prefab references before a device build.
 
 ### Manual validation
@@ -660,189 +700,291 @@ command in `Validation Record`; until then, use the Unity Test Runner UI.
 At relevant milestones:
 
 - inspect Console after a clean script recompile and play session; distinguish
-  known template/package warnings from new warnings;
-- play with mouse at 1080×1920, 1080×2400, and 1536×2048;
+  template/package diagnostics from new relevant warnings;
+- play with mouse at 1080-by-1920, 1080-by-2400, and 1536-by-2048;
 - simulate at least one display cutout/safe area;
-- test quick taps, short/long drags, orientation hysteresis, rapid repeated
-  input, presses over every HUD control, and retry/next-level spam;
+- verify upright Portrait only and attempt prohibited rotations on devices;
+- test short releases, threshold drags, long drags, diagonal dominance,
+  orientation hysteresis, rapid repeated input, every HUD control, and
+  retry/next spam;
 - test corner hits, high threat speed, multiple threats, barriers near edges,
   both children retaining threats, large captures, and near misses;
 - compare the same level timing/difficulty at all three aspects;
 - profile a representative final-content level for frame time, GC allocations,
   overdraw, particle bounds, and object counts;
-- build/run on a representative mid-range Android phone and an Android tablet;
+- build/run on a representative mid-range Android phone and Android tablet;
 - export/build/run on iPhone and iPad using matching iOS Build Support plus
   macOS/Xcode when available;
-- verify graceful no-op haptics and missing audio/effects.
+- verify haptic hooks safely use the no-op fallback and never require a plugin.
 
 ## Milestones
 
-### Milestone 1 — Approve and establish the project baseline
+### Milestone 1A — Baseline, assemblies, geometry primitives, and test setup
 
-**Goal:** resolve version/configuration gates and create a compiling,
-portrait-safe architecture and scene skeleton without gameplay behavior.
+**Goal:** establish the accepted Editor/product baseline, assembly boundaries,
+float-backed geometry foundation, tolerance policy, and executable tests
+without creating any gameplay behavior.
 
 **Files/systems expected to change:**
 
-- approved `ProjectSettings` orientation, identifiers, and build configuration;
-- approved package manifest/lock only if resolution requires it;
-- proposed folder/asmdef structure;
-- `CutriumInput.inputactions`;
-- `VerticalSlice.unity`, composition-root shell, safe-area root, board viewport,
-  camera fitter, EventSystem, and placeholder HUD/board views;
-- first geometry and content-definition types plus test assemblies;
-- `Docs/DECISIONS.md` for accepted architecture/version decisions.
+- Player/Editor settings changed through normal Unity Editor UI for upright
+  Portrait, `Cutrium` namespace, and `com.tayackgames.cutrium`;
+- `Assets/Cutrium/Runtime/Gameplay/Cutrium.Gameplay.asmdef`;
+- minimal Unity, Presentation, Editor, Edit Mode test, and Play Mode test asmdefs
+  required to prove dependency direction;
+- float-backed `LogicalPoint`, `LogicalVector`, `LogicalRect`, and the
+  project-owned geometry tolerance policy;
+- geometry/tolerance tests and test-runner setup documentation;
+- `Docs/DECISIONS.md` and this plan.
+
+Package files are not expected to change.
 
 **Implementation steps:**
 
-1. Obtain human decisions on Unity version, URP resolution, portrait rotations,
-   namespace/product identity, initial board dimensions, and gesture trial.
-2. Back up/commit the clean baseline before allowing the chosen Editor to
-   resolve packages.
-3. Open in only the approved Editor and review all automatic package/asset
-   diffs.
-4. Use Player Settings to lock portrait behavior and configure platform
-   identifiers appropriate for development builds.
-5. Create asmdefs, no-Engine geometry primitives, ScriptableObject shells, and
-   Edit/Play Mode test assemblies.
-6. Create the input asset and one gameplay scene through normal Editor APIs.
-7. Wire Safe Area, board viewport, camera fitting, EventSystem, and explicit
-   serialized composition references.
-8. Record a verified batch-mode Edit Mode/Play Mode test command.
+1. Confirm Git is clean and checkpoint the recreated baseline before opening
+   the project for implementation.
+2. Open only Unity 6000.3.21f1. Confirm Package Manager reports URP 17.3.0 and
+   stop for review if manifest/lock changes unexpectedly.
+3. Through Player Settings, select upright Portrait and disable Landscape and
+   Portrait Upside Down.
+4. Through normal Editor settings, apply product/root namespace `Cutrium` and
+   development application identifier `com.tayackgames.cutrium` for relevant
+   mobile targets. Do not invent a company display name.
+5. Create the focused assembly structure and prove the gameplay assembly has no
+   UnityEngine reference.
+6. Implement only value-like float-backed geometry primitives and the explicit
+   tolerance policy. Do not create board, barrier, threat, session, input, or
+   gameplay update behavior.
+7. Create Edit Mode and Play Mode test assemblies, add geometry/tolerance and
+   dependency smoke tests, and verify both Test Runner UI and batch-mode
+   commands.
+8. Inspect the Unity Console and Git diff, including package and ProjectSettings
+   changes.
 
 **Acceptance criteria:**
 
-- the project opens and compiles in the approved Editor with no project errors;
-- manifest, lock, cache, and active URP version agree or an explicitly accepted
-  exception is recorded;
-- the scene is portrait-only and shows the complete fixed logical board at all
-  three target aspects without changing logical bounds;
-- presses over placeholder HUD are distinguishable from board presses;
-- gameplay core has no Engine reference and assembly dependency direction is
-  enforced;
-- setup has no hidden object searches or persistent singleton.
+- Unity 6000.3.21f1 opens and compiles with no project errors;
+- URP remains the template-resolved 17.3.0 with no manual package change;
+- upright Portrait is the only permitted orientation;
+- product/root namespace is `Cutrium` and the development mobile identifier is
+  `com.tayackgames.cutrium`;
+- `Cutrium.Gameplay` cannot reference UnityEngine;
+- logical geometry state is float-backed and all approximate comparisons route
+  through the supplied tolerance policy;
+- Edit Mode and Play Mode smoke tests are discoverable and their exact verified
+  commands are recorded;
+- there is no gameplay behavior, scene shell, input consumer, session, threat,
+  barrier, capture, prefab, or production content asset.
 
-**Automated validation:** run the verified assembly/geometry smoke tests and a
-Play Mode scene-reference/layout smoke test; record the exact command and
-results.
+**Automated validation:** run the new dependency, geometry, and tolerance Edit
+Mode tests plus the minimal Play Mode discovery/smoke test using the verified
+commands recorded during this milestone.
 
-**Manual Unity verification:** inspect Player Settings, Package Manager,
-Graphics/Quality pipeline references, scene hierarchy, EventSystem, serialized
-references, Console, and the three Game views with a safe-area simulation.
+**Manual Unity verification:** inspect About/Editor version, Package Manager,
+Player orientation and identifiers, root namespace, assembly references, Test
+Runner discovery, Console, and the complete Git diff. Confirm the template
+scene still has no gameplay behavior.
 
-**Expected playable result:** a polished portrait frame and responsive board
-shell that accepts/rejects pointer starts correctly, but intentionally has no
-gameplay yet.
+**Expected playable result:** intentionally none. The project compiles and the
+logic foundation is testable, but Milestone 1A must not create gameplay.
 
-### Milestone 2 — Deliver the first complete playable core loop
+**Git checkpoint recommendation:** after all acceptance checks pass, commit a
+focused checkpoint such as `chore: establish Cutrium milestone 1A foundation`.
+Do not include an unexpected package diff.
 
-**Goal:** make one placeholder level playable end to end as early as practical:
-normal threat motion, barrier input/growth/failure, rectangular capture,
-percentage target, completion, and retry.
+### Milestone 1B — Scene shell, input, safe area, camera fitting, and UI blocking
+
+**Goal:** create an independently validated portrait scene shell and normalized
+pointer infrastructure without implementing the barrier/capture game loop.
+
+**Files/systems expected to change:**
+
+- dedicated `CutriumInput.inputactions`;
+- Unity input, safe-area, viewport, camera-fitting, and UI-blocking adapters;
+- `VerticalSlice.unity` created through the Unity Editor or a reviewed
+  idempotent setup tool;
+- EventSystem with `InputSystemUIInputModule`, safe-area root, BoardViewport,
+  camera, placeholder board frame, and placeholder HUD;
+- Play Mode input/layout/scene-reference tests.
+
+**Implementation steps:**
+
+1. Create dedicated Point, Press, Cancel, and UI actions; do not repurpose the
+   generic template Player/Attack map.
+2. Normalize mouse and primary touch into press/move/release samples.
+3. Add the EventSystem input module and an injected UI hit-test blocker that
+   records whether a press started over UI.
+4. Add a safe-area root and anchored HUD/BoardViewport layout.
+5. Fit a placeholder 10-by-16 logical board rectangle into the BoardViewport,
+   preserving the same bounds at all supported aspects.
+6. Reject decorative tablet margins in screen-to-logical mapping.
+7. Create the scene and serialized composition references through normal Editor
+   workflows; add the scene to build settings only after it validates.
+8. Test input normalization, UI blocking, layout, safe area, and scene
+   references without starting a gameplay session.
+
+**Acceptance criteria:**
+
+- the scene shows the complete 10-by-16 board frame at common phone, tall phone,
+  and 4:3 tablet aspects;
+- extra tablet space is visibly outside the playable mapping;
+- the HUD remains inside simulated safe areas;
+- mouse and primary touch produce equivalent normalized samples;
+- pointer starts over the HUD are blocked and board starts are distinguishable;
+- no runtime object search, hidden singleton, threat, active room, barrier,
+  capture, or level behavior exists;
+- scene and Input Actions changes were made through Unity serialization, not
+  blind YAML editing.
+
+**Automated validation:** run all Milestone 1A tests plus Play Mode tests for
+mouse/touch normalization, UI press-start blocking, viewport mapping, safe-area
+mapping, and required serialized scene references.
+
+**Manual Unity verification:** inspect scene hierarchy, EventSystem/input module,
+serialized references, Console, orientation behavior, one safe-area simulation,
+and 1080-by-1920, 1080-by-2400, and 1536-by-2048 Game views.
+
+**Expected playable result:** a polished responsive portrait shell that can
+classify pointer starts and display a fixed board, but intentionally has no
+gameplay loop.
+
+**Git checkpoint recommendation:** after independent validation, commit a
+focused checkpoint such as `feat: add Cutrium milestone 1B scene shell`.
+
+### Milestone 2 — First complete playable core loop
+
+**Goal:** make one placeholder level playable end to end: normal threat motion,
+the accepted barrier gesture, growth/failure, rectangular capture, percentage
+target, completion, and retry.
 
 **Files/systems expected to change:**
 
 - gameplay board/session/barrier/threat state and event files;
-- analytic wall and growing-barrier collision solvers;
-- room splitting/capture calculation;
+- 1/60 accumulator and analytic wall/growing-barrier collision solvers;
+- room splitting and capture calculation;
 - normal threat behavior;
-- session controller and initial `LevelDefinition`;
-- fallback board, threat, barrier, captured-region, and HUD presenters/prefabs;
+- session controller and one initial `LevelDefinition`;
+- fallback board, threat, barrier, captured-region, and HUD
+  presenters/prefabs;
 - Edit Mode core tests and Play Mode integration tests.
 
 **Implementation steps:**
 
-1. Implement logical board/room invariants and seeded session creation.
-2. Implement fixed-step normal threat motion against room bounds.
-3. Implement input intent validation and two-direction barrier growth.
-4. Implement continuous incomplete-barrier contact and quick failure/reset.
+1. Implement 10-by-16 board/room invariants and seeded session creation using
+   float-backed state and the centralized tolerance policy.
+2. Implement the 1/60 fixed-step accumulator and normal swept-circle movement
+   against room bounds.
+3. Implement press-in-active-room validation, dominant-axis drag selection, and
+   release-to-commit. A release below threshold cancels.
+4. Implement two-direction barrier growth and continuous vulnerable-barrier
+   contact with quick failure/reset.
 5. Implement room split, threat reassignment, capture fraction, and target
    completion.
-6. Bind simple shape/sprite fallbacks and percentage/retry UI to state/events.
-7. Tune one level only enough to evaluate the core interaction.
+6. Bind simple fallback presentation and percentage/retry UI to state/events.
+7. Tune one level only enough to evaluate the interaction.
+8. If analytic growing-barrier contact fails acceptance, record evidence before
+   activating the approved controlled-cast fallback.
 
 **Acceptance criteria:**
 
-- one normal threat reflects predictably without escaping or tunneling;
-- mouse and touch intent can start one valid barrier at a time;
+- one normal threat reflects predictably without escaping or tunneling at the
+  supported speeds and 1/60 interval;
+- mouse and touch can create one valid barrier only after a qualifying drag and
+  release;
+- a tap/short release never reuses a previous orientation;
 - both barrier halves stop at the selected room boundaries;
 - contact before lock breaks the barrier and resumes play without restarting
   the whole level;
 - successful lock splits only its parent room, captures every empty child, and
   updates a logical-area percentage;
 - reaching the target completes the level and retry resets deterministically;
-- the same scripted inputs give the same result at varied render frame rates.
+- the same scripted inputs give the same result at varied render frame rates;
+- presentation removal does not change outcomes.
 
-**Automated validation:** all geometry, motion, growing-barrier contact,
-barrier-state, split, threat-assignment, capture, and core integration tests
-listed for this milestone pass.
+**Automated validation:** all geometry, tolerance, fixed-step, motion,
+growing-barrier contact, barrier-state, split, threat-assignment, capture, and
+core integration tests listed for this milestone pass.
 
-**Manual Unity verification:** play the one level with mouse and device touch;
-force edge cuts, corner bounces, a barrier hit, a successful capture, both
-children retaining threats, target completion, and rapid retry. Check Console
-and the three aspect ratios.
+**Manual Unity verification:** play the level with mouse and device touch; test
+short releases, diagonal drags, edge cuts, corner bounces, a barrier hit, a
+successful capture, both children retaining threats, target completion, and
+rapid retry at all three aspects. Check Console.
 
 **Expected playable result:** a visually simple but complete one-level game
-that already answers whether barrier timing and area capture are understandable.
+that tests whether barrier timing and capture are understandable.
 
-### Milestone 3 — Harden simulation, input, responsive layout, and level flow
+**Git checkpoint recommendation:** after validation, commit a focused checkpoint
+such as `feat: deliver Cutrium milestone 2 core loop`.
 
-**Goal:** turn the first playable into a reliable reusable foundation before
-adding presentation scope.
+### Milestone 3 — Harden the three-level core and hold the core-fun review
+
+**Goal:** turn the first playable into a robust three-level prototype and obtain
+the human go/no-go decision that gates full content production.
 
 **Files/systems expected to change:**
 
 - tolerance/invariant diagnostics and high-speed solver cases;
-- final gesture thresholds/hysteresis or approved orientation-toggle fallback;
-- level catalog/session flow and first three teaching level definitions;
+- gesture threshold/hysteresis tuning without adding the excluded tap fallback;
+- level catalog/session flow and three teaching level definitions;
 - board camera/safe-area refinements;
-- restart/next-level transitions and integration tests.
+- restart/next-level transitions and integration tests;
+- recorded human core-fun review outcome.
 
 **Implementation steps:**
 
 1. Test and fix high-speed, multiple-impact, exact-corner, near-edge cut, and
-   completion/contact ordering cases.
-2. Playtest drag/tap input against the HUD-toggle alternative and record the
-   accepted gesture.
+   completion/contact ordering cases at 1/60.
+2. Tune drag threshold and hysteresis with mouse and one finger. If the accepted
+   gesture remains unclear, present evidence and request a new human decision
+   before changing it.
 3. Add a data-driven level catalog and in-scene next/retry flow.
 4. Add three short levels that teach orientation, timing, and larger capture.
-5. Refine board/HUD fitting across the target aspect matrix and cutout cases.
-6. Verify explicit lifecycle cleanup with domain reload disabled.
+5. Refine board/HUD fitting across the aspect matrix and cutout cases.
+6. Verify lifecycle cleanup across repeated play sessions.
+7. Conduct and record a human core-fun review focused on clarity, tension,
+   capture satisfaction, retry comfort, and 20–45 second pacing.
 
 **Acceptance criteria:**
 
 - no supported speed escapes a room or passes through an incomplete barrier in
   the solver test matrix;
 - all invalid inputs fail without altering state;
-- the chosen gesture is readable with mouse and one finger;
+- the accepted gesture is readable with mouse and one finger;
 - three levels can be played, retried, and advanced without duplicate managers,
-  stale events, or scene reloads;
-- all three aspects preserve the same logical simulation and keep HUD inside
-  safe area.
+  stale events, or heavy scene reloads;
+- all three aspects preserve the same logical simulation and safe-area HUD;
+- the human Milestone 3 review is recorded as positive or negative;
+- Milestones 4–6 may improve the approved prototype, but Milestone 7 full
+  content production remains blocked unless the review is positive.
 
 **Automated validation:** expanded movement/invariant tests, input-action
-integration tests, safe-area/viewport mapping tests, and repeated session-reset
-Play Mode tests pass.
+integration tests, safe-area/viewport tests, and repeated session-reset Play
+Mode tests pass.
 
 **Manual Unity verification:** complete all three levels on the aspect matrix,
-spam input/retry/next, test cutouts, and compare timing/difficulty. Check
-Console after repeated enter/exit play cycles.
+spam input/retry/next, test cutouts, compare timing/difficulty, and inspect
+Console after repeated play cycles. Record the core-fun review.
 
-**Expected playable result:** a robust three-level prototype suitable for the
-first human core-fun review.
+**Expected playable result:** a robust three-level prototype suitable for a
+clear human go/no-go decision.
 
-### Milestone 4 — Add the reward and failure feedback loop
+**Git checkpoint recommendation:** after validation and recording the review,
+commit a focused checkpoint such as
+`feat: complete Cutrium milestone 3 core-fun build`.
 
-**Goal:** make barrier lock and area capture feel satisfying while keeping
-feedback optional to gameplay.
+### Milestone 4 — Reward and failure feedback loop
+
+**Goal:** make barrier lock and area capture satisfying while keeping feedback
+optional to gameplay.
 
 **Files/systems expected to change:**
 
 - near-miss, large-capture, and combo core rules/events;
 - `FeedbackTuningDefinition`;
-- capture fill, lock, break, percentage tween, label, camera, audio, particle,
-  and haptic presenters/services;
-- fallback/no-op service implementations and tests.
+- capture fill, lock, break, percentage animation, label, camera, audio,
+  particle, and haptic-hook presenters/services;
+- haptic interface and no-op implementation;
+- fallback service tests.
 
 **Implementation steps:**
 
@@ -850,7 +992,8 @@ feedback optional to gameplay.
 2. Add event-driven barrier start/growth/lock/break feedback.
 3. Add captured-region fill/cleanup timing and animated percentage display.
 4. Add restrained large-capture/near-miss/combo emphasis.
-5. Add audio hooks and platform-guarded haptic interface with no-op fallback.
+5. Add audio hooks, haptic interface/event hooks, and a no-op haptic fallback.
+   Do not add a plugin or native implementation.
 6. Ensure presentation can use unscaled time without changing simulation.
 
 **Acceptance criteria:**
@@ -859,19 +1002,24 @@ feedback optional to gameplay.
 - the capture sequence has a readable grow, lock, fill, and percentage rhythm;
 - failure is immediate and clear but returns control quickly;
 - near-miss, large-capture, and combo fire only at tested logical thresholds;
-- absent clips, effects, material, or haptic support causes no error.
+- absent clips, effects, materials, or haptic support causes no error;
+- the project contains no haptic plugin or native haptic bridge.
 
 **Automated validation:** threshold/state tests and Play Mode event-to-presenter
-tests pass, including null presentation resources and time-emphasis cases.
+tests pass, including null resources, no-op haptics, and time-emphasis cases.
 
 **Manual Unity verification:** compare feedback on small/large captures, a near
 miss, normal success, and failure; check repetition comfort, missing-resource
-fallbacks, time scaling, mobile vibration behavior, and Console.
+fallbacks, time scaling, and Console. Verify that no tactile output is required
+for acceptance.
 
 **Expected playable result:** the three-level build has the intended
-light-tension/release rhythm and a satisfying primary reward moment.
+light-tension/release rhythm and satisfying primary reward moment.
 
-### Milestone 5 — Prove theme and art replaceability
+**Git checkpoint recommendation:** after validation, commit a focused checkpoint
+such as `feat: add Cutrium milestone 4 capture feedback`.
+
+### Milestone 5 — Theme and art replaceability
 
 **Goal:** establish one coherent cleanup-chamber theme and demonstrate that
 presentation can be swapped without gameplay code changes.
@@ -879,7 +1027,7 @@ presentation can be swapped without gameplay code changes.
 **Files/systems expected to change:**
 
 - `ThemeDefinition`, presentation binding/validation, themed prefabs,
-  placeholder sprites/materials/colors, and fallback assets;
+  placeholder sprites/materials/colors, and fallbacks;
 - board/frame, threat, barrier body/caps, captured-region, HUD, and effect
   presentation;
 - content validation tests and optional Editor preview/validation tooling.
@@ -895,39 +1043,42 @@ presentation can be swapped without gameplay code changes.
 
 **Acceptance criteria:**
 
-- switching the theme reference changes visuals/audio accents but leaves a
-  serialized/replayed gameplay result unchanged;
-- threats remain the same logical radius with visibly different sprites;
+- switching the theme changes visuals/audio accents but leaves a replayed
+  gameplay result unchanged;
+- threats retain the same logical radius with different sprites;
 - barrier and capture rendering follows logical geometry independent of sprite
   dimensions;
 - the fallback theme remains readable with optional fields empty;
 - capture correctness has a non-shader fallback.
 
 **Automated validation:** definition-validation and theme-swap Play Mode tests
-pass; a deterministic gameplay state comparison is identical across themes.
+pass; deterministic gameplay state is identical across themes.
 
-**Manual Unity verification:** swap the two themes in the Inspector, inspect
-scales/offsets/caps/fill, disable optional assets/materials, check overdraw and
+**Manual Unity verification:** swap themes in the Inspector, inspect
+scales/offsets/caps/fill, disable optional resources, and check overdraw and
 Console at all three aspects.
 
-**Expected playable result:** a coherent small game whose art direction can be
-replaced through content and prefabs rather than code.
+**Expected playable result:** a coherent small game whose art can be replaced
+through content/prefabs rather than gameplay code.
 
-### Milestone 6 — Add threat variety and powers
+**Git checkpoint recommendation:** after validation, commit a focused checkpoint
+such as `feat: complete Cutrium milestone 5 theme pipeline`.
 
-**Goal:** broaden timing choices with hunter and pulse threats plus Freeze
-Pulse and Instant Barrier while keeping the original board rules stable.
+### Milestone 6 — Threat variety and powers
+
+**Goal:** broaden timing choices with hunter and pulse threats plus Freeze Pulse
+and Instant Barrier while preserving the original board/solver rules.
 
 **Files/systems expected to change:**
 
 - hunter/pulse behavior strategies and definition data;
 - power inventory/use commands, freeze and instant-barrier rules;
 - threat/power presentation and HUD controls;
-- new level definitions and deterministic tests.
+- mechanic-introduction level definitions and deterministic tests.
 
 **Implementation steps:**
 
-1. Add modest event-driven hunter steering with explicit angle/strength caps.
+1. Add modest event-driven hunter steering with explicit caps.
 2. Add deterministic pulse phase and speed ranges.
 3. Add Freeze Pulse duration/stacking policy and UI.
 4. Add next-valid-barrier Instant Barrier consumption and feedback.
@@ -937,7 +1088,7 @@ Pulse and Instant Barrier while keeping the original board rules stable.
 **Acceptance criteria:**
 
 - all behaviors use the same collision solver and numeric radii;
-- hunter remains understandable rather than directly homing/punishing;
+- hunter remains understandable rather than heavily punishing;
 - pulse behavior is deterministic and cannot tunnel at peak speed;
 - powers are optional to core completion, content-driven, and reset correctly;
 - UI power presses never create barriers underneath.
@@ -946,76 +1097,93 @@ Pulse and Instant Barrier while keeping the original board rules stable.
 power-state/consumption, UI blocking, freeze/time-scale, and retry reset tests
 pass.
 
-**Manual Unity verification:** play each behavior/power alone and in one mixed
-level on mouse/touch; test powers during barrier growth, no-charge use, retry,
+**Manual Unity verification:** play each behavior/power alone and in a mixed
+level with mouse/touch; test powers during barrier growth, no-charge use, retry,
 and rapid UI presses.
 
-**Expected playable result:** a compact mechanics-complete slice with varied
-but still relaxing timing decisions.
+**Expected playable result:** a mechanics-complete slice with varied but still
+relaxing timing decisions.
 
-### Milestone 7 — Build and tune the decision content set
+**Git checkpoint recommendation:** after validation, commit a focused checkpoint
+such as `feat: complete Cutrium milestone 6 mechanics`.
 
-**Goal:** produce the approximate 10–12 standard levels and one final special
-level only after the core-fun gate is passed.
+### Milestone 7 — Gated decision-content production
+
+**Goal:** only after a recorded positive Milestone 3 core-fun review, produce
+approximately 10–12 standard levels and one final special level.
+
+**Entry gate:** a positive Milestone 3 core-fun decision must be recorded in
+this plan. If the decision is negative or pending, do not begin this milestone.
 
 **Files/systems expected to change:**
 
-- level catalog and `Level_001`…`Level_012`/`Level_Final` assets as approved;
-- level-select/debug navigation available only in development;
-- tuning data, tutorial prompts if truly required, and content validation;
-- final-level-specific content configuration, not an unrelated new framework.
+- level catalog and approved `Level_001` through approximately `Level_012` plus
+  `Level_Final` assets;
+- development-only level/debug navigation;
+- tuning data, minimal tutorial prompts if required, and content validation;
+- final-level configuration using only approved systems.
 
 **Implementation steps:**
 
-1. Define a difficulty curve using threat count, room-compatible spawn
-   placement, speed, behavior, target, and powers rather than speed alone.
-2. Author and validate short levels in small batches.
-3. Measure completion/failure time and revise levels toward 20–45 seconds.
-4. Define the final special level using existing systems or one separately
-   approved small rule variation.
-5. Remove unnecessary tutorial text in favor of playable teaching.
+1. Confirm and record that the Milestone 3 entry gate is positive.
+2. Define a difficulty curve using threat count, spawn placement, speed,
+   behavior, target, and powers rather than speed alone.
+3. Author and validate short levels in small batches.
+4. Measure completion/failure time and tune toward 20–45 seconds.
+5. Build the final special level only from the already approved board, threat,
+   power, target, and feedback systems.
+6. Remove unnecessary tutorial text in favor of playable teaching.
 
 **Acceptance criteria:**
 
-- approved level count loads through definitions with no scene duplication;
+- the positive entry gate is recorded before content assets are produced;
+- the approved level count loads through definitions with no scene duplication;
 - early levels tolerate a barrier mistake without harsh full-level failure;
 - each mechanic is introduced before combination;
 - typical observed level time is near 20–45 seconds, with outliers documented;
-- the final level feels distinct without breaking architecture or scope;
+- the final level feels distinct without a boss framework, new gameplay system,
+  or final-level-only rule;
 - all level definitions pass validation and contain legal spawns/targets.
 
-**Automated validation:** every level asset converts successfully, all spawn
-circles fit the board without overlap/edge violations, references are valid,
-targets are reachable, and seeded smoke simulations preserve invariants.
+**Automated validation:** every level converts successfully, spawn circles fit
+the board, references are valid, targets are structurally reachable where that
+can be proven, and seeded smoke simulations preserve invariants.
 
-**Manual Unity verification:** human playtest the full sequence on at least a
-phone and tablet profile; record time, failures, unclear gestures, fatigue, and
-feedback repetition for every level.
+**Manual Unity verification:** human-playtest the full sequence on at least a
+phone and tablet profile; record time, failures, gesture confusion, fatigue, and
+feedback repetition for every level. Confirm the final level uses only systems
+seen earlier.
 
-**Expected playable result:** the complete content-shaped decision build with
-a beginning, difficulty arc, and final beat.
+**Expected playable result:** the complete content-shaped decision build with a
+beginning, difficulty arc, and final beat.
 
-### Milestone 8 — Device, performance, and release-quality validation
+**Git checkpoint recommendation:** after content and validation are complete,
+commit a focused checkpoint such as
+`feat: complete Cutrium milestone 7 decision content`.
+
+### Milestone 8 — Device, performance, and decision-build validation
 
 **Goal:** leave the repository and mobile builds in a demonstrably stable state
-for the go/no-go product decision.
+for the product go/no-go decision.
 
 **Files/systems expected to change:**
 
 - only evidence-driven performance fixes and bounded reuse if profiling
-  requires it;
-- mobile quality/presentation tuning, platform haptic implementations if
-  approved, build validation, documentation, decision log, and this plan;
-- development build reports and final manual validation records.
+  requires them;
+- mobile quality/presentation tuning, build validation, documentation,
+  decision log, and this plan;
+- development build and manual validation records;
+- no haptic plugin or native haptic implementation under the current scope.
 
 **Implementation steps:**
 
 1. Run the complete automated suite from a clean Editor start.
 2. Profile representative low/high-content levels after warm-up.
-3. Remove per-tick allocations and address measured CPU/GPU/overdraw issues.
-4. Validate all target Game views and safe areas.
-5. Build and run Android phone/tablet; install iOS support, export, build, and
-   run iPhone/iPad through macOS/Xcode when available.
+3. Remove measured per-tick allocations and address measured CPU/GPU/overdraw
+   problems.
+4. Validate all target Game views, safe areas, and upright-only orientation.
+5. Build and run Android phone/tablet; install matching iOS support, export,
+   build, and run iPhone/iPad through macOS/Xcode when available.
 6. Perform full-sequence playtests and fix decision-build blockers only.
 7. Update `Docs/DECISIONS.md`, this ExecPlan, and concise manual verification
    instructions.
@@ -1023,177 +1191,233 @@ for the go/no-go product decision.
 **Acceptance criteria:**
 
 - no recurring project Console errors and no unexplained relevant warnings;
-- all automated tests pass from a documented command;
+- all automated tests pass from documented commands;
 - no managed allocation occurs in warmed core update loops;
 - representative mid-range Android gameplay is stable at the 60 FPS target;
 - board difficulty and input remain equivalent across phone/tablet profiles;
-- Android and iOS results are recorded, with any unavailable platform check
-  explicitly marked rather than claimed;
-- retry/next flow, audio, haptics fallback, pause/resume, and orientation lock
-  behave correctly;
+- Android and iOS results are recorded, with unavailable checks clearly marked;
+- retry/next flow, audio, no-op haptics, pause/resume, safe area, and upright
+  orientation behave correctly;
+- the final special level uses only approved systems;
 - repository documentation and Git diff contain only intentional files.
 
 **Automated validation:** full Edit Mode and Play Mode suites, content/scene
-validators, and any verified build smoke checks pass with archived results.
+validators, and verified build smoke checks pass with recorded results.
 
 **Manual Unity verification:** execute the complete aspect/device/performance
-matrix, inspect Console and Profiler, and complete the full level sequence.
+matrix, inspect Console and Profiler, attempt prohibited orientations, and
+complete the full level sequence.
 
 **Expected playable result:** a polished portrait decision build ready for a
 human assessment of whether the capture interaction justifies production.
 
+**Git checkpoint recommendation:** after all available platform checks and
+documentation updates pass, commit a focused checkpoint such as
+`chore: validate Cutrium milestone 8 decision build`.
+
 ## Risks and Unknowns
 
-- **Editor baseline conflict:** Unity 6000.5.2f1 may produce package/assets that
-  cannot be safely opened in the documented Unity 6.3 LTS baseline. This is the
-  first implementation blocker and needs an explicit decision.
-- **URP mismatch:** manifest, lock, cache, and built-in Editor package do not
-  agree. Manual JSON editing could worsen the state; resolution must happen in
-  the approved Editor with a reviewed diff.
-- **Growing barrier contact:** exact continuous contact between a moving circle
-  and a linearly growing capsule is the highest algorithmic risk. Prototype and
-  test it before building content. Controlled casts are the fallback.
-- **Floating-point boundaries:** repeated rectangular splits, corners, and
-  completion/contact ordering need one documented tolerance policy. Scattered
-  epsilons will create hard-to-reproduce failures.
-- **Gesture quality:** tap/drag with last orientation may be efficient but could
-  feel ambiguous under a finger. Compare with the explicit orientation toggle
-  before locking UX.
-- **Board tuning:** 10×16, 1/120 fixed tick, barrier width, speeds, target, and
-  near-miss thresholds are planning assumptions, not accepted balance.
-- **Responsive readability:** a fixed tall board plus HUD may appear small on
-  4:3 tablets or devices with large safe insets. Decorative framing must not
-  become tappable gameplay.
-- **Content scope:** 10–12 levels, a special finale, three behaviors, two
-  powers, and full feedback are expensive if the core interaction is not yet
-  fun. Preserve the milestone-3 fun gate.
-- **Presentation assets:** no sprites, audio, materials, or effects currently
-  exist. Placeholder generation/art sourcing and licensing remain unknown.
-- **Haptics:** built-in vibration is coarse and platform behavior differs. A
-  richer native implementation may require approved platform code or a
-  dependency; the slice must keep a no-op fallback.
+- **Growing-barrier contact:** continuous contact between a moving circle and a
+  linearly growing capsule is the highest algorithmic risk. Prototype and test
+  it at 1/60 before building content. Controlled non-allocating casts are the
+  approved fallback.
+- **Float boundary behavior:** float-backed state is accepted, but repeated
+  splits, corners, and near-simultaneous completion/contact require rigorous
+  scale-aware tests. The centralized tolerance policy must not become so broad
+  that it changes valid cuts or collision timing.
+- **Local double escalation:** double intermediates may solve a narrow numerical
+  failure, but blanket promotion would violate the accepted state policy.
+  Require a failing regression case and keep any promotion solver-local.
+- **1/60 solver capacity:** 1/60 is the accepted starting interval. Very high
+  threat speeds may require multiple impacts in one tick and careful iteration
+  caps. Do not use 1/120 to conceal a solver defect.
+- **Unity fixed-step mismatch:** ProjectSettings currently stores 0.02 seconds.
+  Accidentally mixing `FixedUpdate`/`Time.fixedDeltaTime` with the session's
+  1/60 accumulator would produce divergent behavior.
+- **Gesture quality:** the drag threshold must be short enough for fast play but
+  long enough to identify an axis under a finger. A short release currently
+  cancels; no tap fallback may be added without a new decision.
+- **Responsive readability:** a fixed tall board plus HUD may look small on 4:3
+  tablets or devices with large safe insets. Extra presentation space must
+  never become playable or change input mapping.
+- **Current settings gap:** orientation, namespace, and development identifiers
+  are accepted but not yet applied. Milestone 1A must change them through
+  Editor UI and review the serialized diff.
+- **Package stability:** current URP resolution is consistent. Opening with a
+  different Editor or using Package Manager update controls could introduce an
+  unnecessary package diff. Preserve 6000.3.21f1 and URP 17.3.0.
+- **Android support range:** minimum SDK 25, automatic target selection, ARM64,
+  IL2CPP, and the current application entry are template settings, not an
+  approved product support policy.
 - **iOS validation:** iOS Build Support is absent and no macOS/Xcode environment
   is evidenced. Windows-only work cannot prove a signed iPhone/iPad build.
-- **Domain reload disabled:** leaked static state or subscriptions may only
-  appear on the second play session. Avoid statics and explicitly test repeated
-  play cycles.
-- **Template package breadth/warnings:** unused first-party packages and terrain
-  shader warnings add noise. Do not perform a cleanup upgrade/removal pass
-  unless its benefit and package diff are separately reviewed.
+- **Content scope:** the intended level set, special finale, three behaviors,
+  two powers, and presentation work are expensive. Milestone 7 must remain
+  gated by the Milestone 3 human review.
+- **Final-level temptation:** a “mini-boss-like” finale can invite a new
+  framework. It must instead be distinctive through existing approved systems.
+- **Haptic expectations:** the initial architecture intentionally produces no
+  guaranteed native haptic output. Product review must not mistake the no-op
+  implementation for missing required functionality.
+- **Presentation assets:** no sprites, audio, materials, or effects currently
+  exist. Placeholder generation, art sourcing, and licensing remain unknown.
+- **Template diagnostics:** import logs contain transient curl and package
+  shader compiler diagnostics. Future Console checks must distinguish
+  template/package noise from project regressions without dismissing real
+  device/rendering issues.
+- **Documentation naming:** `Docs/PRODUCT_VISION.md` still describes
+  “Containment” as a temporary title. ADR-004 and this plan establish Cutrium
+  as the accepted name, but the wording should be cleaned up in a focused
+  documentation pass.
 
-### Decisions requiring human review before or during implementation
+### Remaining human decisions
 
-1. Use the actual 6000.5.2f1 project/Editor baseline, or recreate/migrate to the
-   documented Unity 6.3 LTS baseline.
-2. Once the Editor is chosen, accept built-in URP 17.5.0 or move to a compatible
-   17.6.0 setup; approve the exact manifest/lock change.
-3. Confirm portrait-only means upright Portrait only, or also permits Portrait
-   Upside Down on tablets.
-4. Confirm `Cutrium` as the temporary namespace/product identifier and provide
-   company/bundle identifiers before device distribution.
-5. Approve the initial 10×16 logical board assumption and the one-board-size
-   policy for the slice.
-6. Approve analytic swept-circle movement as the authoritative strategy and
-   Physics2D controlled casts as fallback.
-7. Choose the gesture after a direct tap/drag versus HUD-toggle playtest.
-8. Define the allowed final special-level variation before milestone 7 so it
-   does not expand into a new boss framework.
-9. Decide whether basic/no-op haptics are enough for the decision build or
-   whether a small native implementation may be proposed.
-10. Confirm that content production proceeds only if the milestone-3 core-fun
-    review is positive.
+The baseline architecture questions listed in the superseded plan are resolved
+by the accepted decisions in this revision. The following choices still need
+human input at their natural gates:
+
+1. Choose the company/display publisher name to replace `DefaultCompany`.
+   This is separate from the accepted development identifier.
+2. Approve the intended Android and iOS minimum OS support policy before
+   changing the current template values (Android API 25 and iOS 15.0).
+3. Provide or confirm available Android phone/tablet and macOS/Xcode/iPhone/iPad
+   validation environments.
+4. Decide the first playable balance values: threat radius/speed, barrier
+   width/growth speed, target percentage, allowed-mistake policy, and initial
+   level tuning.
+5. Decide near-miss, large-capture, combo, failure penalty, and feedback tuning
+   after the core loop can be played.
+6. Record the Milestone 3 core-fun go/no-go decision. A positive decision is
+   mandatory before Milestone 7 full content production.
+7. Select the final special level's configuration from existing approved
+   systems; no new boss framework is an available option.
+8. Confirm art/audio sourcing, licensing, and the public-facing theme before
+   production-quality asset work.
+9. If richer haptics are desired after the no-op-hook slice is evaluated,
+   separately approve the platform/plugin approach and scope.
 
 ## Progress
 
-- [x] 2026-07-30: Read `AGENTS.md`, `.agent/PLANS.md`, and every document under
-  `Docs/`.
-- [x] 2026-07-30: Audited Unity version, packages/lock/cache, rendering, input,
-  scenes/build settings, folders, assemblies/tests, Git state/ignores, logs,
-  and local Android/iOS module evidence.
-- [x] 2026-07-30: Authored the initial vertical-slice ExecPlan without
-  implementing gameplay or modifying production/project content.
-- [ ] Human review gates accepted and recorded.
-- [ ] Milestone 1 complete and validated.
-- [ ] Milestone 2 complete and validated.
-- [ ] Milestone 3 complete and core-fun review recorded.
-- [ ] Milestone 4 complete and validated.
-- [ ] Milestone 5 complete and validated.
-- [ ] Milestone 6 complete and validated.
-- [ ] Milestone 7 complete and validated.
-- [ ] Milestone 8 complete and validated.
+- [x] 2026-07-30: Read `AGENTS.md`, `.agent/PLANS.md`, the complete existing
+  ExecPlan, and every document under `Docs/`.
+- [x] 2026-07-30: Re-audited Unity version, manifest/lock/cache resolution,
+  rendering, Input System, scenes/build settings, Player/Editor settings,
+  Android modules/tooling, existing source files, logs, and Git state.
+- [x] 2026-07-30: Marked the earlier 6000.5.2f1/URP 17.5–17.6 repository audit
+  as superseded by the recreated 6000.3.21f1/URP 17.3.0 project.
+- [x] 2026-07-30: Recorded the accepted human architecture and scope decisions
+  in this plan and `Docs/DECISIONS.md`.
+- [ ] Milestone 1A complete, independently validated, and checkpointed.
+- [ ] Milestone 1B complete, independently validated, and checkpointed.
+- [ ] Milestone 2 complete, validated, and checkpointed.
+- [ ] Milestone 3 complete; human core-fun review recorded; checkpointed.
+- [ ] Milestone 4 complete, validated, and checkpointed.
+- [ ] Milestone 5 complete, validated, and checkpointed.
+- [ ] Milestone 6 complete, validated, and checkpointed.
+- [ ] Positive Milestone 3 gate confirmed before Milestone 7 content work.
+- [ ] Milestone 7 complete, validated, and checkpointed.
+- [ ] Milestone 8 complete, validated, and checkpointed.
 
 ## Decision Log
 
-- **2026-07-30 — Proposed:** separate a no-Engine deterministic gameplay
-  assembly from Unity orchestration and presentation. This strengthens ADR-002
-  and supports fast tests and theme replacement.
-- **2026-07-30 — Proposed:** represent the board as disjoint axis-aligned
-  rectangles and completed split lines, using double-backed logical geometry.
-  This directly matches the documented vertical-slice rules.
-- **2026-07-30 — Proposed:** use fixed-step analytic swept-circle reflection and
-  growing-capsule contact; retain controlled non-allocating Physics2D casts as
-  the fallback. This decision needs prototype validation.
-- **2026-07-30 — Proposed:** use one persistent gameplay scene and data-driven
-  level resets/transitions for fast retry and next-level flow.
-- **2026-07-30 — Proposed:** keep the installed Input System as the only input
-  stack and normalize mouse/primary touch into a title-independent barrier
-  intent.
-- **2026-07-30 — Proposed:** fit a fixed logical board into a safe-area-derived
-  viewport and treat all extra device space as non-playable presentation,
-  consistent with accepted ADR-001.
-- **2026-07-30 — Proposed:** gate full content production on a playable
-  three-level core-fun review after milestone 3.
+- **2026-07-30 — Accepted:** Unity `6000.3.21f1` is the baseline. Preserve the
+  Universal 2D template's compatible URP 17.3.x resolution; the verified current
+  resolution is `17.3.0`. Do not manually pin or upgrade URP.
+- **2026-07-30 — Accepted:** the slice is upright Portrait only. Disable
+  Landscape and Portrait Upside Down.
+- **2026-07-30 — Accepted:** product and code namespace are `Cutrium`; the
+  temporary development application identifier is
+  `com.tayackgames.cutrium`.
+- **2026-07-30 — Accepted:** every supported phone/tablet uses one fixed
+  10-by-16 logical board. Extra tablet space is non-playable presentation.
+- **2026-07-30 — Accepted:** keep a deterministic no-UnityEngine gameplay
+  assembly with project-owned float-backed logical state and one centralized
+  tolerance policy. Local double intermediates are solver-only and
+  evidence-driven.
+- **2026-07-30 — Accepted:** start deterministic simulation at 1/60 second.
+  Do not select 1/120 without test evidence.
+- **2026-07-30 — Accepted:** prototype analytic swept-circle movement and
+  growing-barrier contact as authoritative. Controlled bounded non-allocating
+  Physics2D casts remain the fallback.
+- **2026-07-30 — Accepted:** initial gesture is press in an active room,
+  short dominant-axis drag to select orientation, and release to commit.
+  Release without a selected orientation cancels; there is no tap-with-last
+  behavior in the first prototype.
+- **2026-07-30 — Accepted:** initial haptics consist only of an interface, event
+  hooks, and a no-op fallback. No plugin or native implementation is planned.
+- **2026-07-30 — Accepted:** the final special level uses existing approved
+  systems and cannot introduce a boss framework.
+- **2026-07-30 — Accepted:** full content production remains gated by a
+  positive Milestone 3 core-fun review.
+- **2026-07-30 — Accepted:** split the original Milestone 1 into independently
+  validated 1A and 1B. Milestone 1A creates no gameplay behavior. Every
+  implementation milestone ends with an explicit Git checkpoint
+  recommendation.
 
 ## Discoveries
 
-- The exact project Editor is 6000.5.2f1, not the documented intended Unity 6.3
-  LTS baseline.
-- URP is the only direct package whose manifest and lock versions differ:
-  requested 17.6.0 versus built-in/resolved 17.5.0. The UPM log confirms the
-  override rather than this being a reading error.
-- URP is selected per quality tier even though Graphics Settings has no global
-  pipeline asset. All six tiers point to the same 2D URP asset.
+- The recreated project exactly matches the accepted Unity `6000.3.21f1`
+  baseline and no longer has the previous Editor-version conflict.
+- URP manifest, lock, cache, and Editor log all agree on `17.3.0`; the previous
+  17.6-request/17.5-resolution mismatch no longer exists.
+- URP is active through every quality tier even though Graphics Settings has no
+  global custom pipeline asset.
 - The build scene is still a two-object Universal 2D template scene.
-- Input System and its generic mouse/touch bindings are present, but there is no
+- Input System and generic mouse/touch bindings are present, but there is no
   gameplay input consumer or EventSystem.
-- Domain reload is disabled through Enter Play Mode Options, making explicit
-  lifecycle cleanup important from the first runtime milestone.
-- Android support is substantially installed, including SDK/NDK/OpenJDK, while
-  iOS Build Support is absent.
-- Git ownership differs from the executing account. Read-only Git inspection
-  works with a per-command `safe.directory` override and does not require
-  modifying global Git configuration.
+- Enter Play Mode settings currently have no reload-disabling flag, unlike the
+  superseded repository findings.
+- Unity's stored fixed timestep is 0.02 seconds, so the gameplay 1/60 interval
+  must be explicit and isolated.
+- Android support is installed with SDK/NDK/OpenJDK/Gradle. iOS Build Support
+  is absent.
+- Git HEAD is a new Unity 6.3 baseline commit and was clean before this
+  documentation-only revision.
+- Product name is already Cutrium, while company, root namespace, and mobile
+  identifier still need the accepted setup pass.
 
 ## Validation Record
 
-### 2026-07-30 — Planning audit
+### 2026-07-30 — Documentation-only re-audit
 
 Completed read-only inspection:
 
-- read `AGENTS.md`, `.agent/PLANS.md`, all `Docs/*`, root setup notes, package
-  manifest/lock, relevant ProjectSettings, scenes, render assets, and Input
-  Actions;
-- inventoried all repository assets and searched for `.cs`, `.asmdef`,
-  `.asmref`, and test-like files; none exist;
-- parsed direct manifest/lock versions and inspected actual package cache
-  package versions;
-- inspected build scene contents and build settings;
-- inspected local Unity 6000.5.2f1 PlaybackEngines and Android tool version
-  files;
-- ran Git status with a per-command safe-directory override; the baseline was
-  clean before this plan;
-- inspected `.gitignore`, Git HEAD, Unity package logs, and relevant Editor-log
-  warnings.
+- read `AGENTS.md`, `.agent/PLANS.md`, the complete existing ExecPlan, and all
+  six documents under `Docs/`;
+- read `ProjectSettings/ProjectVersion.txt`, package manifest/lock, package
+  cache `package.json` files, package-manager log, and creation-time Editor log;
+- verified Unity `6000.3.21f1` revision `c02631ffc030` and resolved URP `17.3.0`;
+- inspected Graphics, Quality, URP, Player, Editor, Time, Physics2D, build, and
+  version-control settings;
+- inspected the URP asset, 2D Renderer, global settings, default volume profile
+  reference, Input Actions asset/meta, SampleScene, template scene, and scene
+  build list;
+- parsed the template Input System maps/actions/bindings and verified the asset
+  registration and lack of scene consumers/EventSystem;
+- inventoried all repository source assets and searched for project code,
+  asmdefs, tests, prefabs, materials, shaders, sprites, and audio; none exist;
+- inspected the matching Unity installation's PlaybackEngines and Android SDK,
+  NDK, OpenJDK, Gradle, platform, and build-tool versions;
+- ran Git status, HEAD, tracked-file, ignore, and source inventory inspections
+  with the per-command safe-directory override; the baseline was clean;
+- inspected creation/import logs for package-resolution and C# compiler
+  failures. None were found; transient asset-worker and package shader
+  diagnostics remain noted as future Console-check context.
 
-No Edit Mode or Play Mode tests were run because no project test assemblies or
-tests exist. No scene was changed, no package was resolved, no build was made,
-and no phone/tablet Game view or device validation was performed. The current
-rendering/input/template state therefore remains an inspected fact, not a
-gameplay validation.
+No Unity Editor session was launched for this planning task. No Edit Mode or
+Play Mode tests were run because no project test assemblies or tests exist. No
+scene, prefab, asset, script, package, package version, or ProjectSettings file
+was created or changed. No player build, Game view matrix, device run, Unity
+Console session, or performance validation was performed. The repository facts
+above are serialized/log inspection results, not gameplay validation.
 
 ## Final Outcome
 
-Initial planning outcome: repository audit and implementation plan completed.
-Gameplay implementation has not started. This section must be replaced at the
-end of the ExecPlan with the delivered build, validation evidence, known
-limitations, and recommended next work.
+Planning outcome as of 2026-07-30: the stale 6000.5.2f1 audit has been replaced
+with a verified 6000.3.21f1/URP 17.3.0 repository audit, the accepted
+architecture and scope decisions are recorded, and implementation is sequenced
+through independently validated Milestones 1A and 1B followed by Milestones
+2–8. Gameplay implementation has not started.
+
+Replace this section at the end of the ExecPlan with the delivered build,
+validation evidence, known limitations, and recommended next work.
