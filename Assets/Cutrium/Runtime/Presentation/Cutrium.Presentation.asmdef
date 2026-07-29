@@ -1,0 +1,17 @@
+{
+  "name": "Cutrium.Presentation",
+  "rootNamespace": "Cutrium.Presentation",
+  "references": [
+    "Cutrium.Gameplay",
+    "Cutrium.Unity"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

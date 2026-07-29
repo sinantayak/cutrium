@@ -146,15 +146,18 @@ implementation.
 
 #### Player and Editor settings
 
-- The product name is already `Cutrium`.
-- The company name remains `DefaultCompany`.
-- `EditorSettings` has a blank project-generation root namespace.
-- The only serialized application identifier is the template standalone value
-  `com.DefaultCompany.2D-URP`; the accepted Android/iOS development identifier
-  `com.tayackgames.cutrium` has not yet been applied.
-- Orientation is not portrait locked. All four autorotation directions are
-  enabled, OS autorotation is enabled, and the stored default size is
-  1920-by-1080.
+- The product name is `Cutrium` and the company name is `Tayack Games`.
+- `EditorSettings` has project-generation root namespace `Cutrium`.
+- Android's effective application identifier is
+  `com.tayackgames.cutrium`.
+- iOS's effective application identifier is `com.tayackgames.cutrium`.
+  Unity 6000.3.21f1's supported
+  `PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.iOS, value)` API
+  added the platform-specific iPhone entry without requiring iOS Build
+  Support. The setter operation verified Android before and after the change.
+- Unity's effective default interface orientation is fixed upright Portrait.
+  The serialized autorotation-option flags remain set, but they are inactive
+  while the default interface orientation is fixed rather than Auto Rotation.
 - Android rendering outside the safe area is enabled. Runtime layout must use
   `Screen.safeArea` and reject non-playable presentation margins.
 - Android currently uses minimum SDK 25, automatic target SDK selection, ARM64
@@ -226,13 +229,13 @@ upgrade targets, or migration work.
 | --- | --- | --- | --- |
 | Unity baseline | Unity 6000.3.21f1 LTS | Exact match | Preserve; do not migrate or upgrade. |
 | URP | Template-compatible URP 17.3.x; no manual pin/upgrade | Manifest, lock, cache, and Editor log agree on 17.3.0 | Preserve. Any unexpected package diff is a stop-and-review condition. |
-| Orientation | Upright Portrait only | Autorotation permits all directions | Apply through Player Settings in Milestone 1A; disable Landscape and Portrait Upside Down. |
-| Product identity | Product and code namespace `Cutrium`; development identifier `com.tayackgames.cutrium` | Product name matches; root namespace is blank and template identifier remains | Apply accepted namespace and identifiers through normal Editor settings in Milestone 1A. Company display name remains a separate human decision. |
+| Orientation | Upright Portrait only | Effective default interface orientation is fixed Portrait | Preserve. The stored autorotation sub-options are inactive outside Auto Rotation. |
+| Product identity | Company `Tayack Games`; product and code namespace `Cutrium`; development identifier `com.tayackgames.cutrium` | Company, product, root namespace, Android identifier, and iOS identifier all match. | Preserve. The iOS identifier was corrected through the supported Editor API without rewriting the other accepted settings. |
 | Product vision title | Cutrium is accepted | `Docs/PRODUCT_VISION.md` still calls Containment a temporary working title | ADR-004 supersedes that naming statement; a later focused product-doc wording cleanup may remove the historical title. |
 | Fixed board | One 10-by-16 logical board; extra tablet space is non-playable | No board or viewport exists | Establish the scene/layout shell in Milestone 1B and gameplay bounds in Milestone 2. |
 | Gameplay tick | Initial deterministic interval 1/60 second | Unity TimeManager is 0.02 second; no gameplay loop exists | Give the game session its own accumulator/interval in Milestone 2; do not change ProjectSettings merely to implement it. |
 | Core input | Press in active room, dominant-axis drag, commit on release; UI starts blocked | Generic actions exist but no consumer/EventSystem exists | Add dedicated actions and infrastructure in Milestone 1B; enforce active-room/gesture rules in Milestone 2. |
-| Automated tests | Deterministic core and focused Unity integration tests | Test package exists, no tests/asmdefs/command | Create the test structure and verify commands in Milestone 1A. |
+| Automated tests | Deterministic foundation and focused Unity integration tests | Six asmdefs and both test assemblies exist. Edit Mode discovers and passes all 41 cases. Play Mode discovers and passes one smoke test. | Preserve the exact verified batch-mode commands and rerun relevant suites after later changes. |
 | Android build | Android phone/tablet are primary targets | Required modules are installed, but no build has been made | Preserve tooling and perform build/device validation in later milestones. |
 | iOS build | iPhone/iPad are primary targets | No local iOS module or macOS/Xcode evidence | Schedule external iOS export/build/device validation; do not claim it from Windows. |
 
@@ -724,6 +727,9 @@ At relevant milestones:
 **Goal:** establish the accepted Editor/product baseline, assembly boundaries,
 float-backed geometry foundation, tolerance policy, and executable tests
 without creating any gameplay behavior.
+
+**Status (2026-07-30):** complete and independently validated. The recommended
+Git checkpoint remains pending for the human to review and create.
 
 **Files/systems expected to change:**
 
@@ -1240,9 +1246,10 @@ documentation updates pass, commit a focused checkpoint such as
 - **Responsive readability:** a fixed tall board plus HUD may look small on 4:3
   tablets or devices with large safe insets. Extra presentation space must
   never become playable or change input mapping.
-- **Current settings gap:** orientation, namespace, and development identifiers
-  are accepted but not yet applied. Milestone 1A must change them through
-  Editor UI and review the serialized diff.
+- **Settings preservation:** company, product, root namespace, both mobile
+  identifiers, and fixed upright Portrait are effective. The iOS identifier
+  was added through Unity's platform-specific PlayerSettings API; future
+  settings work must preserve the other accepted and human-staged values.
 - **Package stability:** current URP resolution is consistent. Opening with a
   different Editor or using Package Manager update controls could introduce an
   unnecessary package diff. Preserve 6000.3.21f1 and URP 17.3.0.
@@ -1276,24 +1283,22 @@ The baseline architecture questions listed in the superseded plan are resolved
 by the accepted decisions in this revision. The following choices still need
 human input at their natural gates:
 
-1. Choose the company/display publisher name to replace `DefaultCompany`.
-   This is separate from the accepted development identifier.
-2. Approve the intended Android and iOS minimum OS support policy before
+1. Approve the intended Android and iOS minimum OS support policy before
    changing the current template values (Android API 25 and iOS 15.0).
-3. Provide or confirm available Android phone/tablet and macOS/Xcode/iPhone/iPad
+2. Provide or confirm available Android phone/tablet and macOS/Xcode/iPhone/iPad
    validation environments.
-4. Decide the first playable balance values: threat radius/speed, barrier
+3. Decide the first playable balance values: threat radius/speed, barrier
    width/growth speed, target percentage, allowed-mistake policy, and initial
    level tuning.
-5. Decide near-miss, large-capture, combo, failure penalty, and feedback tuning
+4. Decide near-miss, large-capture, combo, failure penalty, and feedback tuning
    after the core loop can be played.
-6. Record the Milestone 3 core-fun go/no-go decision. A positive decision is
+5. Record the Milestone 3 core-fun go/no-go decision. A positive decision is
    mandatory before Milestone 7 full content production.
-7. Select the final special level's configuration from existing approved
+6. Select the final special level's configuration from existing approved
    systems; no new boss framework is an available option.
-8. Confirm art/audio sourcing, licensing, and the public-facing theme before
+7. Confirm art/audio sourcing, licensing, and the public-facing theme before
    production-quality asset work.
-9. If richer haptics are desired after the no-op-hook slice is evaluated,
+8. If richer haptics are desired after the no-op-hook slice is evaluated,
    separately approve the platform/plugin approach and scope.
 
 ## Progress
@@ -1307,7 +1312,21 @@ human input at their natural gates:
   as superseded by the recreated 6000.3.21f1/URP 17.3.0 project.
 - [x] 2026-07-30: Recorded the accepted human architecture and scope decisions
   in this plan and `Docs/DECISIONS.md`.
-- [ ] Milestone 1A complete, independently validated, and checkpointed.
+- [x] 2026-07-30: Created the six Milestone 1A assembly definitions and verified
+  by test that `Cutrium.Gameplay` has no UnityEngine assembly reference.
+- [x] 2026-07-30: Implemented only immutable float-backed `LogicalPoint`,
+  `LogicalVector`, `LogicalRect`, and `GeometryTolerancePolicy` foundations.
+- [x] 2026-07-30: Added Edit Mode foundation/configuration tests and a one-case
+  Play Mode discovery smoke test.
+- [x] 2026-07-30: Verified Play Mode discovery: 1 test passed.
+- [x] 2026-07-30: Corrected the effective iOS identifier from
+  `com.Tayack-Games.Cutrium` to `com.tayackgames.cutrium` through Unity
+  6000.3.21f1's supported platform-specific PlayerSettings API.
+- [x] 2026-07-30: Obtained an all-pass Edit Mode result: 41 passed, 0 failed,
+  0 skipped.
+- [x] 2026-07-30: Milestone 1A implementation complete and independently
+  validated.
+- [ ] Milestone 1A Git checkpoint pending human review and commit.
 - [ ] Milestone 1B complete, independently validated, and checkpointed.
 - [ ] Milestone 2 complete, validated, and checkpointed.
 - [ ] Milestone 3 complete; human core-fun review recorded; checkpointed.
@@ -1326,8 +1345,8 @@ human input at their natural gates:
 - **2026-07-30 — Accepted:** the slice is upright Portrait only. Disable
   Landscape and Portrait Upside Down.
 - **2026-07-30 — Accepted:** product and code namespace are `Cutrium`; the
-  temporary development application identifier is
-  `com.tayackgames.cutrium`.
+  company name is `Tayack Games`, and the temporary development application
+  identifier is `com.tayackgames.cutrium`.
 - **2026-07-30 — Accepted:** every supported phone/tablet uses one fixed
   10-by-16 logical board. Extra tablet space is non-playable presentation.
 - **2026-07-30 — Accepted:** keep a deterministic no-UnityEngine gameplay
@@ -1373,8 +1392,24 @@ human input at their natural gates:
   is absent.
 - Git HEAD is a new Unity 6.3 baseline commit and was clean before this
   documentation-only revision.
-- Product name is already Cutrium, while company, root namespace, and mobile
-  identifier still need the accepted setup pass.
+- The human-applied company `Tayack Games`, product `Cutrium`, root namespace
+  `Cutrium`, Android identifier, and fixed upright Portrait settings are
+  effective and were not rewritten.
+- Unity 6000.3.21f1 exposes the supported
+  `PlayerSettings.SetApplicationIdentifier(NamedBuildTarget, string)` API and
+  `NamedBuildTarget.iOS` even when iOS Build Support is not installed. An
+  idempotent temporary Editor utility used that API to add the accepted iPhone
+  identifier, verified Android and iOS effective values, and was then removed
+  with its generated `.meta` file.
+- Unity batch mode could not reach the Licensing Client inside the filesystem
+  sandbox. The same exact Editor commands completed once run with permission to
+  access the installed licensing service.
+- Unity generated normal `.meta` files for the new `Assets/Cutrium` folders,
+  asmdefs, and scripts. It did not modify a scene, prefab, Input Actions asset,
+  package manifest, or package lock.
+- The compiled gameplay assembly has no UnityEngine reference, and reflection
+  verified that all stored instance fields in the four geometry foundations are
+  readonly floats.
 
 ## Validation Record
 
@@ -1411,13 +1446,110 @@ was created or changed. No player build, Game view matrix, device run, Unity
 Console session, or performance validation was performed. The repository facts
 above are serialized/log inspection results, not gameplay validation.
 
+### 2026-07-30 — Milestone 1A implementation validation
+
+The exact installed Editor was used:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1A-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1A-EditMode.log'
+```
+
+Edit Mode discovered 41 cases. Result: 40 passed and 1 failed. The only failure
+was
+`ProjectConfigurationTests.AcceptedUnityAndIdentitySettings_AreEffective`:
+Unity returned effective iOS identifier `com.Tayack-Games.Cutrium` instead of
+the accepted `com.tayackgames.cutrium`. The separate upright-Portrait
+configuration test passed. All geometry, tolerance, float-backing,
+immutability, and no-UnityEngine assembly-boundary tests passed.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1A-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1A-PlayMode.log'
+```
+
+Play Mode discovered 1 smoke test. Result: 1 passed, 0 failed.
+
+Both completed runs used Unity `6000.3.21f1`. Neither log contains a C# compiler
+error or script-compilation failure. The package files retained their exact
+pre-run SHA-256 hashes:
+
+- `Packages/manifest.json`:
+  `55BCB48EF9390DA84C8808DD96767900D0CDBA0AE6416325DF87E950F6457FF6`;
+- `Packages/packages-lock.json`:
+  `8292786E8F3A6F95EB7FB68D912C41835E875F9ED53A6115C5D6CA9EF6A42024`.
+
+Manifest and lock still resolve URP `17.3.0`, and Git reports no package-file
+change. No gameplay scene, prefab, Input Actions asset, gameplay behavior,
+ScriptableObject content, or presentation asset was created or modified.
+At this point, Milestone 1A remained incomplete only because the accepted iOS
+identifier was not effective and the resulting Edit Mode suite was not
+all-pass.
+
+### 2026-07-30 — iOS identifier correction and final Milestone 1A validation
+
+The installed Unity 6000.3.21f1 API documentation at
+`Editor\Data\Managed\UnityEngine\UnityEditor.CoreModule.xml` confirms
+`PlayerSettings.SetApplicationIdentifier(NamedBuildTarget, string)` and
+`NamedBuildTarget.iOS`. iOS Build Support remained uninstalled.
+
+An idempotent temporary Editor-only utility first required Android to equal
+`com.tayackgames.cutrium`, called the setter only when iOS differed, saved the
+setting, and then required both effective values to equal the accepted
+identifier. It was executed with:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Milestone1AIosIdentifierUtility.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1A-IosIdentifier.log'
+```
+
+The Unity log reported:
+
+```text
+Milestone 1A identifiers verified. Android='com.tayackgames.cutrium', iOS='com.tayackgames.cutrium', previous iOS='com.Tayack-Games.Cutrium'.
+```
+
+The utility source and its generated `.meta` file were removed immediately
+after success; no permanent setup utility remains. Relative to the already
+staged human Player Settings, Unity added only the platform-specific
+`iPhone: com.tayackgames.cutrium` application-identifier entry.
+
+The complete Edit Mode suite was then rerun after the utility's removal:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1A-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1A-EditMode.log'
+```
+
+Final Edit Mode result: 41 discovered, 41 passed, 0 failed, 0 skipped. The
+configuration test therefore reverified effective Android and iOS identifiers,
+company, product, root namespace, Unity version, and fixed upright Portrait.
+The log contains no C# compiler error, C# compiler warning, script-compilation
+failure, or project error. Unity reports three expected warnings that the
+intentionally empty `Cutrium.Editor`, `Cutrium.Unity`, and
+`Cutrium.Presentation` assembly definitions have no scripts.
+
+Play Mode was not rerun because no runtime source, Play Mode assembly, scene, or
+Play Mode configuration changed. The existing result remains 1 discovered,
+1 passed, 0 failed for the recorded command above.
+
+The package hashes remain unchanged:
+
+- `Packages/manifest.json`:
+  `55BCB48EF9390DA84C8808DD96767900D0CDBA0AE6416325DF87E950F6457FF6`;
+- `Packages/packages-lock.json`:
+  `8292786E8F3A6F95EB7FB68D912C41835E875F9ED53A6115C5D6CA9EF6A42024`.
+
+Git reports no package-file diff. No scene, prefab, Input Actions asset,
+gameplay source, geometry behavior, presentation asset, or content asset was
+changed by this correction. Milestone 1A now satisfies its implementation and
+automated acceptance criteria; the recommended Git checkpoint is intentionally
+left for the human to create.
+
 ## Final Outcome
 
-Planning outcome as of 2026-07-30: the stale 6000.5.2f1 audit has been replaced
-with a verified 6000.3.21f1/URP 17.3.0 repository audit, the accepted
-architecture and scope decisions are recorded, and implementation is sequenced
-through independently validated Milestones 1A and 1B followed by Milestones
-2–8. Gameplay implementation has not started.
+Outcome as of 2026-07-30: Milestone 1A is implemented and independently
+validated without gameplay behavior. Edit Mode passes 41 of 41 tests, and the
+most recent Play Mode validation passes 1 of 1. Android and iOS both use
+`com.tayackgames.cutrium`; Unity and URP/package baselines remain unchanged.
+The temporary correction utility was removed. The Git checkpoint is pending
+human review and commit, and Milestone 1B has not started.
 
 Replace this section at the end of the ExecPlan with the delivered build,
 validation evidence, known limitations, and recommended next work.

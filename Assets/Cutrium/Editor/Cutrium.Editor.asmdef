@@ -1,0 +1,20 @@
+{
+  "name": "Cutrium.Editor",
+  "rootNamespace": "Cutrium.Editor",
+  "references": [
+    "Cutrium.Gameplay",
+    "Cutrium.Unity",
+    "Cutrium.Presentation"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

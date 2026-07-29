@@ -85,13 +85,13 @@ Implementation and validation use Unity 6000.3.21f1. Unexpected package manifest
 The template currently allows every autorotation direction, has no code root namespace, and retains template identity values. Product naming also needs one authoritative choice.
 
 **Decision:**
-Support upright Portrait only for the vertical slice. Disable Landscape and Portrait Upside Down. Use `Cutrium` as the product name and code namespace. Use `com.tayackgames.cutrium` as the temporary development application identifier.
+Support upright Portrait only for the vertical slice. Disable Landscape and Portrait Upside Down. Use `Tayack Games` as the company name. Use `Cutrium` as the product name and code namespace. Use `com.tayackgames.cutrium` as the temporary development application identifier.
 
 **Reasoning:**
 A single orientation reduces layout and input ambiguity for the decision build. A consistent product/code identity prevents template naming from leaking into implementation and builds.
 
 **Consequences:**
-Player and Editor settings must be changed through normal Unity Editor workflows during Milestone 1A. The `Containment` working-title statement in `Docs/PRODUCT_VISION.md` is superseded for naming purposes; the product vision itself remains applicable. The company/display publisher name is still undecided.
+Player and Editor settings must be changed through normal Unity Editor workflows during Milestone 1A. The `Containment` working-title statement in `Docs/PRODUCT_VISION.md` is superseded for naming purposes; the product vision itself remains applicable.
 
 ---
 

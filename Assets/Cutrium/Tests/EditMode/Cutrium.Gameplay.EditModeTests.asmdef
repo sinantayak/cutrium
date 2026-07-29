@@ -1,0 +1,21 @@
+{
+  "name": "Cutrium.Gameplay.EditModeTests",
+  "rootNamespace": "Cutrium.Gameplay.EditModeTests",
+  "references": [
+    "Cutrium.Gameplay"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
