@@ -1,2 +1,8 @@
 ﻿<Solution>
+  <Project Path="Cutrium.Gameplay.csproj" />
+  <Project Path="Cutrium.Unity.csproj" />
+  <Project Path="Cutrium.Gameplay.EditModeTests.csproj" />
+  <Project Path="Cutrium.Presentation.csproj" />
+  <Project Path="Cutrium.PlayModeTests.csproj" />
+  <Project Path="Cutrium.Editor.csproj" />
 </Solution>
