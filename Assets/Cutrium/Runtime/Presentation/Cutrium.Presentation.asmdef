@@ -3,7 +3,8 @@
   "rootNamespace": "Cutrium.Presentation",
   "references": [
     "Cutrium.Gameplay",
-    "Cutrium.Unity"
+    "Cutrium.Unity",
+    "UnityEngine.UI"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

@@ -4,7 +4,11 @@
   "references": [
     "Cutrium.Gameplay",
     "Cutrium.Unity",
-    "Cutrium.Presentation"
+    "Cutrium.Presentation",
+    "Unity.InputSystem",
+    "UnityEngine.UI",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Universal.2D.Runtime"
   ],
   "includePlatforms": [
     "Editor"

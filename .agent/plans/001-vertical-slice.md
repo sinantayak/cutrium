@@ -52,7 +52,7 @@ Terms used in this plan:
 
 ## Current Repository Findings
 
-### Verified facts from the 2026-07-30 re-audit
+### Verified facts from the 2026-07-30 re-audit and completed foundations
 
 The repository instructions, `.agent/PLANS.md`, this complete ExecPlan, and
 every file under `Docs/` were read before this revision. The project is a newly
@@ -127,22 +127,30 @@ implementation.
   map includes mouse, pen, and touch point/click bindings.
 - The asset is registered in `ProjectSettings/EditorBuildSettings.asset`.
   Generated C# wrapper code is disabled.
-- No scene object consumes the input actions. There is no EventSystem,
-  `InputSystemUIInputModule`, Canvas, gameplay input adapter, or UI hit-test
-  blocker.
-- A dedicated Cutrium action asset and input adapter are therefore planned.
-  The generic Player/Attack map must not become the gameplay contract.
+- Milestone 1B added `Assets/Cutrium/Input/CutriumInput.inputactions` without
+  changing the generic template action asset or its project-wide registration.
+  Its Gameplay map contains dedicated Point, Press, and Cancel actions. Its UI
+  map is configured for `InputSystemUIInputModule`.
+- `VerticalSlice.unity` now has a serialized EventSystem,
+  `InputSystemUIInputModule`, normalized mouse/primary-touch adapter, board
+  mapper, and EventSystem-backed UI press-start blocker. The generic
+  Player/Attack map is not the gameplay contract.
 
 #### Scenes and build settings
 
-- The repository has two `.unity` files:
-  `Assets/Scenes/SampleScene.unity` and the template scene
+- The repository now has three `.unity` files:
+  `Assets/Cutrium/Scenes/VerticalSlice.unity`,
+  `Assets/Scenes/SampleScene.unity`, and the template scene
   `Assets/Settings/Scenes/URP2DSceneTemplate.unity`.
-- `SampleScene.unity` is the only enabled build scene.
+- `VerticalSlice.unity` is the first and only enabled build scene.
+  `SampleScene.unity` remains in Build Settings but is disabled and its file
+  hash is unchanged from the Milestone 1A checkpoint.
 - `SampleScene` has exactly two root GameObjects: an orthographic Main Camera
   and a Global Light 2D. It has no board, Canvas, EventSystem, prefab instance,
   gameplay object, or composition root.
-- No gameplay scene, build profile, or level-specific scene exists.
+- `VerticalSlice` contains the responsive scene shell, placeholder board frame,
+  replaceable debug HUD, and serialized composition references. It contains no
+  gameplay session, level, threat, barrier, room, or capture behavior.
 
 #### Player and Editor settings
 
@@ -232,10 +240,10 @@ upgrade targets, or migration work.
 | Orientation | Upright Portrait only | Effective default interface orientation is fixed Portrait | Preserve. The stored autorotation sub-options are inactive outside Auto Rotation. |
 | Product identity | Company `Tayack Games`; product and code namespace `Cutrium`; development identifier `com.tayackgames.cutrium` | Company, product, root namespace, Android identifier, and iOS identifier all match. | Preserve. The iOS identifier was corrected through the supported Editor API without rewriting the other accepted settings. |
 | Product vision title | Cutrium is accepted | `Docs/PRODUCT_VISION.md` still calls Containment a temporary working title | ADR-004 supersedes that naming statement; a later focused product-doc wording cleanup may remove the historical title. |
-| Fixed board | One 10-by-16 logical board; extra tablet space is non-playable | No board or viewport exists | Establish the scene/layout shell in Milestone 1B and gameplay bounds in Milestone 2. |
+| Fixed board | One 10-by-16 logical board; extra tablet space is non-playable | Milestone 1B scene shell aspect-fits a fixed 10-by-16 frame and rejects margins | Preserve the shell; establish authoritative gameplay bounds in Milestone 2. |
 | Gameplay tick | Initial deterministic interval 1/60 second | Unity TimeManager is 0.02 second; no gameplay loop exists | Give the game session its own accumulator/interval in Milestone 2; do not change ProjectSettings merely to implement it. |
-| Core input | Press in active room, dominant-axis drag, commit on release; UI starts blocked | Generic actions exist but no consumer/EventSystem exists | Add dedicated actions and infrastructure in Milestone 1B; enforce active-room/gesture rules in Milestone 2. |
-| Automated tests | Deterministic foundation and focused Unity integration tests | Six asmdefs and both test assemblies exist. Edit Mode discovers and passes all 41 cases. Play Mode discovers and passes one smoke test. | Preserve the exact verified batch-mode commands and rerun relevant suites after later changes. |
+| Core input | Press in active room, dominant-axis drag, commit on release; UI starts blocked | Dedicated Point/Press/Cancel and UI actions, normalized pointer samples, board mapping, and latched UI-start blocking exist | Enforce active-room and gesture-orientation rules only in Milestone 2. |
+| Automated tests | Deterministic foundation and focused Unity integration tests | Six asmdefs and both test assemblies exist. Edit Mode passes 68 of 68. Play Mode passes 11 of 11. | Preserve the exact verified batch-mode commands and rerun relevant suites after later changes. |
 | Android build | Android phone/tablet are primary targets | Required modules are installed, but no build has been made | Preserve tooling and perform build/device validation in later milestones. |
 | iOS build | iPhone/iPad are primary targets | No local iOS module or macOS/Xcode evidence | Schedule external iOS export/build/device validation; do not claim it from Windows. |
 
@@ -728,8 +736,8 @@ At relevant milestones:
 float-backed geometry foundation, tolerance policy, and executable tests
 without creating any gameplay behavior.
 
-**Status (2026-07-30):** complete and independently validated. The recommended
-Git checkpoint remains pending for the human to review and create.
+**Status (2026-07-30):** complete, independently validated, and checkpointed at
+`de6f5b8` (`chore: establish Cutrium milestone 1A foundation`).
 
 **Files/systems expected to change:**
 
@@ -802,6 +810,11 @@ Do not include an unexpected package diff.
 
 **Goal:** create an independently validated portrait scene shell and normalized
 pointer infrastructure without implementing the barrier/capture game loop.
+
+**Status (2026-07-30):** implementation and automated validation complete.
+Edit Mode passes 68 of 68 tests and Play Mode passes 11 of 11. The focused Git
+checkpoint remains pending human review and the manual Game View/safe-area
+inspection described below.
 
 **Files/systems expected to change:**
 
@@ -1326,8 +1339,21 @@ human input at their natural gates:
   0 skipped.
 - [x] 2026-07-30: Milestone 1A implementation complete and independently
   validated.
-- [ ] Milestone 1A Git checkpoint pending human review and commit.
-- [ ] Milestone 1B complete, independently validated, and checkpointed.
+- [x] 2026-07-30: Milestone 1A checkpointed at `de6f5b8`
+  (`chore: establish Cutrium milestone 1A foundation`).
+- [x] 2026-07-30: Added dedicated Cutrium Gameplay/UI actions, normalized
+  mouse/primary-touch samples, press-start UI blocking, safe-area fitting,
+  fixed 10-by-16 aspect fitting, and decorative-margin rejection.
+- [x] 2026-07-30: Created and idempotency-checked the serialized
+  `VerticalSlice` shell through the reviewed Editor setup utility, then enabled
+  it as the development build scene and disabled the unchanged `SampleScene`.
+- [x] 2026-07-30: Added deterministic Edit Mode coverage and focused Play Mode
+  scene/input/layout validation. Final results are 68 of 68 Edit Mode and
+  11 of 11 Play Mode tests passing.
+- [x] 2026-07-30: Milestone 1B implementation and automated validation
+  complete; no gameplay behavior or production content was added.
+- [ ] Milestone 1B manual Game View/safe-area inspection and Git checkpoint
+  pending human review.
 - [ ] Milestone 2 complete, validated, and checkpointed.
 - [ ] Milestone 3 complete; human core-fun review recorded; checkpointed.
 - [ ] Milestone 4 complete, validated, and checkpointed.
@@ -1372,6 +1398,18 @@ human input at their natural gates:
   validated 1A and 1B. Milestone 1A creates no gameplay behavior. Every
   implementation milestone ends with an explicit Git checkpoint
   recommendation.
+- **2026-07-30 — Implemented:** one shared aspect-fit calculation is the
+  authority for both the board camera viewport and screen-to-logical mapping.
+  The complete 10-by-16 board is never cropped, and coordinates outside that
+  fitted rectangle are rejected rather than clamped into gameplay.
+- **2026-07-30 — Implemented:** UI blocking is decided by an injected,
+  EventSystem-backed raycast at press start and is latched for the interaction.
+  Mouse uses its device ID; the primary-touch path uses
+  `Touchscreen.primaryTouch.touchId`.
+- **2026-07-30 — Implemented:** retain the idempotent Milestone 1B Editor setup
+  utility as repeatable project setup. It validates exact Unity/Input/URP
+  versions, creates or repairs only the approved scene/action configuration,
+  and validates before changing Build Settings.
 
 ## Discoveries
 
@@ -1381,17 +1419,19 @@ human input at their natural gates:
   17.6-request/17.5-resolution mismatch no longer exists.
 - URP is active through every quality tier even though Graphics Settings has no
   global custom pipeline asset.
-- The build scene is still a two-object Universal 2D template scene.
-- Input System and generic mouse/touch bindings are present, but there is no
-  gameplay input consumer or EventSystem.
+- The enabled build scene is now the serialized `VerticalSlice` shell.
+  `SampleScene` remains byte-for-byte unchanged and disabled.
+- Dedicated Cutrium actions and an `InputSystemUIInputModule` now coexist with
+  the untouched generic template action asset. Runtime pointer infrastructure
+  consumes only the dedicated Gameplay map.
 - Enter Play Mode settings currently have no reload-disabling flag, unlike the
   superseded repository findings.
 - Unity's stored fixed timestep is 0.02 seconds, so the gameplay 1/60 interval
   must be explicit and isolated.
 - Android support is installed with SDK/NDK/OpenJDK/Gradle. iOS Build Support
   is absent.
-- Git HEAD is a new Unity 6.3 baseline commit and was clean before this
-  documentation-only revision.
+- Git HEAD is the completed Milestone 1A checkpoint `de6f5b8`. Its worktree was
+  clean before Milestone 1B implementation.
 - The human-applied company `Tayack Games`, product `Cutrium`, root namespace
   `Cutrium`, Android identifier, and fixed upright Portrait settings are
   effective and were not rewritten.
@@ -1404,12 +1444,31 @@ human input at their natural gates:
 - Unity batch mode could not reach the Licensing Client inside the filesystem
   sandbox. The same exact Editor commands completed once run with permission to
   access the installed licensing service.
-- Unity generated normal `.meta` files for the new `Assets/Cutrium` folders,
+- During Milestone 1A, Unity generated normal `.meta` files for the new
+  `Assets/Cutrium` folders,
   asmdefs, and scripts. It did not modify a scene, prefab, Input Actions asset,
   package manifest, or package lock.
 - The compiled gameplay assembly has no UnityEngine reference, and reflection
   verified that all stored instance fields in the four geometry foundations are
   readonly floats.
+- Unity's `Light2D` global-light type must be assigned through its supported
+  serialized Editor property while constructing a not-yet-awake scene object;
+  calling its runtime setter before `Awake` throws because renderer light
+  registration is not initialized.
+- `InputSystemUIInputModule` may assign template default actions when created.
+  The setup utility explicitly unassigns those defaults and serializes the
+  dedicated Cutrium UI action references and action asset.
+- Unfocused headless Play Mode disables normal pointer devices under the
+  project's default focus policy. The Play Mode fixture temporarily routes
+  synthetic devices to the Game View and uses `IgnoreFocus`, restores both
+  settings in teardown, and leaves the serialized Input System/Player settings
+  unchanged.
+- A primary-touch `<Pointer>/press` action can resolve through the
+  touchscreen's device-level synthetic press control. Correct primary-pointer
+  identity therefore comes from `Touchscreen.primaryTouch.touchId`, not the
+  touchscreen device ID.
+- The scene/action setup was run twice successfully. Input Action, scene, and
+  Build Settings hashes were identical after the idempotency run.
 
 ## Validation Record
 
@@ -1542,14 +1601,93 @@ changed by this correction. Milestone 1A now satisfies its implementation and
 automated acceptance criteria; the recommended Git checkpoint is intentionally
 left for the human to create.
 
+### 2026-07-30 — Milestone 1B implementation validation
+
+Milestone 1A was checkpointed before this work at `de6f5b8`
+(`chore: establish Cutrium milestone 1A foundation`). The worktree was clean.
+Pre-change hashes were recorded for both package files, `SampleScene`,
+`ProjectSettings.asset`, and `EditorSettings.asset`.
+
+The permanent reviewed setup utility was executed with the exact installed
+Editor:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone1BSceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1B-Setup.log'
+```
+
+It required Unity `6000.3.21f1`, Input System `1.20.0`, and URP `17.3.0`;
+created/imported the dedicated action asset through Input System APIs; created
+and saved the scene through Unity Editor APIs; validated serialized references,
+actions, hierarchy, board constants, and module configuration; and changed
+Build Settings only after validation. It was run a second time successfully.
+The action, scene, and Build Settings hashes remained identical:
+
+- `CutriumInput.inputactions`:
+  `571052E3B0F76CDF4286154D9E44D9B1F4052CC17BE8DBBB7E540532A7848C31`;
+- `VerticalSlice.unity`:
+  `C8DEE98392ECD101C27C3F0B8AF4D89A72A72D5E1EB9B8086093E83B7E06707B`;
+- `EditorBuildSettings.asset`:
+  `8332F601BBF5C5DBCED33FA89B8B3F84417E4CBB6D68796710B410321072EBAF`.
+
+The exact final Edit Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1B-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1B-EditMode.log'
+```
+
+Final Edit Mode result: 68 discovered, 68 passed, 0 failed, 0 skipped. This
+includes all 41 Milestone 1A tests and 27 new calculation/asset-configuration
+cases for aspect fitting, margin rejection, logical mapping, safe-area anchors,
+dedicated Input Actions, and Build Settings.
+
+The exact final Play Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1B-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M1B-PlayMode.log'
+```
+
+Final Play Mode result: 11 discovered, 11 passed, 0 failed, 0 skipped. This
+includes the original discovery smoke test plus 10 Milestone 1B cases covering
+scene references, dedicated UI module configuration, real configured camera
+visibility, accepted board starts, latched HUD blocking, mouse/primary-touch
+normalization, safe-area update/write suppression, and the 1080-by-1920,
+1080-by-2400, and 1536-by-2048 aspect-fit/margin-mapping cases.
+
+The final setup, Edit Mode, and Play Mode logs contain no C# compiler error,
+C# compiler warning, script-compilation failure, unhandled test log, or project
+exception marker. Each batch log contains the same transient licensing
+diagnostic, `Access token is unavailable; failed to update`; it is immediately
+followed by successful entitlement resolution and license update, and did not
+affect compilation or either test result. The package files retain their
+Milestone 1A hashes:
+
+- `Packages/manifest.json`:
+  `55BCB48EF9390DA84C8808DD96767900D0CDBA0AE6416325DF87E950F6457FF6`;
+- `Packages/packages-lock.json`:
+  `8292786E8F3A6F95EB7FB68D912C41835E875F9ED53A6115C5D6CA9EF6A42024`.
+
+`SampleScene.unity`, `ProjectSettings.asset`, and `EditorSettings.asset` also
+retain their checkpoint hashes. Git reports no diff for packages,
+`SampleScene`, Player Settings, or Editor Settings. Build Settings now contain
+enabled `Assets/Cutrium/Scenes/VerticalSlice.unity` first and disabled,
+unchanged `Assets/Scenes/SampleScene.unity` second; the existing Input System
+configuration object remains registered.
+
+No scene, prefab, asset, or Input Actions YAML was hand-edited. No prefab,
+ScriptableObject content, gameplay simulation, room, threat, barrier, capture,
+level, score, power, production art/audio/VFX, third-party dependency, or
+package change was added. Automated acceptance is complete. Manual Unity
+inspection remains to confirm rendered appearance at all three Game View sizes,
+a Device Simulator safe-area change, HUD press-start blocking, and Console
+cleanliness in the interactive Editor before the checkpoint.
+
 ## Final Outcome
 
-Outcome as of 2026-07-30: Milestone 1A is implemented and independently
-validated without gameplay behavior. Edit Mode passes 41 of 41 tests, and the
-most recent Play Mode validation passes 1 of 1. Android and iOS both use
-`com.tayackgames.cutrium`; Unity and URP/package baselines remain unchanged.
-The temporary correction utility was removed. The Git checkpoint is pending
-human review and commit, and Milestone 1B has not started.
-
-Replace this section at the end of the ExecPlan with the delivered build,
-validation evidence, known limitations, and recommended next work.
+Outcome as of 2026-07-30: Milestones 1A and 1B are implemented without gameplay
+behavior. Milestone 1A is checkpointed. Milestone 1B passes 68 of 68 Edit Mode
+tests and 11 of 11 Play Mode tests using Unity `6000.3.21f1`. URP remains
+`17.3.0`; package, Player/Editor setting, and `SampleScene` files are unchanged.
+The fixed 10-by-16 portrait scene shell, dedicated input, safe-area/layout,
+board mapping, and press-start UI-blocking infrastructure are serialized and
+validated. Manual multi-aspect/safe-area visual inspection and the focused
+Milestone 1B Git checkpoint remain for the human; Milestone 2 has not started.
