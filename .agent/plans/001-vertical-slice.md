@@ -876,11 +876,12 @@ focused checkpoint such as `feat: add Cutrium milestone 1B scene shell`.
 the accepted barrier gesture, growth/failure, rectangular capture, percentage
 target, completion, and retry.
 
-**Status (2026-08-05):** autonomous execution started from clean commit
-`a4a0289`. Phase 2A deterministic normal-threat motion passed its complete
-automated gate. Phase 2B is now authorized; Phase 2C remains gated by Phase
-2B's complete automated acceptance criteria from
-`.agent/tasks/002-first-playable.md`.
+**Status (2026-08-05):** Phase 2A passed and is checkpointed at `079617d`.
+On an explicitly authorized resumed run, Phase 2B's remaining failure was
+proved to be an invalid test timeline. The corrected wall-reflection/contact
+case passed without a production-solver change; the complete Phase 2B suites
+now pass 117 of 117 Edit Mode and 29 of 29 Play Mode tests. Phase 2B satisfies
+its automated gate and Phase 2C is authorized after its local checkpoint.
 
 **Files/systems expected to change:**
 
@@ -1372,8 +1373,19 @@ human input at their natural gates:
   tests, setup idempotence, compiler/log checks, and every protected-file gate.
 - [x] 2026-08-05: Phase 2A is captured by the local checkpoint whose commit
   message is `feat: add Cutrium milestone 2A threat motion`.
-- [ ] Phase 2B barrier gesture, growth, and failure passes all automated gates
+- [x] Phase 2B barrier gesture, growth, and failure passes all automated gates
   and is checkpointed.
+- [x] 2026-08-05: Stopped Phase 2B after its permitted diagnosis-and-rerun
+  cycle still reported 116 passed and 1 failed Edit Mode case. Play Mode was
+  not run and Phase 2C was not started.
+- [x] 2026-08-05: Resumed Phase 2B by explicit human direction, verified the
+  corrected event timeline, and passed 117 of 117 Edit Mode plus 29 of 29 Play
+  Mode tests without changing production solver code for the old failure.
+- [x] 2026-08-05: Phase 2B setup is byte-idempotent, compiler/project-code
+  warnings are zero, and every package, SampleScene, and protected-settings
+  hash remains unchanged.
+- [x] 2026-08-05: Phase 2B is captured by the local checkpoint whose commit
+  message is `feat: add Cutrium milestone 2B barrier interaction`.
 - [ ] Phase 2C room capture, completion, and retry passes all automated gates
   and is checkpointed.
 - [ ] Milestone 2 complete, validated, and checkpointed.
@@ -1432,6 +1444,13 @@ human input at their natural gates:
   utility as repeatable project setup. It validates exact Unity/Input/URP
   versions, creates or repairs only the approved scene/action configuration,
   and validates before changing Build Settings.
+
+- **2026-08-05 — Implemented:** a
+  contact/completion tie inside `GeometryTolerancePolicy.TimeTolerance` favors
+  barrier lock, matching the relaxing/lightly punishing product direction.
+  Moving-tip quadratic roots use local double intermediates for discriminant
+  stability; all stored gameplay state remains float-backed. ADR-011 records
+  this deterministic ordering after the analytic solver passed Phase 2B.
 
 ## Discoveries
 
@@ -1503,6 +1522,19 @@ human input at their natural gates:
   second run left `VerticalSlice.unity` at SHA-256
   `BA7733DA8A7DC26AFD8ED6D48FA38802D78C406D7685C2E74523E5CFA7996A2B`
   and preserved the optional presenter sprite reference.
+- The Phase 2B wall/contact ordering test initially started a vertical barrier
+  with three logical units already grown at speed 20. It therefore locked at
+  0.25 seconds, before the reflected threat could contact it. The allowed
+  rerun removed the initial growth but still used speed 20, which locked at
+  0.4 seconds while contact followed at about 0.54 seconds. The worktree now
+  contains the unverified timing correction (speed 10, duration 0.6 seconds),
+  but the task contract prohibited a third run and required stopping.
+- On the authorized resumed run, the speed-10/0.6-second case passed. The
+  threat reaches the inset right wall at 0.15 seconds, reflects, and reaches
+  the combined-radius contact coordinate at 0.54 seconds. Both vertical
+  barrier halves are then 5.4 units long and still vulnerable because their
+  8-unit targets lock at 0.8 seconds. The 0.26-second ordering gap is far
+  larger than the 0.00001-second time tolerance.
 
 ## Validation Record
 
@@ -1763,13 +1795,84 @@ reference. No barrier, capture, score, power, or completion system exists, so
 every Phase 2A automated acceptance criterion is satisfied and Phase 2B is
 authorized.
 
+### 2026-08-05 — Milestone 2 Phase 2B stopped validation
+
+The Phase 2B scene setup compiled and serialized successfully with the exact
+Editor:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone2SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2B-Setup.log'
+```
+
+The setup log contains the Phase 2B success marker and 0 C# compiler errors or
+warnings from project code. It serialized the gesture adapter, controller
+configuration, barrier presenter, preview, two growth halves, and break
+feedback through Editor APIs.
+
+The complete Edit Mode test command was run once and then rerun once after
+diagnosis, as permitted by the task:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2B-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2B-EditMode.log'
+```
+
+Both runs discovered 117 cases and reported 116 passed, 1 failed, 0 skipped.
+The remaining failure was
+`GrowingBarrierMotionSolverTests.Move_OrdersWallImpactBeforeLaterBarrierContact`:
+expected `Failed`, actual `Locked`. The first scenario locked at 0.25 seconds;
+the revised scenario locked at 0.4 seconds, both before its approximately
+0.54-second contact. The worktree contains a further unverified test-fixture
+timing correction, but no third run was made because the task explicitly says
+to stop after one diagnosis-and-rerun cycle.
+
+The Play Mode Phase 2B suite was authored but not run because Edit Mode did not
+pass. Phase 2B therefore has no acceptance or Git checkpoint, and Phase 2C was
+not started. Package, `SampleScene`, `ProjectSettings.asset`,
+`EditorSettings.asset`, and `EditorBuildSettings.asset` hashes still match the
+starting checkpoint exactly; no protected-file diff exists.
+
+### 2026-08-05 — Milestone 2 Phase 2B resumed validation
+
+The resumed run first inspected the corrected test and production analytic
+solver without modifying either. For the vertical barrier at x=5, the threat
+starts at (8, 8) with velocity (10, 0), radius 0.5, and room inset wall x=9.5.
+It reaches that wall at `(9.5 - 8) / 10 = 0.15` seconds and reflects to
+velocity (-10, 0). With barrier collision half-width 0.1, the combined contact
+radius is 0.6, so the reflected center contacts the barrier at x=5.6 after
+another `(9.5 - 5.6) / 10 = 0.39` seconds: 0.54 seconds absolute. The barrier
+starts with zero length and both 8-unit halves grow at speed 10, placing lock
+at 0.8 seconds and both lengths at 5.4 on contact. Contact therefore precedes
+lock by 0.26 seconds, much more than the 0.00001-second time tolerance. The
+corrected test is valid; no production solver code changed for this diagnosis.
+
+The exact resumed Edit Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2B-Resume-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2B-Resume-EditMode.log'
+```
+
+Result: 117 discovered, 117 passed, 0 failed, 0 skipped.
+
+The exact resumed Play Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2B-Resume-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2B-Resume-PlayMode.log'
+```
+
+Result: 29 discovered, 29 passed, 0 failed, 0 skipped.
+
+The retained setup utility was rerun with
+`Cutrium-M2-2B-Resume-Setup-Idempotence.log`. It exited successfully and left
+`VerticalSlice.unity` at the identical SHA-256
+`86D90C9C32FF1272940486E8FBCDEEBE35059C8B8C89823C6EF59EBD432D61D2`.
+Setup/Edit/Play logs contain 0 C# compiler errors and 0 project-code compiler
+warnings. Package, SampleScene, ProjectSettings, EditorSettings, and
+EditorBuildSettings hashes remain unchanged. Phase 2B satisfies its automated
+acceptance gate and may be checkpointed before Phase 2C.
+
 ## Final Outcome
 
-Outcome as of 2026-07-30: Milestones 1A and 1B are implemented without gameplay
-behavior. Milestone 1A is checkpointed. Milestone 1B passes 68 of 68 Edit Mode
-tests and 11 of 11 Play Mode tests using Unity `6000.3.21f1`. URP remains
-`17.3.0`; package, Player/Editor setting, and `SampleScene` files are unchanged.
-The fixed 10-by-16 portrait scene shell, dedicated input, safe-area/layout,
-board mapping, and press-start UI-blocking infrastructure are serialized and
-validated. Manual multi-aspect/safe-area visual inspection and the focused
-Milestone 1B Git checkpoint remain for the human; Milestone 2 has not started.
+Outcome as of the resumed 2026-08-05 run: Phase 2A is complete and checkpointed
+at `079617d`. Phase 2B now passes 117 of 117 Edit Mode and 29 of 29 Play Mode
+tests, including the corrected wall-reflection/contact ordering case, and is
+ready for its focused local checkpoint. Phase 2C remains the next gated step.

@@ -1,6 +1,8 @@
 using System;
+using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
+using Cutrium.Unity.Input;
 using UnityEngine;
 
 namespace Cutrium.Unity.Simulation
@@ -29,6 +31,22 @@ namespace Cutrium.Unity.Simulation
         [Header("Fixed Step")]
         [SerializeField]
         private int _maximumCatchUpTicks = 8;
+
+        [Header("Barrier Interaction")]
+        [SerializeField]
+        private BarrierGestureAdapter _barrierGesture;
+
+        [SerializeField]
+        private float _barrierGrowthSpeed = 8f;
+
+        [SerializeField]
+        private float _barrierCollisionHalfWidth = 0.08f;
+
+        [SerializeField]
+        private float _barrierMinimumEdgeMargin = 0.6f;
+
+        [SerializeField]
+        private int _maximumBarrierSolverIterations = 16;
 
         [Header("Geometry Tolerances")]
         [SerializeField]
@@ -65,6 +83,16 @@ namespace Cutrium.Unity.Simulation
 
         public int MaximumCatchUpTicks => _maximumCatchUpTicks;
 
+        public BarrierGestureAdapter BarrierGesture => _barrierGesture;
+
+        public float BarrierGrowthSpeed => _barrierGrowthSpeed;
+
+        public float BarrierCollisionHalfWidth => _barrierCollisionHalfWidth;
+
+        public float BarrierMinimumEdgeMargin => _barrierMinimumEdgeMargin;
+
+        public BarrierStartResult LastBarrierStartResult { get; private set; }
+
         public int InitializationCount { get; private set; }
 
         public int CappedCatchUpCount { get; private set; }
@@ -74,6 +102,22 @@ namespace Cutrium.Unity.Simulation
         private void Awake()
         {
             InitializeOnce();
+        }
+
+        private void OnEnable()
+        {
+            if (_barrierGesture != null)
+            {
+                _barrierGesture.IntentCommitted += OnBarrierIntentCommitted;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (_barrierGesture != null)
+            {
+                _barrierGesture.IntentCommitted -= OnBarrierIntentCommitted;
+            }
         }
 
         private void Update()
@@ -112,6 +156,27 @@ namespace Cutrium.Unity.Simulation
             _maximumCatchUpTicks = maximumCatchUpTicks;
         }
 
+        public void ConfigureBarrierForSetup(
+            BarrierGestureAdapter barrierGesture,
+            float growthSpeed,
+            float collisionHalfWidth,
+            float minimumEdgeMargin,
+            int maximumSolverIterations)
+        {
+            _barrierGesture = barrierGesture;
+            _barrierGrowthSpeed = growthSpeed;
+            _barrierCollisionHalfWidth = collisionHalfWidth;
+            _barrierMinimumEdgeMargin = minimumEdgeMargin;
+            _maximumBarrierSolverIterations = maximumSolverIterations;
+        }
+
+        public BarrierStartResult SubmitBarrierIntent(BarrierIntent intent)
+        {
+            InitializeOnce();
+            LastBarrierStartResult = Session.TryStartBarrier(intent);
+            return LastBarrierStartResult;
+        }
+
         private void InitializeOnce()
         {
             if (Session != null)
@@ -131,7 +196,15 @@ namespace Cutrium.Unity.Simulation
                 _threatSpeed,
                 _threatRadius,
                 _maximumImpactsPerTick);
-            Session = new ThreatMotionSession(configuration, Tolerance);
+            var barrierConfiguration = new BarrierConfiguration(
+                _barrierGrowthSpeed,
+                _barrierCollisionHalfWidth,
+                _barrierMinimumEdgeMargin,
+                _maximumBarrierSolverIterations);
+            Session = new ThreatMotionSession(
+                configuration,
+                barrierConfiguration,
+                Tolerance);
             _accumulator = new FixedStepAccumulator(
                 SimulationStep,
                 _maximumCatchUpTicks,
@@ -143,6 +216,11 @@ namespace Cutrium.Unity.Simulation
         private void TickSession(float elapsedTime)
         {
             Session.Tick(elapsedTime);
+        }
+
+        private void OnBarrierIntentCommitted(BarrierIntent intent)
+        {
+            SubmitBarrierIntent(intent);
         }
     }
 }

@@ -205,3 +205,31 @@ Smaller independently validated steps make package/settings changes, assembly bo
 
 **Consequences:**
 The first playable loop begins in Milestone 2. Milestones 1A and 1B each have their own acceptance evidence and recommended focused commit.
+
+---
+
+## ADR-011 — Barrier Completion Wins Tolerance Ties
+
+**Status:** Accepted
+
+**Context:**
+Continuous growing-barrier collision can produce contact and full completion
+times that are equal within the centralized time tolerance. The simulation
+needs one deterministic ordering for that boundary case.
+
+**Decision:**
+If barrier completion and threat contact are equal within
+`GeometryTolerancePolicy.TimeTolerance`, complete and lock the barrier. A
+contact earlier by more than that tolerance fails the barrier. Moving-tip
+quadratic calculations may use local double intermediates, but all stored
+gameplay state and returned logical values remain float-backed.
+
+**Reasoning:**
+This gives deterministic event ordering and matches the intended relaxing,
+lightly punishing experience without widening the tolerance or weakening
+continuous contact detection.
+
+**Consequences:**
+Solver tests must cover contact-before-lock, lock-before-contact, and the exact
+tolerance tie. Presentation cannot override the logical outcome. Physics2D is
+not needed while the analytic solver passes these cases.
