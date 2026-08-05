@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using Cutrium.Presentation.Barriers;
+using Cutrium.Presentation.Capture;
+using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Bootstrap;
 using Cutrium.Unity.Input;
@@ -31,8 +33,10 @@ namespace Cutrium.Editor.Setup
                 OpenSceneMode.Single);
             ConfigurePhase2A(scene);
             ConfigurePhase2B(scene);
+            ConfigurePhase2C(scene);
             ValidatePhase2A(scene);
             ValidatePhase2B(scene);
+            ValidatePhase2C(scene);
 
             if (!EditorSceneManager.SaveScene(scene, VerticalSliceScenePath))
             {
@@ -42,8 +46,8 @@ namespace Cutrium.Editor.Setup
 
             AssetDatabase.SaveAssets();
             Debug.Log(
-                "Milestone 2 scene setup verified through Phase 2B. " +
-                "Threat, gesture, and barrier presentation references are serialized.");
+                "Milestone 2 scene setup verified through Phase 2C. " +
+                "First-playable capture and retry references are serialized.");
         }
 
         private static void VerifyBaseline()
@@ -284,6 +288,158 @@ namespace Cutrium.Editor.Setup
             }
         }
 
+        private static void ConfigurePhase2C(Scene scene)
+        {
+            GameObject root = RequireRoot(scene, "VerticalSliceRoot");
+            Transform safeArea = RequireChild(
+                root.transform,
+                "Canvas/SafeAreaRoot");
+            RectTransform boardFrame = (RectTransform)RequireChild(
+                safeArea,
+                "BoardViewport/BoardFrame");
+            Transform gameplayRoot = RequireChild(root.transform, "GameplayRoot");
+            FirstPlayableController controller =
+                gameplayRoot.GetComponent<FirstPlayableController>();
+            controller.ConfigureCaptureForSetup(0.75f);
+
+            RectTransform capturedRoot = GetOrCreateUiChild(
+                boardFrame,
+                "CapturedRegions");
+            StretchToParent(capturedRoot);
+            capturedRoot.SetAsFirstSibling();
+            RectTransform completedRoot = GetOrCreateUiChild(
+                boardFrame,
+                "CompletedBarriers");
+            StretchToParent(completedRoot);
+
+            GameObject boardPresenterObject = GetOrCreateChild(
+                gameplayRoot,
+                "CaptureBoardPresenter");
+            CaptureBoardPresenter boardPresenter =
+                GetOrAddComponent<CaptureBoardPresenter>(boardPresenterObject);
+            boardPresenter.Configure(
+                controller,
+                boardFrame,
+                capturedRoot,
+                completedRoot,
+                0.22f);
+
+            RectTransform topHud = (RectTransform)RequireChild(
+                safeArea,
+                "TopHUD");
+            Text percentage = ConfigureText(
+                GetOrCreateUiChild(topHud, "CapturePercentage"),
+                "Captured 0%",
+                26,
+                TextAnchor.MiddleCenter);
+            Text target = ConfigureText(
+                GetOrCreateUiChild(topHud, "CaptureTarget"),
+                "Target 75%",
+                22,
+                TextAnchor.MiddleCenter);
+            EnsureLayoutElement(percentage.rectTransform, 170f, 48f);
+            EnsureLayoutElement(target.rectTransform, 140f, 48f);
+
+            RectTransform overlay = GetOrCreateUiChild(
+                safeArea,
+                "LevelCompleteOverlay");
+            StretchToParent(overlay);
+            Image overlayImage = GetOrAddComponent<Image>(overlay.gameObject);
+            overlayImage.color = new Color(0.04f, 0.07f, 0.12f, 0.86f);
+            overlayImage.raycastTarget = true;
+
+            RectTransform completeTextRect = GetOrCreateUiChild(
+                overlay,
+                "CompleteText");
+            completeTextRect.anchorMin = new Vector2(0.15f, 0.55f);
+            completeTextRect.anchorMax = new Vector2(0.85f, 0.7f);
+            completeTextRect.offsetMin = Vector2.zero;
+            completeTextRect.offsetMax = Vector2.zero;
+            Text completeText = ConfigureText(
+                completeTextRect,
+                "LEVEL COMPLETE",
+                42,
+                TextAnchor.MiddleCenter);
+
+            RectTransform retryRect = GetOrCreateUiChild(overlay, "RetryButton");
+            retryRect.anchorMin = new Vector2(0.3f, 0.38f);
+            retryRect.anchorMax = new Vector2(0.7f, 0.5f);
+            retryRect.offsetMin = Vector2.zero;
+            retryRect.offsetMax = Vector2.zero;
+            Image retryImage = GetOrAddComponent<Image>(retryRect.gameObject);
+            retryImage.color = new Color(0.22f, 0.72f, 0.68f, 1f);
+            Button retryButton = GetOrAddComponent<Button>(retryRect.gameObject);
+            retryButton.targetGraphic = retryImage;
+            RectTransform retryLabelRect = GetOrCreateUiChild(
+                retryRect,
+                "Label");
+            StretchToParent(retryLabelRect);
+            ConfigureText(
+                retryLabelRect,
+                "RETRY",
+                30,
+                TextAnchor.MiddleCenter).raycastTarget = false;
+            overlay.gameObject.SetActive(false);
+
+            GameObject hudPresenterObject = GetOrCreateChild(
+                gameplayRoot,
+                "CaptureHudPresenter");
+            CaptureHudPresenter hudPresenter =
+                GetOrAddComponent<CaptureHudPresenter>(hudPresenterObject);
+            hudPresenter.Configure(
+                controller,
+                percentage,
+                target,
+                overlay.gameObject,
+                completeText,
+                retryButton);
+
+            EditorUtility.SetDirty(controller);
+            EditorUtility.SetDirty(boardPresenter);
+            EditorUtility.SetDirty(hudPresenter);
+            EditorUtility.SetDirty(overlayImage);
+            EditorUtility.SetDirty(retryButton);
+        }
+
+        private static void ValidatePhase2C(Scene scene)
+        {
+            GameObject root = RequireRoot(scene, "VerticalSliceRoot");
+            FirstPlayableController controller = root
+                .GetComponentInChildren<FirstPlayableController>(true);
+            CaptureBoardPresenter[] boardPresenters = root
+                .GetComponentsInChildren<CaptureBoardPresenter>(true);
+            CaptureHudPresenter[] hudPresenters = root
+                .GetComponentsInChildren<CaptureHudPresenter>(true);
+            if (boardPresenters.Length != 1 || hudPresenters.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Expected one capture board/HUD presenter, found " +
+                    $"{boardPresenters.Length}/{hudPresenters.Length}.");
+            }
+
+            CaptureBoardPresenter board = boardPresenters[0];
+            CaptureHudPresenter hud = hudPresenters[0];
+            if (board.Controller != controller
+                || board.BoardFrame == null
+                || board.CapturedRegionRoot == null
+                || board.CompletedBarrierRoot == null
+                || hud.Controller != controller
+                || hud.PercentageText == null
+                || hud.TargetText == null
+                || hud.CompleteOverlay == null
+                || hud.RetryButton == null)
+            {
+                throw new InvalidOperationException(
+                    "Phase 2C has a missing or mismatched serialized reference.");
+            }
+
+            if (!Mathf.Approximately(controller.TargetCapturedFraction, 0.75f))
+            {
+                throw new InvalidOperationException(
+                    "The first-playable capture target must serialize as 75%.");
+            }
+        }
+
         private static RectTransform CreateBarrierVisual(
             Transform parent,
             string name)
@@ -300,6 +456,43 @@ namespace Cutrium.Editor.Setup
             rect.gameObject.SetActive(false);
             EditorUtility.SetDirty(image);
             return rect;
+        }
+
+        private static Text ConfigureText(
+            RectTransform rect,
+            string value,
+            int fontSize,
+            TextAnchor alignment)
+        {
+            Text text = GetOrAddComponent<Text>(rect.gameObject);
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.text = value;
+            text.fontSize = fontSize;
+            text.alignment = alignment;
+            text.color = Color.white;
+            text.raycastTarget = false;
+            EditorUtility.SetDirty(text);
+            return text;
+        }
+
+        private static void EnsureLayoutElement(
+            RectTransform rect,
+            float preferredWidth,
+            float preferredHeight)
+        {
+            LayoutElement layout = GetOrAddComponent<LayoutElement>(rect.gameObject);
+            layout.preferredWidth = preferredWidth;
+            layout.preferredHeight = preferredHeight;
+            EditorUtility.SetDirty(layout);
+        }
+
+        private static void StretchToParent(RectTransform rect)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
         }
 
         private static GameObject RequireRoot(Scene scene, string name)

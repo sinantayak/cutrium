@@ -81,6 +81,13 @@ namespace Cutrium.Unity.Input
             }
         }
 
+        public void ResetForRetry()
+        {
+            ResetTracking();
+            CommittedIntentCount = 0;
+            CancelledInteractionCount = 0;
+        }
+
         private void OnEnable()
         {
             if (Application.isPlaying)

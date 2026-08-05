@@ -6,7 +6,8 @@ namespace Cutrium.Gameplay.Barriers
         InvalidOrientation = 1,
         OriginOutsideActiveRoom = 2,
         TooCloseToRoomEdge = 3,
-        BarrierAlreadyActive = 4
+        BarrierAlreadyActive = 4,
+        LevelCompleted = 5
     }
 
     public readonly struct BarrierStartResult

@@ -1,3 +1,4 @@
+using System;
 using Cutrium.Gameplay.Board;
 using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Geometry;
@@ -10,6 +11,7 @@ namespace Cutrium.Gameplay.Session
         private readonly ThreatMotionConfiguration _configuration;
         private readonly GeometryTolerancePolicy _tolerance;
         private readonly BarrierConfiguration _barrierConfiguration;
+        private readonly CaptureLevelConfiguration _captureConfiguration;
         private int _nextBarrierId;
 
         public ThreatMotionSession(
@@ -18,6 +20,7 @@ namespace Cutrium.Gameplay.Session
             : this(
                 configuration,
                 new BarrierConfiguration(8f, 0.08f, 0.6f, 16),
+                new CaptureLevelConfiguration(0.75f),
                 tolerance)
         {
         }
@@ -26,9 +29,23 @@ namespace Cutrium.Gameplay.Session
             ThreatMotionConfiguration configuration,
             BarrierConfiguration barrierConfiguration,
             GeometryTolerancePolicy tolerance)
+            : this(
+                configuration,
+                barrierConfiguration,
+                new CaptureLevelConfiguration(0.75f),
+                tolerance)
+        {
+        }
+
+        public ThreatMotionSession(
+            ThreatMotionConfiguration configuration,
+            BarrierConfiguration barrierConfiguration,
+            CaptureLevelConfiguration captureConfiguration,
+            GeometryTolerancePolicy tolerance)
         {
             _configuration = configuration;
             _barrierConfiguration = barrierConfiguration;
+            _captureConfiguration = captureConfiguration;
             _tolerance = tolerance;
             InitialRoom = new RoomState(new RoomId(1), configuration.BoardBounds);
             Reset();
@@ -37,6 +54,17 @@ namespace Cutrium.Gameplay.Session
         public RoomState InitialRoom { get; }
 
         public ThreatState Threat { get; private set; }
+
+        public CaptureBoardState Board { get; private set; }
+
+        public CaptureLevelStatus LevelStatus { get; private set; }
+
+        public float TargetCapturedFraction =>
+            _captureConfiguration.TargetCapturedFraction;
+
+        public float CapturedFraction => Board.CapturedFraction;
+
+        public RoomSplitApplyResult LastRoomSplitResult { get; private set; }
 
         public ThreatMotionDiagnostic LastDiagnostic { get; private set; }
 
@@ -61,11 +89,24 @@ namespace Cutrium.Gameplay.Session
             LastBarrierEvent = BarrierSimulationEvent.None;
             LastBarrierContact = BarrierContactKind.None;
             LastBarrierDiagnostic = BarrierSimulationDiagnostic.None;
+            if (LevelStatus == CaptureLevelStatus.Completed)
+            {
+                return;
+            }
+
             if (ActiveBarrier.HasValue)
             {
+                if (!Board.TryGetActiveRoom(
+                        ActiveBarrier.Value.ParentRoomId,
+                        out RoomState barrierRoom))
+                {
+                    throw new InvalidOperationException(
+                        "The active barrier parent room is no longer active.");
+                }
+
                 BarrierSimulationResult barrierResult =
                     GrowingBarrierMotionSolver.Move(
-                        InitialRoom,
+                        barrierRoom,
                         Threat,
                         ActiveBarrier.Value,
                         elapsedTime,
@@ -81,6 +122,7 @@ namespace Cutrium.Gameplay.Session
                         ? ThreatMotionDiagnostic.ImpactLimitReached
                         : ThreatMotionDiagnostic.None;
                 LastBarrierSnapshot = barrierResult.Barrier;
+                Board.UpdateThreat(Threat);
                 if (barrierResult.SimulationEvent
                     == BarrierSimulationEvent.Failed)
                 {
@@ -94,6 +136,26 @@ namespace Cutrium.Gameplay.Session
                         == BarrierSimulationEvent.Locked)
                     {
                         LockedBarrierCount++;
+                        LastRoomSplitResult =
+                            Board.TryApplyLockedBarrier(barrierResult.Barrier);
+                        if (!LastRoomSplitResult.Applied)
+                        {
+                            throw new InvalidOperationException(
+                                "A locked barrier could not split its active room: "
+                                + LastRoomSplitResult.Diagnostic + ".");
+                        }
+
+                        Threat = Board.GetThreat(Threat.Id);
+                        ActiveBarrier = null;
+                        float capturedTargetArea =
+                            TargetCapturedFraction * InitialRoom.Bounds.Area;
+                        if (Board.CapturedArea > capturedTargetArea
+                            || _tolerance.IsAreaApproximatelyEqual(
+                                Board.CapturedArea,
+                                capturedTargetArea))
+                        {
+                            LevelStatus = CaptureLevelStatus.Completed;
+                        }
                     }
                 }
 
@@ -101,19 +163,34 @@ namespace Cutrium.Gameplay.Session
                 return;
             }
 
+            if (!Board.TryGetActiveRoom(Threat.RoomId, out RoomState room))
+            {
+                throw new InvalidOperationException(
+                    "The live threat has no active room.");
+            }
+
             ThreatMotionResult result = ThreatMotionSolver.Move(
-                InitialRoom,
+                room,
                 Threat,
                 elapsedTime,
                 _configuration.MaximumImpactsPerTick,
                 _tolerance);
             Threat = result.Threat;
+            Board.UpdateThreat(Threat);
             LastDiagnostic = result.Diagnostic;
             TickCount++;
         }
 
         public BarrierStartResult TryStartBarrier(BarrierIntent intent)
         {
+            if (LevelStatus == CaptureLevelStatus.Completed)
+            {
+                return new BarrierStartResult(
+                    false,
+                    BarrierRejectionReason.LevelCompleted,
+                    default);
+            }
+
             if (ActiveBarrier.HasValue)
             {
                 return new BarrierStartResult(
@@ -122,9 +199,17 @@ namespace Cutrium.Gameplay.Session
                     default);
             }
 
+            if (!Board.TryGetActiveRoomAt(intent.Origin, out RoomState room))
+            {
+                return new BarrierStartResult(
+                    false,
+                    BarrierRejectionReason.OriginOutsideActiveRoom,
+                    default);
+            }
+
             BarrierStartResult result = BarrierFactory.TryCreate(
                 new BarrierId(_nextBarrierId),
-                InitialRoom,
+                room,
                 intent,
                 _barrierConfiguration,
                 _tolerance);
@@ -152,6 +237,12 @@ namespace Cutrium.Gameplay.Session
                 0f,
                 _configuration.MaximumImpactsPerTick,
                 _tolerance);
+            Board = new CaptureBoardState(
+                InitialRoom.Bounds,
+                new[] { Threat },
+                _tolerance);
+            LevelStatus = CaptureLevelStatus.Playing;
+            LastRoomSplitResult = default;
             LastDiagnostic = ThreatMotionDiagnostic.None;
             ActiveBarrier = null;
             LastBarrierSnapshot = null;

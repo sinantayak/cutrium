@@ -156,6 +156,8 @@ namespace Cutrium.Presentation.Barriers
             bool visible = _gesture != null
                 && _gesture.IsTracking
                 && _gesture.SelectedOrientation != BarrierOrientation.None
+                && _controller.Session.LevelStatus
+                    == Cutrium.Gameplay.Session.CaptureLevelStatus.Playing
                 && !_controller.Session.ActiveBarrier.HasValue;
             _preview.gameObject.SetActive(visible);
             if (!visible)

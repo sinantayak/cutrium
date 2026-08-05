@@ -877,11 +877,11 @@ the accepted barrier gesture, growth/failure, rectangular capture, percentage
 target, completion, and retry.
 
 **Status (2026-08-05):** Phase 2A passed and is checkpointed at `079617d`.
-On an explicitly authorized resumed run, Phase 2B's remaining failure was
-proved to be an invalid test timeline. The corrected wall-reflection/contact
-case passed without a production-solver change; the complete Phase 2B suites
-now pass 117 of 117 Edit Mode and 29 of 29 Play Mode tests. Phase 2B satisfies
-its automated gate and Phase 2C is authorized after its local checkpoint.
+Phase 2B passed 117 of 117 Edit Mode and 29 of 29 Play Mode tests and is
+checkpointed at `53dc861`. Phase 2C now passes 130 of 130 Edit Mode and 37 of
+37 Play Mode tests. The one-level capture, completion, and same-scene Retry
+loop satisfies every automated Milestone 2 gate and is ready for its permitted
+local checkpoint; Milestone 3 remains explicitly out of scope.
 
 **Files/systems expected to change:**
 
@@ -1386,9 +1386,16 @@ human input at their natural gates:
   hash remains unchanged.
 - [x] 2026-08-05: Phase 2B is captured by the local checkpoint whose commit
   message is `feat: add Cutrium milestone 2B barrier interaction`.
-- [ ] Phase 2C room capture, completion, and retry passes all automated gates
-  and is checkpointed.
-- [ ] Milestone 2 complete, validated, and checkpointed.
+- [x] 2026-08-05: Phase 2C added flat active/captured logical rooms, atomic
+  stable-ID splits, deterministic threat reassignment, area-derived percentage,
+  75% completion, serialized fallback views, and same-scene Retry.
+- [x] 2026-08-05: Phase 2C passed 130 of 130 Edit Mode and 37 of 37 Play Mode
+  tests, consecutive setup idempotence, zero project-code compiler warnings,
+  and every protected-file gate.
+- [x] Phase 2C room capture, completion, and retry passes all automated gates
+  and is checkpointed by the commit containing this plan update.
+- [x] Milestone 2 complete, validated, and checkpointed by the commit
+  containing this plan update.
 - [ ] Milestone 3 complete; human core-fun review recorded; checkpointed.
 - [ ] Milestone 4 complete, validated, and checkpointed.
 - [ ] Milestone 5 complete, validated, and checkpointed.
@@ -1451,6 +1458,13 @@ human input at their natural gates:
   Moving-tip quadratic roots use local double intermediates for discriminant
   stability; all stored gameplay state remains float-backed. ADR-011 records
   this deterministic ordering after the analytic solver passed Phase 2B.
+- **2026-08-05 — Implemented:** capture uses flat disjoint active/captured
+  rectangles. A locked barrier atomically replaces only its stable-ID parent,
+  every empty child is captured, percentage derives from logical active area,
+  and visual width is excluded. Tolerance-contained classification ties emit a
+  diagnostic and use a deterministic fallback; true circle straddles reject
+  the split. ADR-012 records the model, 75% target, completion blocking, and
+  same-session Retry behavior.
 
 ## Discoveries
 
@@ -1535,6 +1549,19 @@ human input at their natural gates:
   barrier halves are then 5.4 units long and still vulnerable because their
   8-unit targets lock at 0.8 seconds. The 0.26-second ordering gap is far
   larger than the 0.00001-second time tolerance.
+- Phase 2C's first Edit Mode run passed 129 of 130 tests; the sole failure was
+  an invalid NUnit collection assertion that asked an iterator for a `Count`
+  property. Materializing the count corrected the test without changing
+  gameplay behavior, and the final full suite passed 130 of 130.
+- Phase 2C's first Play Mode run passed 36 of 37 tests and exposed a Turkish
+  locale presentation issue: standard `P0` formatting produced `%20`. The HUD
+  now renders a rounded integer followed by an explicit percent sign, making
+  the placeholder display stable across locales without changing capture math.
+- After test/import activity the first closing setup run performed a one-time
+  Unity scene reserialization. Two immediately consecutive reviewed setup runs
+  then produced the identical `VerticalSlice.unity` SHA-256
+  `E832DBAF09C9D79B804150235E4718E7CC0BBBFAFCAF66B995D12406DBC13AD6`,
+  proving the settled Phase 2C setup is byte-idempotent.
 
 ## Validation Record
 
@@ -1870,9 +1897,48 @@ warnings. Package, SampleScene, ProjectSettings, EditorSettings, and
 EditorBuildSettings hashes remain unchanged. Phase 2B satisfies its automated
 acceptance gate and may be checkpointed before Phase 2C.
 
+### 2026-08-05 — Milestone 2 Phase 2C validation
+
+Phase 2C implemented a no-UnityEngine `CaptureBoardState` with flat active and
+captured room collections, stable child IDs, atomic parent replacement,
+completed split history, deterministic threat reassignment, area conservation,
+non-overlap checks, and monotonic capture progress. The session consumes a
+locked barrier into that state, rejects new barriers after the Inspector-set
+75% target, and resets board, threat, barrier, input interaction, completion,
+and presentation state in the same scene. Serialized fallback presenters show
+captured rectangles, completed lines, stable-locale percentage/target labels,
+completion overlay, and Retry.
+
+The exact final Edit Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2C-Final-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2C-Final-EditMode.log'
+```
+
+Result: 130 discovered, 130 passed, 0 failed, 0 skipped.
+
+The exact final Play Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2C-Final-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2C-Final-PlayMode.log'
+```
+
+Result: 37 discovered, 37 passed, 0 failed, 0 skipped. The final Edit and Play
+logs contain 0 C# compiler errors and 0 project-code compiler warnings.
+
+Two consecutive final setup runs succeeded and left `VerticalSlice.unity` at
+the identical SHA-256
+`E832DBAF09C9D79B804150235E4718E7CC0BBBFAFCAF66B995D12406DBC13AD6`.
+The package manifest, package lock, `SampleScene.unity`, `ProjectSettings`,
+`EditorSettings`, and `EditorBuildSettings` hashes remain exactly unchanged.
+Phase 2C and the complete Milestone 2 automated acceptance gate pass.
+
 ## Final Outcome
 
-Outcome as of the resumed 2026-08-05 run: Phase 2A is complete and checkpointed
-at `079617d`. Phase 2B now passes 117 of 117 Edit Mode and 29 of 29 Play Mode
-tests, including the corrected wall-reflection/contact ordering case, and is
-ready for its focused local checkpoint. Phase 2C remains the next gated step.
+Outcome as of 2026-08-05: Phase 2A is checkpointed at `079617d`, and Phase 2B
+is checkpointed at `53dc861`. Phase 2C passes 130 of 130 Edit Mode and 37 of 37
+Play Mode tests with zero project-code compiler diagnostics and no protected
+file changes. The first complete one-level playable loop now includes movement,
+barrier success/failure, rectangular capture, logical percentage, 75%
+completion, and deterministic same-scene Retry. Milestone 2 is complete and
+ready for its permitted local checkpoint. Work stops here before Milestone 3.

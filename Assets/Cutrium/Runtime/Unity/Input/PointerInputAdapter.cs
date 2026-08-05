@@ -66,6 +66,11 @@ namespace Cutrium.Unity.Input
             _uiBlocker = uiBlockerComponent as IPointerUiBlocker;
         }
 
+        public void ResetInteractionState()
+        {
+            ResetInteraction();
+        }
+
         private void Awake()
         {
             _uiBlocker = _uiBlockerComponent as IPointerUiBlocker;

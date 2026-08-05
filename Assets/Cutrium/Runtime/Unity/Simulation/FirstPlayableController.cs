@@ -48,6 +48,11 @@ namespace Cutrium.Unity.Simulation
         [SerializeField]
         private int _maximumBarrierSolverIterations = 16;
 
+        [Header("Level Flow")]
+        [SerializeField]
+        [Range(0.01f, 1f)]
+        private float _targetCapturedFraction = 0.75f;
+
         [Header("Geometry Tolerances")]
         [SerializeField]
         private float _distanceTolerance = 0.0001f;
@@ -91,6 +96,8 @@ namespace Cutrium.Unity.Simulation
 
         public float BarrierMinimumEdgeMargin => _barrierMinimumEdgeMargin;
 
+        public float TargetCapturedFraction => _targetCapturedFraction;
+
         public BarrierStartResult LastBarrierStartResult { get; private set; }
 
         public int InitializationCount { get; private set; }
@@ -98,6 +105,8 @@ namespace Cutrium.Unity.Simulation
         public int CappedCatchUpCount { get; private set; }
 
         public float DroppedSimulationTime { get; private set; }
+
+        public int RetryCount { get; private set; }
 
         private void Awake()
         {
@@ -170,11 +179,29 @@ namespace Cutrium.Unity.Simulation
             _maximumBarrierSolverIterations = maximumSolverIterations;
         }
 
+        public void ConfigureCaptureForSetup(float targetCapturedFraction)
+        {
+            _targetCapturedFraction = targetCapturedFraction;
+        }
+
         public BarrierStartResult SubmitBarrierIntent(BarrierIntent intent)
         {
             InitializeOnce();
             LastBarrierStartResult = Session.TryStartBarrier(intent);
             return LastBarrierStartResult;
+        }
+
+        public void RetryLevel()
+        {
+            InitializeOnce();
+            Session.Reset();
+            _accumulator.Reset();
+            _barrierGesture?.ResetForRetry();
+            _barrierGesture?.PointerInput?.ResetInteractionState();
+            LastBarrierStartResult = default;
+            CappedCatchUpCount = 0;
+            DroppedSimulationTime = 0f;
+            RetryCount++;
         }
 
         private void InitializeOnce()
@@ -201,9 +228,12 @@ namespace Cutrium.Unity.Simulation
                 _barrierCollisionHalfWidth,
                 _barrierMinimumEdgeMargin,
                 _maximumBarrierSolverIterations);
+            var captureConfiguration = new CaptureLevelConfiguration(
+                _targetCapturedFraction);
             Session = new ThreatMotionSession(
                 configuration,
                 barrierConfiguration,
+                captureConfiguration,
                 Tolerance);
             _accumulator = new FixedStepAccumulator(
                 SimulationStep,

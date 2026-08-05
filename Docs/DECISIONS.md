@@ -233,3 +233,39 @@ continuous contact detection.
 Solver tests must cover contact-before-lock, lock-before-contact, and the exact
 tolerance tie. Presentation cannot override the logical outcome. Physics2D is
 not needed while the analytic solver passes these cases.
+
+---
+
+## ADR-012 — Flat Rectangular Capture and Area-Derived Progress
+
+**Status:** Accepted
+
+**Context:**
+The first playable needs deterministic room splitting, capture percentage,
+completion, and retry without polygon clipping, scene colliders, or
+presentation data becoming gameplay truth.
+
+**Decision:**
+Represent the board as flat collections of disjoint axis-aligned active and
+captured logical rectangles. A locked barrier atomically replaces its stable-ID
+parent with exactly two children, reassigns every parent threat, captures each
+empty child, and records the zero-area split line. Calculate progress as
+`1 - activeArea / initialBoardArea` and cross-check it against accumulated
+captured area. Visual line thickness never contributes to scoring. Use the
+central geometry tolerance for circle/line boundary classification; an
+ambiguity contained within that tolerance emits a diagnostic and falls back
+deterministically to center, then axis velocity. Reject a circle that truly
+straddles the split. Configure the first level target as an Inspector-editable
+75%, and reset the same session and presenters for Retry without scene reload.
+
+**Reasoning:**
+Axis-aligned rectangles exactly match the approved barrier geometry and keep
+area conservation, overlap, threat ownership, and monotonic progress directly
+testable in the no-UnityEngine gameplay assembly.
+
+**Consequences:**
+The first playable has no polygon, grid, raster-mask, quadtree, or collider
+authority. Every applied split must preserve total logical area and unique
+threat ownership. Completion blocks new barrier creation, and Retry must restore
+the exact initial logical state without duplicating scene objects or event
+subscriptions.

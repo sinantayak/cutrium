@@ -56,6 +56,11 @@ namespace Cutrium.Gameplay.Threats
             return new ThreatState(Id, RoomId, position, velocity, Radius);
         }
 
+        public ThreatState WithRoom(RoomId roomId)
+        {
+            return new ThreatState(Id, roomId, Position, Velocity, Radius);
+        }
+
         public bool Equals(ThreatState other)
         {
             return Id == other.Id
