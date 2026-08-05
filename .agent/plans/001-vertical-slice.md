@@ -876,6 +876,12 @@ focused checkpoint such as `feat: add Cutrium milestone 1B scene shell`.
 the accepted barrier gesture, growth/failure, rectangular capture, percentage
 target, completion, and retry.
 
+**Status (2026-08-05):** autonomous execution started from clean commit
+`a4a0289`. Phase 2A deterministic normal-threat motion passed its complete
+automated gate. Phase 2B is now authorized; Phase 2C remains gated by Phase
+2B's complete automated acceptance criteria from
+`.agent/tasks/002-first-playable.md`.
+
 **Files/systems expected to change:**
 
 - gameplay board/session/barrier/threat state and event files;
@@ -1354,6 +1360,22 @@ human input at their natural gates:
   complete; no gameplay behavior or production content was added.
 - [ ] Milestone 1B manual Game View/safe-area inspection and Git checkpoint
   pending human review.
+- [x] 2026-08-05: Read the complete autonomous first-playable task, refreshed
+  every required repository document, and verified a clean start at `a4a0289`.
+- [x] 2026-08-05: Reverified Unity `6000.3.21f1`, URP `17.3.0`, Input System
+  `1.20.0`, the protected-file hashes, the enabled `VerticalSlice` scene, and
+  absence of an active Unity process before Milestone 2 changes.
+- [x] 2026-08-05: Phase 2A added deterministic analytic swept-circle threat
+  motion, explicit 1/60 render-driven accumulation, a replaceable serialized
+  presenter, and focused diagnostics without adding barrier/capture behavior.
+- [x] 2026-08-05: Phase 2A passed 96 of 96 Edit Mode and 18 of 18 Play Mode
+  tests, setup idempotence, compiler/log checks, and every protected-file gate.
+- [x] 2026-08-05: Phase 2A is captured by the local checkpoint whose commit
+  message is `feat: add Cutrium milestone 2A threat motion`.
+- [ ] Phase 2B barrier gesture, growth, and failure passes all automated gates
+  and is checkpointed.
+- [ ] Phase 2C room capture, completion, and retry passes all automated gates
+  and is checkpointed.
 - [ ] Milestone 2 complete, validated, and checkpointed.
 - [ ] Milestone 3 complete; human core-fun review recorded; checkpointed.
 - [ ] Milestone 4 complete, validated, and checkpointed.
@@ -1469,6 +1491,18 @@ human input at their natural gates:
   touchscreen device ID.
 - The scene/action setup was run twice successfully. Input Action, scene, and
   Build Settings hashes were identical after the idempotency run.
+- Phase 2A's analytic threat solver can consume multiple wall impacts in one
+  1/60 tick while keeping the circle center inside room bounds inset by its
+  numeric radius. Exact and tolerance-near x/y impact times reflect both
+  velocity components as one corner impact.
+- A Unity process launched from the PowerShell host may outlive the host call;
+  phase validation therefore checks the concrete Unity command line and waits
+  for that process to exit before reading each XML result or starting another
+  Editor run.
+- The retained Milestone 2 setup utility is byte-idempotent for Phase 2A. Its
+  second run left `VerticalSlice.unity` at SHA-256
+  `BA7733DA8A7DC26AFD8ED6D48FA38802D78C406D7685C2E74523E5CFA7996A2B`
+  and preserved the optional presenter sprite reference.
 
 ## Validation Record
 
@@ -1680,6 +1714,54 @@ package change was added. Automated acceptance is complete. Manual Unity
 inspection remains to confirm rendered appearance at all three Game View sizes,
 a Device Simulator safe-area change, HUD press-start blocking, and Console
 cleanliness in the interactive Editor before the checkpoint.
+
+### 2026-08-05 — Milestone 2 Phase 2A validation
+
+The worktree was clean at starting commit `a4a0289`. The reviewed permanent
+setup utility was executed through Unity serialization, then executed a second
+time to verify idempotence:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone2SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2A-Setup.log'
+```
+
+The second run used the same command with
+`Cutrium-M2-2A-Setup-Idempotence.log`. Both runs exited successfully. The
+scene hash was identical before and after the second run:
+`BA7733DA8A7DC26AFD8ED6D48FA38802D78C406D7685C2E74523E5CFA7996A2B`.
+The serialized result contains exactly one `FirstPlayableController`, one
+`ThreatPresenter`, and one fallback `ThreatVisual` with explicit references.
+
+The exact Phase 2A Edit Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2A-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2A-EditMode.log'
+```
+
+Result: 96 discovered, 96 passed, 0 failed, 0 skipped. This includes every
+Milestone 1A/1B Edit Mode test plus Phase 2A coverage for state validation,
+walls, corners, tolerance-near corners, shallow angles, multiple/high-speed
+impacts, zero time, impact-cap diagnostics, repeated determinism, fixed-step
+catch-up, and render-delta equivalence.
+
+The exact Phase 2A Play Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2A-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-2A-PlayMode.log'
+```
+
+Result: 18 discovered, 18 passed, 0 failed, 0 skipped. This includes all 11
+Milestone 1B tests plus serialized-reference, single-session, runtime motion,
+logical-to-visible mapping, visual/radius independence, re-enable safety, and
+three-aspect visibility coverage.
+
+Setup and test logs contain 0 C# compiler errors and 0 C# compiler warnings
+from project code. The package, SampleScene, ProjectSettings, EditorSettings,
+and EditorBuildSettings hashes remain exactly at their starting values; Git
+reports no protected-file diff. `Cutrium.Gameplay` still has no UnityEngine
+reference. No barrier, capture, score, power, or completion system exists, so
+every Phase 2A automated acceptance criterion is satisfied and Phase 2B is
+authorized.
 
 ## Final Outcome
 
