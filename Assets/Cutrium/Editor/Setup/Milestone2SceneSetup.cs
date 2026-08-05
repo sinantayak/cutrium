@@ -327,23 +327,46 @@ namespace Cutrium.Editor.Setup
             RectTransform topHud = (RectTransform)RequireChild(
                 safeArea,
                 "TopHUD");
+            RectTransform progressArea = GetOrCreateUiChild(
+                topHud,
+                "ProgressArea");
             Text percentage = ConfigureText(
-                GetOrCreateUiChild(topHud, "CapturePercentage"),
+                GetOrMoveUiChild(
+                    topHud,
+                    progressArea,
+                    "CapturePercentage"),
                 "Captured 0%",
-                26,
+                16,
                 TextAnchor.MiddleCenter);
             Text target = ConfigureText(
-                GetOrCreateUiChild(topHud, "CaptureTarget"),
+                GetOrMoveUiChild(
+                    topHud,
+                    progressArea,
+                    "CaptureTarget"),
                 "Target 75%",
-                22,
+                14,
                 TextAnchor.MiddleCenter);
-            EnsureLayoutElement(percentage.rectTransform, 170f, 48f);
-            EnsureLayoutElement(target.rectTransform, 140f, 48f);
+            EnsureLayoutElement(percentage.rectTransform, 112f, 36f);
+            EnsureLayoutElement(target.rectTransform, 88f, 36f);
+            ConfigureFirstPlayableLayout(
+                safeArea,
+                progressArea,
+                percentage.rectTransform,
+                target.rectTransform);
 
             RectTransform overlay = GetOrCreateUiChild(
                 safeArea,
                 "LevelCompleteOverlay");
             StretchToParent(overlay);
+            overlay.SetAsLastSibling();
+            LayoutElement overlayLayout =
+                GetOrAddComponent<LayoutElement>(overlay.gameObject);
+            overlayLayout.ignoreLayout = true;
+            CanvasGroup completionCanvasGroup =
+                GetOrAddComponent<CanvasGroup>(overlay.gameObject);
+            completionCanvasGroup.alpha = 0f;
+            completionCanvasGroup.interactable = false;
+            completionCanvasGroup.blocksRaycasts = false;
             Image overlayImage = GetOrAddComponent<Image>(overlay.gameObject);
             overlayImage.color = new Color(0.04f, 0.07f, 0.12f, 0.86f);
             overlayImage.raycastTarget = true;
@@ -379,7 +402,7 @@ namespace Cutrium.Editor.Setup
                 "RETRY",
                 30,
                 TextAnchor.MiddleCenter).raycastTarget = false;
-            overlay.gameObject.SetActive(false);
+            overlay.gameObject.SetActive(true);
 
             GameObject hudPresenterObject = GetOrCreateChild(
                 gameplayRoot,
@@ -391,14 +414,180 @@ namespace Cutrium.Editor.Setup
                 percentage,
                 target,
                 overlay.gameObject,
+                completionCanvasGroup,
                 completeText,
                 retryButton);
 
             EditorUtility.SetDirty(controller);
             EditorUtility.SetDirty(boardPresenter);
             EditorUtility.SetDirty(hudPresenter);
+            EditorUtility.SetDirty(overlayLayout);
+            EditorUtility.SetDirty(completionCanvasGroup);
             EditorUtility.SetDirty(overlayImage);
             EditorUtility.SetDirty(retryButton);
+        }
+
+        private static void ConfigureFirstPlayableLayout(
+            Transform safeArea,
+            RectTransform progressArea,
+            RectTransform percentage,
+            RectTransform target)
+        {
+            VerticalLayoutGroup safeAreaLayout =
+                safeArea.GetComponent<VerticalLayoutGroup>();
+            safeAreaLayout.padding = new RectOffset(12, 12, 6, 6);
+            safeAreaLayout.spacing = 4f;
+            safeAreaLayout.childControlHeight = true;
+            safeAreaLayout.childForceExpandHeight = false;
+
+            RectTransform topHud = (RectTransform)RequireChild(
+                safeArea,
+                "TopHUD");
+            LayoutElement topLayout = topHud.GetComponent<LayoutElement>();
+            topLayout.minHeight = 52f;
+            topLayout.preferredHeight = 60f;
+            topLayout.flexibleHeight = 0f;
+            HorizontalLayoutGroup topRow =
+                topHud.GetComponent<HorizontalLayoutGroup>();
+            topRow.padding = new RectOffset(8, 8, 8, 8);
+            topRow.spacing = 8f;
+            topRow.childAlignment = TextAnchor.MiddleCenter;
+            topRow.childControlWidth = true;
+            topRow.childControlHeight = true;
+            topRow.childForceExpandWidth = false;
+            topRow.childForceExpandHeight = false;
+
+            Text title = RequireChild(topHud, "Title").GetComponent<Text>();
+            title.text = "CUTRIUM";
+            title.fontSize = 16;
+            title.alignment = TextAnchor.MiddleLeft;
+            LayoutElement titleLayout = title.GetComponent<LayoutElement>();
+            titleLayout.minWidth = 72f;
+            titleLayout.minHeight = 32f;
+            titleLayout.preferredWidth = 92f;
+            titleLayout.preferredHeight = 36f;
+            titleLayout.flexibleWidth = 1f;
+            titleLayout.flexibleHeight = 0f;
+
+            LayoutElement progressLayout =
+                GetOrAddComponent<LayoutElement>(progressArea.gameObject);
+            progressLayout.minWidth = 208f;
+            progressLayout.minHeight = 36f;
+            progressLayout.preferredWidth = 230f;
+            progressLayout.preferredHeight = 40f;
+            progressLayout.flexibleWidth = 0f;
+            progressLayout.flexibleHeight = 0f;
+            HorizontalLayoutGroup progressRow =
+                GetOrAddComponent<HorizontalLayoutGroup>(progressArea.gameObject);
+            progressRow.padding = new RectOffset(0, 0, 0, 0);
+            progressRow.spacing = 8f;
+            progressRow.childAlignment = TextAnchor.MiddleCenter;
+            progressRow.childControlWidth = true;
+            progressRow.childControlHeight = true;
+            progressRow.childForceExpandWidth = false;
+            progressRow.childForceExpandHeight = false;
+            LayoutElement percentageLayout =
+                percentage.GetComponent<LayoutElement>();
+            percentageLayout.minWidth = 104f;
+            percentageLayout.minHeight = 32f;
+            percentageLayout.preferredWidth = 112f;
+            percentageLayout.preferredHeight = 36f;
+            percentageLayout.flexibleWidth = 0f;
+            percentageLayout.flexibleHeight = 0f;
+            LayoutElement targetLayout = target.GetComponent<LayoutElement>();
+            targetLayout.minWidth = 80f;
+            targetLayout.minHeight = 32f;
+            targetLayout.preferredWidth = 88f;
+            targetLayout.preferredHeight = 36f;
+            targetLayout.flexibleWidth = 0f;
+            targetLayout.flexibleHeight = 0f;
+
+            RectTransform blocker = (RectTransform)RequireChild(
+                topHud,
+                "HudBlockerButton");
+            LayoutElement blockerLayout = blocker.GetComponent<LayoutElement>();
+            blockerLayout.minWidth = 72f;
+            blockerLayout.minHeight = 32f;
+            blockerLayout.preferredWidth = 88f;
+            blockerLayout.preferredHeight = 36f;
+            blockerLayout.flexibleWidth = 0f;
+            blockerLayout.flexibleHeight = 0f;
+            Text blockerLabel = RequireChild(blocker, "Label").GetComponent<Text>();
+            blockerLabel.text = "UI TEST";
+            blockerLabel.fontSize = 12;
+
+            title.rectTransform.SetSiblingIndex(0);
+            progressArea.SetSiblingIndex(1);
+            blocker.SetSiblingIndex(2);
+
+            RectTransform boardViewport = (RectTransform)RequireChild(
+                safeArea,
+                "BoardViewport");
+            LayoutElement boardLayout =
+                boardViewport.GetComponent<LayoutElement>();
+            boardLayout.minHeight = 320f;
+            boardLayout.preferredHeight = 0f;
+            boardLayout.flexibleHeight = 1f;
+            boardLayout.flexibleWidth = 1f;
+            Text boardLabel = RequireChild(
+                boardViewport,
+                "BoardFrame/BoardLabel").GetComponent<Text>();
+            boardLabel.text = string.Empty;
+            boardLabel.gameObject.SetActive(false);
+
+            RectTransform bottomHud = (RectTransform)RequireChild(
+                safeArea,
+                "BottomHUD");
+            LayoutElement bottomLayout =
+                bottomHud.GetComponent<LayoutElement>();
+            bottomLayout.minHeight = 28f;
+            bottomLayout.preferredHeight = 32f;
+            bottomLayout.flexibleHeight = 0f;
+            VerticalLayoutGroup bottomColumn =
+                bottomHud.GetComponent<VerticalLayoutGroup>();
+            bottomColumn.padding = new RectOffset(6, 6, 2, 2);
+            bottomColumn.spacing = 0f;
+            bottomColumn.childControlHeight = true;
+            bottomColumn.childForceExpandHeight = false;
+
+            Text pointerStatus = RequireChild(
+                bottomHud,
+                "PointerStatus").GetComponent<Text>();
+            pointerStatus.fontSize = 10;
+            LayoutElement pointerLayout =
+                pointerStatus.GetComponent<LayoutElement>();
+            pointerLayout.minHeight = 14f;
+            pointerLayout.preferredHeight = 14f;
+            pointerLayout.flexibleHeight = 0f;
+            Text mappingStatus = RequireChild(
+                bottomHud,
+                "MappingStatus").GetComponent<Text>();
+            mappingStatus.fontSize = 10;
+            LayoutElement mappingLayout =
+                mappingStatus.GetComponent<LayoutElement>();
+            mappingLayout.minHeight = 14f;
+            mappingLayout.preferredHeight = 14f;
+            mappingLayout.flexibleHeight = 0f;
+
+            EditorUtility.SetDirty(safeAreaLayout);
+            EditorUtility.SetDirty(topLayout);
+            EditorUtility.SetDirty(topRow);
+            EditorUtility.SetDirty(title);
+            EditorUtility.SetDirty(titleLayout);
+            EditorUtility.SetDirty(progressLayout);
+            EditorUtility.SetDirty(progressRow);
+            EditorUtility.SetDirty(percentageLayout);
+            EditorUtility.SetDirty(targetLayout);
+            EditorUtility.SetDirty(blockerLayout);
+            EditorUtility.SetDirty(blockerLabel);
+            EditorUtility.SetDirty(boardLayout);
+            EditorUtility.SetDirty(boardLabel);
+            EditorUtility.SetDirty(bottomLayout);
+            EditorUtility.SetDirty(bottomColumn);
+            EditorUtility.SetDirty(pointerStatus);
+            EditorUtility.SetDirty(pointerLayout);
+            EditorUtility.SetDirty(mappingStatus);
+            EditorUtility.SetDirty(mappingLayout);
         }
 
         private static void ValidatePhase2C(Scene scene)
@@ -427,6 +616,7 @@ namespace Cutrium.Editor.Setup
                 || hud.PercentageText == null
                 || hud.TargetText == null
                 || hud.CompleteOverlay == null
+                || hud.CompletionCanvasGroup == null
                 || hud.RetryButton == null)
             {
                 throw new InvalidOperationException(
@@ -437,6 +627,116 @@ namespace Cutrium.Editor.Setup
             {
                 throw new InvalidOperationException(
                     "The first-playable capture target must serialize as 75%.");
+            }
+
+            CanvasGroup completionGroup = hud.CompletionCanvasGroup;
+            LayoutElement overlayLayout =
+                hud.CompleteOverlay.GetComponent<LayoutElement>();
+            if (!hud.CompleteOverlay.activeSelf
+                || overlayLayout == null
+                || !overlayLayout.ignoreLayout
+                || hud.CompleteOverlay.transform.GetSiblingIndex()
+                    != hud.CompleteOverlay.transform.parent.childCount - 1
+                || !Mathf.Approximately(completionGroup.alpha, 0f)
+                || completionGroup.interactable
+                || completionGroup.blocksRaycasts)
+            {
+                throw new InvalidOperationException(
+                    "The completion overlay must be active, topmost, ignored " +
+                    "by layout, and CanvasGroup-hidden before completion.");
+            }
+
+            Transform safeArea = hud.CompleteOverlay.transform.parent;
+            Transform topHud = RequireChild(safeArea, "TopHUD");
+            Transform boardViewport = RequireChild(safeArea, "BoardViewport");
+            Transform bottomHud = RequireChild(safeArea, "BottomHUD");
+            Transform progressArea = RequireChild(topHud, "ProgressArea");
+            Transform blocker = RequireChild(topHud, "HudBlockerButton");
+            VerticalLayoutGroup safeLayout =
+                safeArea.GetComponent<VerticalLayoutGroup>();
+            HorizontalLayoutGroup topRow =
+                topHud.GetComponent<HorizontalLayoutGroup>();
+            VerticalLayoutGroup bottomColumn =
+                bottomHud.GetComponent<VerticalLayoutGroup>();
+            LayoutElement topLayout = topHud.GetComponent<LayoutElement>();
+            LayoutElement boardLayout =
+                boardViewport.GetComponent<LayoutElement>();
+            LayoutElement bottomLayout =
+                bottomHud.GetComponent<LayoutElement>();
+            LayoutElement blockerLayout = blocker.GetComponent<LayoutElement>();
+            if (!safeLayout.childControlHeight
+                || safeLayout.childForceExpandHeight
+                || !topRow.childControlHeight
+                || topRow.childForceExpandHeight
+                || topRow.childForceExpandWidth
+                || !bottomColumn.childControlHeight
+                || bottomColumn.childForceExpandHeight
+                || !Mathf.Approximately(topLayout.minHeight, 52f)
+                || !Mathf.Approximately(topLayout.preferredHeight, 60f)
+                || !Mathf.Approximately(topLayout.flexibleHeight, 0f)
+                || !Mathf.Approximately(boardLayout.preferredHeight, 0f)
+                || !Mathf.Approximately(boardLayout.flexibleHeight, 1f)
+                || !Mathf.Approximately(bottomLayout.minHeight, 28f)
+                || !Mathf.Approximately(bottomLayout.preferredHeight, 32f)
+                || !Mathf.Approximately(bottomLayout.flexibleHeight, 0f)
+                || blockerLayout.preferredWidth > 100f
+                || blockerLayout.preferredHeight > 40f
+                || blockerLayout.flexibleWidth > 0f
+                || blockerLayout.flexibleHeight > 0f
+                || hud.PercentageText.transform.parent != progressArea
+                || hud.TargetText.transform.parent != progressArea)
+            {
+                throw new InvalidOperationException(
+                    "The responsive layout must use fixed non-expanding HUD " +
+                    "bands, a flexible board, a grouped progress area, and a " +
+                    "bounded non-stretching UI blocker.");
+            }
+
+            Transform[] fixedHeightGroups =
+            {
+                topHud,
+                progressArea,
+                bottomHud,
+            };
+            for (int groupIndex = 0;
+                 groupIndex < fixedHeightGroups.Length;
+                 groupIndex++)
+            {
+                Transform group = fixedHeightGroups[groupIndex];
+                for (int childIndex = 0;
+                     childIndex < group.childCount;
+                     childIndex++)
+                {
+                    LayoutElement childLayout = group.GetChild(childIndex)
+                        .GetComponent<LayoutElement>();
+                    if (childLayout == null || childLayout.flexibleHeight > 0f)
+                    {
+                        throw new InvalidOperationException(
+                            $"'{group.name}/{group.GetChild(childIndex).name}' " +
+                            "requires an explicit non-flexible LayoutElement.");
+                    }
+                }
+            }
+
+            Transform[] fittedObjects =
+            {
+                safeArea,
+                topHud,
+                progressArea,
+                blocker,
+                boardViewport,
+                bottomHud,
+            };
+            for (int index = 0; index < fittedObjects.Length; index++)
+            {
+                GameObject candidate = fittedObjects[index].gameObject;
+                if (candidate.GetComponent<ContentSizeFitter>() != null
+                    || candidate.GetComponent<AspectRatioFitter>() != null)
+                {
+                    throw new InvalidOperationException(
+                        $"'{candidate.name}' has a fitter that conflicts with " +
+                        "the authoritative parent layout.");
+                }
             }
         }
 
@@ -556,6 +856,35 @@ namespace Cutrium.Editor.Setup
             var rectTransform = (RectTransform)gameObject.transform;
             rectTransform.SetParent(parent, false);
             return rectTransform;
+        }
+
+        private static RectTransform GetOrMoveUiChild(
+            Transform legacyParent,
+            Transform desiredParent,
+            string name)
+        {
+            Transform existing = desiredParent.Find(name);
+            if (existing == null)
+            {
+                existing = legacyParent.Find(name);
+                if (existing != null)
+                {
+                    existing.SetParent(desiredParent, false);
+                }
+            }
+
+            if (existing == null)
+            {
+                return GetOrCreateUiChild(desiredParent, name);
+            }
+
+            if (existing is RectTransform existingRect)
+            {
+                return existingRect;
+            }
+
+            throw new InvalidOperationException(
+                $"Existing UI child '{name}' is not a RectTransform.");
         }
 
         private static T GetOrAddComponent<T>(GameObject gameObject)

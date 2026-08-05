@@ -196,10 +196,10 @@ namespace Cutrium.PlayModeTests
         {
             _testMouse = InputSystem.AddDevice<Mouse>();
             InputSystem.EnableDevice(_testMouse);
-            RectTransform topHud = _compositionRoot.transform.parent
-                .Find("Canvas/SafeAreaRoot/TopHUD")
+            RectTransform hudBlocker = _compositionRoot.transform.parent
+                .Find("Canvas/SafeAreaRoot/TopHUD/HudBlockerButton")
                 .GetComponent<RectTransform>();
-            Vector2 hudCenter = GetScreenCenter(topHud);
+            Vector2 hudCenter = GetScreenCenter(hudBlocker);
             Vector2 boardCenter = _compositionRoot.BoardCameraFitter.BoardScreenRect.center;
             var samples = new List<PointerSample>();
             _compositionRoot.PointerInput.Sampled += samples.Add;

@@ -21,6 +21,9 @@ namespace Cutrium.Presentation.HUD
         private GameObject _completeOverlay;
 
         [SerializeField]
+        private CanvasGroup _completionCanvasGroup;
+
+        [SerializeField]
         private Text _completeText;
 
         [SerializeField]
@@ -36,6 +39,8 @@ namespace Cutrium.Presentation.HUD
 
         public GameObject CompleteOverlay => _completeOverlay;
 
+        public CanvasGroup CompletionCanvasGroup => _completionCanvasGroup;
+
         public Button RetryButton => _retryButton;
 
         public void Configure(
@@ -43,6 +48,7 @@ namespace Cutrium.Presentation.HUD
             Text percentageText,
             Text targetText,
             GameObject completeOverlay,
+            CanvasGroup completionCanvasGroup,
             Text completeText,
             Button retryButton)
         {
@@ -51,8 +57,10 @@ namespace Cutrium.Presentation.HUD
             _percentageText = percentageText;
             _targetText = targetText;
             _completeOverlay = completeOverlay;
+            _completionCanvasGroup = completionCanvasGroup;
             _completeText = completeText;
             _retryButton = retryButton;
+            SetCompletionVisible(false);
             if (isActiveAndEnabled && Application.isPlaying)
             {
                 SubscribeButton();
@@ -82,10 +90,7 @@ namespace Cutrium.Presentation.HUD
 
             bool completed = _controller.Session.LevelStatus
                 == CaptureLevelStatus.Completed;
-            if (_completeOverlay != null)
-            {
-                _completeOverlay.SetActive(completed);
-            }
+            SetCompletionVisible(completed);
 
             if (_completeText != null)
             {
@@ -141,6 +146,23 @@ namespace Cutrium.Presentation.HUD
         {
             _controller.RetryLevel();
             RefreshNow();
+        }
+
+        private void SetCompletionVisible(bool visible)
+        {
+            if (_completeOverlay != null && !_completeOverlay.activeSelf)
+            {
+                _completeOverlay.SetActive(true);
+            }
+
+            if (_completionCanvasGroup == null)
+            {
+                return;
+            }
+
+            _completionCanvasGroup.alpha = visible ? 1f : 0f;
+            _completionCanvasGroup.interactable = visible;
+            _completionCanvasGroup.blocksRaycasts = visible;
         }
     }
 }

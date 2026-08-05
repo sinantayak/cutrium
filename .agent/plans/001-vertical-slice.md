@@ -1396,6 +1396,26 @@ human input at their natural gates:
   and is checkpointed by the commit containing this plan update.
 - [x] Milestone 2 complete, validated, and checkpointed by the commit
   containing this plan update.
+- [x] 2026-08-05: Traced the manual completion failure through session,
+  controller, HUD polling, serialized references, Canvas state, hierarchy, and
+  layout. A deterministic over-target run captures exactly 140/160, or 0.875,
+  and enters `CaptureLevelStatus.Completed`.
+- [x] 2026-08-05: Completed the focused Milestone 2 manual-acceptance cleanup:
+  compact HUD bands, dominant board viewport, small UI-start blocker, removal
+  of obsolete shell copy, and an always-active topmost completion overlay
+  hidden by `CanvasGroup` outside completion.
+- [x] 2026-08-05: The cleanup passes 130 of 130 Edit Mode and 43 of 43 Play
+  Mode tests, including over-target completion and serialized Retry, with
+  byte-idempotent scene setup and no protected-file diff.
+- [x] 2026-08-05: Human screenshot review exposed that TopHUD still inherited
+  flexible height from its `HorizontalLayoutGroup`; measured the inflated
+  resolved rectangles at all three portrait targets before changing layout.
+- [x] 2026-08-05: Removed the remaining implicit HUD flexibility, grouped the
+  progress labels, bounded UI TEST at 88-by-36, reduced the debug strip to 32,
+  and gave all remaining vertical space to BoardViewport.
+- [x] 2026-08-05: The responsive follow-up passes 130 of 130 Edit Mode and 43
+  of 43 Play Mode tests, resolved-rectangle thresholds at every target, and a
+  byte-stable second setup run with no protected-file diff.
 - [ ] Milestone 3 complete; human core-fun review recorded; checkpointed.
 - [ ] Milestone 4 complete, validated, and checkpointed.
 - [ ] Milestone 5 complete, validated, and checkpointed.
@@ -1465,6 +1485,17 @@ human input at their natural gates:
   diagnostic and use a deterministic fallback; true circle straddles reject
   the split. ADR-012 records the model, 75% target, completion blocking, and
   same-session Retry behavior.
+- **2026-08-05 — Implemented:** the completion overlay remains active under an
+  always-active HUD presenter. A serialized `CanvasGroup` owns visibility,
+  interaction, and raycast blocking; a `LayoutElement` with `ignoreLayout`
+  keeps the overlay centered over the whole Safe Area and prevents it from
+  consuming a vertical-layout row. The overlay remains the last Canvas sibling.
+- **2026-08-05 — Implemented:** the first-playable scene retains the fixed
+  10-by-16 board and shared mapper while using an explicitly non-flexible
+  60-unit TopHUD, an explicitly non-flexible 32-unit BottomHUD, compact
+  safe-area padding/spacing, and a flexible-height-1 dominant `BoardViewport`.
+  The 88-by-36 `UI TEST` button remains the explicit UI-start blocking target.
+  Every controlled HUD child has its own non-flexible `LayoutElement`.
 
 ## Discoveries
 
@@ -1562,6 +1593,42 @@ human input at their natural gates:
   then produced the identical `VerticalSlice.unity` SHA-256
   `E832DBAF09C9D79B804150235E4718E7CC0BBBFAFCAF66B995D12406DBC13AD6`,
   proving the settled Phase 2C setup is byte-idempotent.
+- The human-visible completion failure was real even though completion logic
+  was correct. Before the fix, `CaptureHudPresenter.LateUpdate` polled the
+  authoritative completed session and activated the correctly referenced,
+  last-sibling overlay, but that overlay was a normal child of
+  `SafeAreaRoot`'s `VerticalLayoutGroup`. With no `ignoreLayout` element it was
+  controlled as an extra zero-preferred-height row, so `activeSelf` tests
+  passed while the panel and Retry were not visibly usable. There was no
+  pre-fix `CanvasGroup`; the Retry `Button` was serialized and interactable,
+  and the overlay `Image` was a raycast target.
+- The historical raw fraction behind the human-observed rounded `Captured
+  87%` label was not persisted and cannot be recovered from the label alone.
+  The focused deterministic reproduction crosses the same 75% boundary at
+  exactly `140 / 160 = 0.875`, observes `CaptureLevelStatus.Completed`, and
+  verifies that the external HUD presenter receives that state through its
+  normal `LateUpdate` polling path.
+- The oversized-board perception came from the Milestone 1B debug shell
+  reserving 132 logical units for `TopHUD`, 176 for `BottomHUD`, 56 vertical
+  padding, and 44 inter-row spacing, plus oversized debug copy and a 230-by-82
+  blocker. Compacting those fixed bands substantially increases the board's
+  share without changing its logical dimensions or mapping.
+- The first compacting pass left `TopHUD`'s `HorizontalLayoutGroup` with
+  `childForceExpandHeight=true` and left the TopHUD `LayoutElement` flexible
+  height unset at `-1`. The horizontal group therefore reported a flexible
+  height of 1 to `SafeAreaRoot`'s vertical group. Surplus height was split
+  evenly between TopHUD and BoardViewport, and the same force-expand setting
+  stretched UI TEST to the inflated TopHUD content height. Preferred-height
+  assertions missed this because they never rebuilt and measured the actual
+  hierarchy.
+- A focused pre-fix Unity run measured TopHUD/BoardViewport/BottomHUD as
+  787/1025/64 at 1080-by-1920, 900.31/1138.31/64 at 1080-by-2400, and
+  658.38/896.38/64 at 1536-by-2048 Canvas units. UI TEST measured
+  120-by-767, 120-by-880.31, and 120-by-638.38 respectively.
+- After explicitly setting HUD flexibility to zero, disabling force-expand
+  height, and rebuilding cloned serialized hierarchies, the same targets
+  resolve TopHUD/BoardViewport/BottomHUD as 60/1808/32,
+  60/2034.63/32, and 60/1550.77/32. UI TEST is 88-by-36 at every target.
 
 ## Validation Record
 
@@ -1933,6 +2000,105 @@ The package manifest, package lock, `SampleScene.unity`, `ProjectSettings`,
 `EditorSettings`, and `EditorBuildSettings` hashes remain exactly unchanged.
 Phase 2C and the complete Milestone 2 automated acceptance gate pass.
 
+### 2026-08-05 — Milestone 2 manual-acceptance cleanup validation
+
+The retained Editor utility applied the layout and overlay changes through
+normal Unity serialization:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone2SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-ManualCleanup-Setup.log'
+```
+
+The final idempotence run used the same command with
+`Cutrium-M2-ManualCleanup-Setup-Idempotence.log`. Both completed successfully,
+and `VerticalSlice.unity` retained SHA-256
+`F5F8DC48B5A9C6DE2B9F603F6FB695EC80834F44652DDE1FEF7C58779865E980`
+before and after the idempotence run.
+
+The exact final Edit Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-ManualCleanup-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-ManualCleanup-EditMode.log'
+```
+
+Result: 130 discovered, 130 passed, 0 failed, 0 skipped.
+
+The exact final Play Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-ManualCleanup-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-ManualCleanup-PlayMode.log'
+```
+
+Result: 43 discovered, 43 passed, 0 failed, 0 skipped. The added coverage
+verifies an active-but-hidden pre-completion overlay, exact 0.875 completion,
+normal presenter polling, visible/interactable/raycast-blocking completion,
+serialized Retry reset to zero with the initial room and threat restored,
+hidden post-Retry presentation, no duplicate systems, compact layout policy,
+all three target portrait aspects, the small HUD blocker, and decorative-margin
+rejection.
+
+The final setup and test logs contain zero C# compiler errors and zero C#
+compiler warnings. Unity emitted its known transient licensing update message
+but completed licensing and every command. Package files, `SampleScene.unity`,
+all `ProjectSettings`, `EditorSettings.asset`, and `EditorBuildSettings.asset`
+have no Git diff. Unity generated an unrelated untracked
+`ProjectSettings/SceneTemplateSettings.json` during batch startup; it was
+removed after validation and is not part of the worktree. Manual interactive
+Game View and device checks remain required before accepting the visual feel.
+
+### 2026-08-05 — Milestone 2 responsive-layout follow-up validation
+
+The retained setup utility was run with the exact Editor after the screenshot
+diagnosis:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone2SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-Responsive-Setup.log'
+```
+
+A second run used `Cutrium-M2-Responsive-Setup-Idempotence.log`. Both exited
+successfully and left `VerticalSlice.unity` at the identical SHA-256
+`D7721F4AEB2C813420B734295FF70FAA695B046D7FD4DE47E3B6B1235DD53246`.
+
+Before changing production setup, the strengthened resolved-layout test was
+run against the prior scene and failed all three cases with these measurements:
+
+| Target | Previous TopHUD | Previous BoardViewport | Previous BottomHUD | Previous UI TEST |
+| --- | ---: | ---: | ---: | ---: |
+| 1080×1920 | 787.00 | 1025.00 | 64.00 | 120.00×767.00 |
+| 1080×2400 | 900.31 | 1138.31 | 64.00 | 120.00×880.31 |
+| 1536×2048 | 658.38 | 896.38 | 64.00 | 120.00×638.38 |
+
+The post-fix focused run passed all three cases after cloning the actual
+serialized SafeArea hierarchy, assigning each target's CanvasScaler-resolved
+size, and rebuilding it with `LayoutRebuilder`:
+
+| Target | Final TopHUD | Final BoardViewport | Final BottomHUD | Final UI TEST |
+| --- | ---: | ---: | ---: | ---: |
+| 1080×1920 | 60.00 | 1808.00 | 32.00 | 88.00×36.00 |
+| 1080×2400 | 60.00 | 2034.63 | 32.00 | 88.00×36.00 |
+| 1536×2048 | 60.00 | 1550.77 | 32.00 | 88.00×36.00 |
+
+The exact final full-suite commands were:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-Responsive-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-Responsive-EditMode.log'
+```
+
+Result: 130 discovered, 130 passed, 0 failed, 0 skipped.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-Responsive-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M2-Responsive-PlayMode.log'
+```
+
+Result: 43 discovered, 43 passed, 0 failed, 0 skipped. The Play Mode suite now
+asserts actual resolved rectangles, bounded UI TEST dimensions, non-flexible
+HUD children, complete board aspect fitting inside BoardViewport, full Safe
+Area overlay coverage, completion raycast blocking, HUD-start blocking, and
+decorative-margin rejection. Final setup and test logs contain zero C# compiler
+errors and zero C# compiler warnings. Package files, `SampleScene.unity`, all
+`ProjectSettings`, `EditorSettings.asset`, and `EditorBuildSettings.asset`
+remain protected and unchanged. Interactive Game View review remains required.
+
 ## Final Outcome
 
 Outcome as of 2026-08-05: Phase 2A is checkpointed at `079617d`, and Phase 2B
@@ -1941,4 +2107,9 @@ Play Mode tests with zero project-code compiler diagnostics and no protected
 file changes. The first complete one-level playable loop now includes movement,
 barrier success/failure, rectangular capture, logical percentage, 75%
 completion, and deterministic same-scene Retry. Milestone 2 is complete and
-ready for its permitted local checkpoint. Work stops here before Milestone 3.
+checkpointed at `0993950`. The focused manual-acceptance cleanup now passes
+130 of 130 Edit Mode and 43 of 43 Play Mode tests; its scene setup is
+byte-idempotent and protected files remain unchanged. The responsive follow-up
+also passes those full suites with measured 60/remaining-flex/32 layout bands
+at all three portrait targets. It is ready for a human-created follow-up
+checkpoint after interactive visual review. Work stops here before Milestone 3.
