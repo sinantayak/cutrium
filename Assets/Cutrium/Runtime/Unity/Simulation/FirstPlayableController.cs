@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
@@ -53,6 +54,10 @@ namespace Cutrium.Unity.Simulation
         [Range(0.01f, 1f)]
         private float _targetCapturedFraction = 0.75f;
 
+        [SerializeField]
+        private CoreFunLevelDefinition[] _levelDefinitions =
+            Array.Empty<CoreFunLevelDefinition>();
+
         [Header("Geometry Tolerances")]
         [SerializeField]
         private float _distanceTolerance = 0.0001f;
@@ -68,6 +73,8 @@ namespace Cutrium.Unity.Simulation
 
         private Action<float> _tickAction;
         private FixedStepAccumulator _accumulator;
+        private CoreFunLevelCatalog _levelCatalog;
+        private bool _completionReported;
 
         public ThreatMotionSession Session { get; private set; }
 
@@ -78,25 +85,70 @@ namespace Cutrium.Unity.Simulation
                 ? Session.InitialRoom.Bounds
                 : new LogicalRect(0f, 0f, 10f, 16f);
 
-        public float ThreatRadius => _threatRadius;
+        public float ThreatRadius => _levelCatalog != null
+            ? CurrentLevelConfiguration.ThreatMotion.Radius
+            : _threatRadius;
 
-        public float ThreatSpeed => _threatSpeed;
+        public float ThreatSpeed => _levelCatalog != null
+            ? CurrentLevelConfiguration.ThreatMotion.Speed
+            : _threatSpeed;
 
-        public Vector2 InitialPosition => _initialPosition;
+        public Vector2 InitialPosition => _levelCatalog != null
+            ? new Vector2(
+                CurrentLevelConfiguration.ThreatMotion.InitialPosition.X,
+                CurrentLevelConfiguration.ThreatMotion.InitialPosition.Y)
+            : _initialPosition;
 
-        public Vector2 InitialDirection => _initialDirection;
+        public Vector2 InitialDirection => _levelCatalog != null
+            ? new Vector2(
+                CurrentLevelConfiguration.ThreatMotion.InitialDirection.X,
+                CurrentLevelConfiguration.ThreatMotion.InitialDirection.Y)
+            : _initialDirection;
 
-        public int MaximumCatchUpTicks => _maximumCatchUpTicks;
+        public int MaximumCatchUpTicks => _levelCatalog != null
+            ? CurrentLevelConfiguration.MaximumCatchUpTicks
+            : _maximumCatchUpTicks;
 
         public BarrierGestureAdapter BarrierGesture => _barrierGesture;
 
-        public float BarrierGrowthSpeed => _barrierGrowthSpeed;
+        public float BarrierGrowthSpeed => _levelCatalog != null
+            ? CurrentLevelConfiguration.Barrier.GrowthSpeed
+            : _barrierGrowthSpeed;
 
-        public float BarrierCollisionHalfWidth => _barrierCollisionHalfWidth;
+        public float BarrierCollisionHalfWidth => _levelCatalog != null
+            ? CurrentLevelConfiguration.Barrier.CollisionHalfWidth
+            : _barrierCollisionHalfWidth;
 
-        public float BarrierMinimumEdgeMargin => _barrierMinimumEdgeMargin;
+        public float BarrierMinimumEdgeMargin => _levelCatalog != null
+            ? CurrentLevelConfiguration.Barrier.MinimumEdgeMargin
+            : _barrierMinimumEdgeMargin;
 
-        public float TargetCapturedFraction => _targetCapturedFraction;
+        public float TargetCapturedFraction => _levelCatalog != null
+            ? CurrentLevelConfiguration.Capture.TargetCapturedFraction
+            : _targetCapturedFraction;
+
+        public IReadOnlyList<CoreFunLevelDefinition> LevelDefinitions =>
+            _levelDefinitions;
+
+        public CoreFunLevelConfiguration CurrentLevelConfiguration
+        {
+            get;
+            private set;
+        }
+
+        public int CurrentLevelIndex { get; private set; }
+
+        public int CurrentLevelNumber =>
+            CurrentLevelConfiguration.DisplayNumber;
+
+        public string CurrentLevelId => CurrentLevelConfiguration.StableId;
+
+        public int LevelCount => _levelCatalog?.Count ?? 0;
+
+        public bool HasNextLevel =>
+            _levelCatalog != null && CurrentLevelIndex + 1 < _levelCatalog.Count;
+
+        public CoreFunMetricsTracker Metrics { get; private set; }
 
         public BarrierStartResult LastBarrierStartResult { get; private set; }
 
@@ -107,6 +159,12 @@ namespace Cutrium.Unity.Simulation
         public float DroppedSimulationTime { get; private set; }
 
         public int RetryCount { get; private set; }
+
+        public int LevelLoadCount { get; private set; }
+
+        public int SequenceRestartCount { get; private set; }
+
+        public int CompletionLogCount { get; private set; }
 
         private void Awake()
         {
@@ -184,24 +242,101 @@ namespace Cutrium.Unity.Simulation
             _targetCapturedFraction = targetCapturedFraction;
         }
 
+        public void ConfigureLevelsForSetup(
+            IReadOnlyList<CoreFunLevelDefinition> levelDefinitions)
+        {
+            if (levelDefinitions == null)
+            {
+                throw new ArgumentNullException(nameof(levelDefinitions));
+            }
+
+            var definitions = new CoreFunLevelDefinition[levelDefinitions.Count];
+            var configurations =
+                new CoreFunLevelConfiguration[levelDefinitions.Count];
+            for (int index = 0; index < levelDefinitions.Count; index++)
+            {
+                CoreFunLevelDefinition definition = levelDefinitions[index]
+                    ?? throw new ArgumentException(
+                        "Level definitions cannot contain null entries.",
+                        nameof(levelDefinitions));
+                definitions[index] = definition;
+                configurations[index] = definition.ToRuntimeConfiguration();
+            }
+
+            _ = new CoreFunLevelCatalog(configurations);
+            _levelDefinitions = definitions;
+        }
+
         public BarrierStartResult SubmitBarrierIntent(BarrierIntent intent)
         {
             InitializeOnce();
             LastBarrierStartResult = Session.TryStartBarrier(intent);
+            if (LastBarrierStartResult.Accepted)
+            {
+                Metrics.RecordBarrierAttempt();
+            }
+
             return LastBarrierStartResult;
         }
 
         public void RetryLevel()
         {
             InitializeOnce();
-            Session.Reset();
-            _accumulator.Reset();
-            _barrierGesture?.ResetForRetry();
-            _barrierGesture?.PointerInput?.ResetInteractionState();
-            LastBarrierStartResult = default;
-            CappedCatchUpCount = 0;
-            DroppedSimulationTime = 0f;
+            Metrics.RetryCurrentLevel();
+            LoadCurrentLevel();
             RetryCount++;
+        }
+
+        public bool TryAdvanceToNextLevel()
+        {
+            InitializeOnce();
+            if (Session.LevelStatus != CaptureLevelStatus.Completed
+                || !HasNextLevel)
+            {
+                return false;
+            }
+
+            int nextIndex = CurrentLevelIndex + 1;
+            Metrics.AdvanceTo(_levelCatalog[nextIndex]);
+            CurrentLevelIndex = nextIndex;
+            CurrentLevelConfiguration = _levelCatalog[nextIndex];
+            LoadCurrentLevel();
+            return true;
+        }
+
+        public bool RestartSequence()
+        {
+            InitializeOnce();
+            bool completedSequence =
+                !HasNextLevel
+                && Session.LevelStatus == CaptureLevelStatus.Completed;
+            if (completedSequence)
+            {
+                Metrics.CompleteSequenceAndRestart(_levelCatalog[0]);
+            }
+            else
+            {
+                Metrics.StartSequence(_levelCatalog[0]);
+            }
+
+            CurrentLevelIndex = 0;
+            CurrentLevelConfiguration = _levelCatalog[0];
+            LoadCurrentLevel();
+            SequenceRestartCount++;
+            return completedSequence;
+        }
+
+        public bool AdvanceLevelOrRestartSequence()
+        {
+            InitializeOnce();
+            if (Session.LevelStatus != CaptureLevelStatus.Completed)
+            {
+                return false;
+            }
+
+            return HasNextLevel
+                ? TryAdvanceToNextLevel()
+                : RestartSequence();
         }
 
         private void InitializeOnce()
@@ -216,36 +351,123 @@ namespace Cutrium.Unity.Simulation
                 _timeTolerance,
                 _cornerTimeTolerance,
                 _areaTolerance);
-            var configuration = new ThreatMotionConfiguration(
-                new LogicalRect(0f, 0f, 10f, 16f),
+            _levelCatalog = BuildLevelCatalog();
+            CurrentLevelIndex = 0;
+            CurrentLevelConfiguration = _levelCatalog[0];
+            Metrics = new CoreFunMetricsTracker();
+            Metrics.StartSequence(CurrentLevelConfiguration);
+            _tickAction = TickSession;
+            InitializationCount++;
+            LoadCurrentLevel();
+        }
+
+        private void TickSession(float elapsedTime)
+        {
+            if (Session.LevelStatus == CaptureLevelStatus.Playing)
+            {
+                Metrics.AdvanceTime(elapsedTime);
+            }
+
+            float capturedBefore = Session.CapturedFraction;
+            Session.Tick(elapsedTime);
+            if (Session.LastBarrierEvent == BarrierSimulationEvent.Failed)
+            {
+                Metrics.RecordBarrierFailure(Session.CapturedFraction);
+            }
+            else if (Session.LastBarrierEvent == BarrierSimulationEvent.Locked)
+            {
+                Metrics.RecordBarrierSuccess(
+                    Session.CapturedFraction - capturedBefore,
+                    Session.CapturedFraction);
+            }
+
+            if (!_completionReported
+                && Session.LevelStatus == CaptureLevelStatus.Completed)
+            {
+                _completionReported = true;
+                Metrics.RecordCompletion(Session.CapturedFraction);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                CompletionLogCount++;
+                CoreFunLevelMetrics metrics = Metrics.Current;
+                Debug.Log(
+                    $"CoreFun Level {metrics.LevelNumber} '{metrics.LevelId}' " +
+                    $"complete: {metrics.ElapsedSeconds:0.00}s, " +
+                    $"attempts={metrics.BarrierAttempts}, " +
+                    $"failed={metrics.FailedBarriers}, " +
+                    $"successful={metrics.SuccessfulBarriers}, " +
+                    $"largest={metrics.LargestSingleCapturedFraction:P0}, " +
+                    $"captured={metrics.FinalCapturedFraction:P0}, " +
+                    $"retries={metrics.RetryCount}.");
+#endif
+            }
+        }
+
+        private CoreFunLevelCatalog BuildLevelCatalog()
+        {
+            if (_levelDefinitions != null && _levelDefinitions.Length > 0)
+            {
+                var configurations =
+                    new CoreFunLevelConfiguration[_levelDefinitions.Length];
+                for (int index = 0; index < _levelDefinitions.Length; index++)
+                {
+                    CoreFunLevelDefinition definition = _levelDefinitions[index]
+                        ?? throw new InvalidOperationException(
+                            "Serialized level definitions cannot be null.");
+                    configurations[index] =
+                        definition.ToRuntimeConfiguration();
+                }
+
+                return new CoreFunLevelCatalog(configurations);
+            }
+
+            var legacyThreat = new ThreatMotionConfiguration(
+                CoreFunLevelConfiguration.FixedBoardBounds,
                 new LogicalPoint(_initialPosition.x, _initialPosition.y),
                 new LogicalVector(_initialDirection.x, _initialDirection.y),
                 _threatSpeed,
                 _threatRadius,
                 _maximumImpactsPerTick);
-            var barrierConfiguration = new BarrierConfiguration(
+            var legacyBarrier = new BarrierConfiguration(
                 _barrierGrowthSpeed,
                 _barrierCollisionHalfWidth,
                 _barrierMinimumEdgeMargin,
                 _maximumBarrierSolverIterations);
-            var captureConfiguration = new CaptureLevelConfiguration(
+            var legacyCapture = new CaptureLevelConfiguration(
                 _targetCapturedFraction);
+            return new CoreFunLevelCatalog(new[]
+            {
+                new CoreFunLevelConfiguration(
+                    "legacy-first-playable",
+                    1,
+                    legacyThreat,
+                    legacyBarrier,
+                    legacyCapture,
+                    _maximumCatchUpTicks,
+                    string.Empty,
+                    0f),
+            });
+        }
+
+        private void LoadCurrentLevel()
+        {
+            ThreatMotionConfiguration threat =
+                CurrentLevelConfiguration.ThreatMotion;
             Session = new ThreatMotionSession(
-                configuration,
-                barrierConfiguration,
-                captureConfiguration,
+                threat,
+                CurrentLevelConfiguration.Barrier,
+                CurrentLevelConfiguration.Capture,
                 Tolerance);
             _accumulator = new FixedStepAccumulator(
                 SimulationStep,
-                _maximumCatchUpTicks,
+                CurrentLevelConfiguration.MaximumCatchUpTicks,
                 Tolerance);
-            _tickAction = TickSession;
-            InitializationCount++;
-        }
-
-        private void TickSession(float elapsedTime)
-        {
-            Session.Tick(elapsedTime);
+            _barrierGesture?.ResetForRetry();
+            _barrierGesture?.PointerInput?.ResetInteractionState();
+            LastBarrierStartResult = default;
+            CappedCatchUpCount = 0;
+            DroppedSimulationTime = 0f;
+            _completionReported = false;
+            LevelLoadCount++;
         }
 
         private void OnBarrierIntentCommitted(BarrierIntent intent)

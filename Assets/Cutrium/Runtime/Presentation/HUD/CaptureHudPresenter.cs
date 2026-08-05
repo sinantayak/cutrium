@@ -15,6 +15,9 @@ namespace Cutrium.Presentation.HUD
         private Text _percentageText;
 
         [SerializeField]
+        private Text _levelText;
+
+        [SerializeField]
         private Text _targetText;
 
         [SerializeField]
@@ -29,11 +32,20 @@ namespace Cutrium.Presentation.HUD
         [SerializeField]
         private Button _retryButton;
 
-        private bool _buttonSubscribed;
+        [SerializeField]
+        private Button _nextButton;
+
+        [SerializeField]
+        private Text _nextButtonLabel;
+
+        private bool _retryButtonSubscribed;
+        private bool _nextButtonSubscribed;
 
         public FirstPlayableController Controller => _controller;
 
         public Text PercentageText => _percentageText;
+
+        public Text LevelText => _levelText;
 
         public Text TargetText => _targetText;
 
@@ -42,6 +54,10 @@ namespace Cutrium.Presentation.HUD
         public CanvasGroup CompletionCanvasGroup => _completionCanvasGroup;
 
         public Button RetryButton => _retryButton;
+
+        public Button NextButton => _nextButton;
+
+        public Text NextButtonLabel => _nextButtonLabel;
 
         public void Configure(
             FirstPlayableController controller,
@@ -52,18 +68,46 @@ namespace Cutrium.Presentation.HUD
             Text completeText,
             Button retryButton)
         {
-            UnsubscribeButton();
+            Configure(
+                controller,
+                null,
+                percentageText,
+                targetText,
+                completeOverlay,
+                completionCanvasGroup,
+                completeText,
+                retryButton,
+                null,
+                null);
+        }
+
+        public void Configure(
+            FirstPlayableController controller,
+            Text levelText,
+            Text percentageText,
+            Text targetText,
+            GameObject completeOverlay,
+            CanvasGroup completionCanvasGroup,
+            Text completeText,
+            Button retryButton,
+            Button nextButton,
+            Text nextButtonLabel)
+        {
+            UnsubscribeButtons();
             _controller = controller;
+            _levelText = levelText;
             _percentageText = percentageText;
             _targetText = targetText;
             _completeOverlay = completeOverlay;
             _completionCanvasGroup = completionCanvasGroup;
             _completeText = completeText;
             _retryButton = retryButton;
+            _nextButton = nextButton;
+            _nextButtonLabel = nextButtonLabel;
             SetCompletionVisible(false);
             if (isActiveAndEnabled && Application.isPlaying)
             {
-                SubscribeButton();
+                SubscribeButtons();
             }
         }
 
@@ -76,16 +120,21 @@ namespace Cutrium.Presentation.HUD
 
             float captured = _controller.Session.CapturedFraction;
             float target = _controller.Session.TargetCapturedFraction;
+            if (_levelText != null)
+            {
+                _levelText.text = $"LEVEL {_controller.CurrentLevelNumber}";
+            }
+
             if (_percentageText != null)
             {
                 _percentageText.text =
-                    $"Captured {Mathf.RoundToInt(captured * 100f)}%";
+                    $"Captured {RoundedPercent(captured)}%";
             }
 
             if (_targetText != null)
             {
                 _targetText.text =
-                    $"Target {Mathf.RoundToInt(target * 100f)}%";
+                    $"Target {RoundedPercent(target)}%";
             }
 
             bool completed = _controller.Session.LevelStatus
@@ -94,7 +143,21 @@ namespace Cutrium.Presentation.HUD
 
             if (_completeText != null)
             {
-                _completeText.text = "LEVEL COMPLETE";
+                CoreFunLevelMetrics metrics = _controller.Metrics.Current;
+                _completeText.text = completed
+                    ? $"LEVEL {_controller.CurrentLevelNumber} COMPLETE\n" +
+                      $"Captured {RoundedPercent(captured)}%  " +
+                      $"Time {metrics.ElapsedSeconds:0.0}s\n" +
+                      $"Attempts {metrics.BarrierAttempts}  " +
+                      $"Breaks {metrics.FailedBarriers}"
+                    : $"LEVEL {_controller.CurrentLevelNumber}";
+            }
+
+            if (_nextButtonLabel != null)
+            {
+                _nextButtonLabel.text = _controller.HasNextLevel
+                    ? "NEXT"
+                    : "RESTART SEQUENCE";
             }
         }
 
@@ -102,13 +165,13 @@ namespace Cutrium.Presentation.HUD
         {
             if (Application.isPlaying)
             {
-                SubscribeButton();
+                SubscribeButtons();
             }
         }
 
         private void OnDisable()
         {
-            UnsubscribeButton();
+            UnsubscribeButtons();
         }
 
         private void LateUpdate()
@@ -116,35 +179,46 @@ namespace Cutrium.Presentation.HUD
             RefreshNow();
         }
 
-        private void SubscribeButton()
+        private void SubscribeButtons()
         {
-            if (_buttonSubscribed || _retryButton == null)
+            if (!_retryButtonSubscribed && _retryButton != null)
             {
-                return;
+                _retryButton.onClick.AddListener(OnRetryClicked);
+                _retryButtonSubscribed = true;
             }
 
-            _retryButton.onClick.AddListener(OnRetryClicked);
-            _buttonSubscribed = true;
+            if (!_nextButtonSubscribed && _nextButton != null)
+            {
+                _nextButton.onClick.AddListener(OnNextClicked);
+                _nextButtonSubscribed = true;
+            }
         }
 
-        private void UnsubscribeButton()
+        private void UnsubscribeButtons()
         {
-            if (!_buttonSubscribed)
-            {
-                return;
-            }
-
-            if (_retryButton != null)
+            if (_retryButtonSubscribed && _retryButton != null)
             {
                 _retryButton.onClick.RemoveListener(OnRetryClicked);
             }
 
-            _buttonSubscribed = false;
+            if (_nextButtonSubscribed && _nextButton != null)
+            {
+                _nextButton.onClick.RemoveListener(OnNextClicked);
+            }
+
+            _retryButtonSubscribed = false;
+            _nextButtonSubscribed = false;
         }
 
         private void OnRetryClicked()
         {
             _controller.RetryLevel();
+            RefreshNow();
+        }
+
+        private void OnNextClicked()
+        {
+            _controller.AdvanceLevelOrRestartSequence();
             RefreshNow();
         }
 
@@ -164,5 +238,8 @@ namespace Cutrium.Presentation.HUD
             _completionCanvasGroup.interactable = visible;
             _completionCanvasGroup.blocksRaycasts = visible;
         }
+
+        private static int RoundedPercent(float fraction) =>
+            Mathf.FloorToInt(fraction * 100f + 0.5f);
     }
 }

@@ -49,7 +49,7 @@ namespace Cutrium.PlayModeTests
             Assert.That(_hudPresenter.CompleteOverlay, Is.Not.Null);
             Assert.That(_hudPresenter.CompletionCanvasGroup, Is.Not.Null);
             Assert.That(_hudPresenter.RetryButton, Is.Not.Null);
-            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.75f));
+            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.625f));
         }
 
         [Test]
@@ -143,7 +143,7 @@ namespace Cutrium.PlayModeTests
                     FirstPlayableController.SimulationStep);
             }
 
-            CompleteCut(
+            CompleteCutEventually(
                 new LogicalPoint(7f, 38f / 3f),
                 BarrierOrientation.Horizontal);
 
@@ -180,9 +180,9 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Session.Threat.Position,
                 Is.EqualTo(new LogicalPoint(5f, 8f)));
             Assert.That(_controller.Session.Threat.Velocity.X,
-                Is.EqualTo(2.4f).Within(0.000001f));
+                Is.EqualTo(2.08f).Within(0.000001f));
             Assert.That(_controller.Session.Threat.Velocity.Y,
-                Is.EqualTo(1.8f).Within(0.000001f));
+                Is.EqualTo(1.56f).Within(0.000001f));
             Assert.That(_controller.Session.Board.CapturedRooms, Is.Empty);
             Assert.That(_controller.Session.Board.CompletedBarriers, Is.Empty);
             Assert.That(_controller.Session.ActiveBarrier.HasValue, Is.False);
@@ -385,6 +385,44 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Session.ActiveBarrier.HasValue, Is.False);
             Assert.That(_controller.Session.LastBarrierEvent,
                 Is.EqualTo(BarrierSimulationEvent.Locked));
+        }
+
+        private void CompleteCutEventually(
+            LogicalPoint origin,
+            BarrierOrientation orientation)
+        {
+            for (int attempt = 0; attempt < 20; attempt++)
+            {
+                BarrierStartResult start = _controller.SubmitBarrierIntent(
+                    new BarrierIntent(origin, orientation));
+                Assert.That(
+                    start.Accepted,
+                    Is.True,
+                    start.RejectionReason.ToString());
+                for (int tick = 0;
+                     tick < 120 && _controller.Session.ActiveBarrier.HasValue;
+                     tick++)
+                {
+                    _controller.AdvanceSimulation(
+                        FirstPlayableController.SimulationStep);
+                }
+
+                if (_controller.Session.LastBarrierEvent
+                    == BarrierSimulationEvent.Locked)
+                {
+                    return;
+                }
+
+                Assert.That(_controller.Session.LastBarrierEvent,
+                    Is.EqualTo(BarrierSimulationEvent.Failed));
+                for (int tick = 0; tick < 30; tick++)
+                {
+                    _controller.AdvanceSimulation(
+                        FirstPlayableController.SimulationStep);
+                }
+            }
+
+            Assert.Fail("The deterministic 87.5% cut never found a safe window.");
         }
 
         private void BindScene()

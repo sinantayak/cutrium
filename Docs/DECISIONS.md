@@ -269,3 +269,37 @@ authority. Every applied split must preserve total logical area and unique
 threat ownership. Completion blocks new barrier creation, and Retry must restore
 the exact initial logical state without duplicating scene objects or event
 subscriptions.
+
+---
+
+## ADR-013 — Serialized Three-Level Catalog and In-Place Sequence Flow
+
+**Status:** Accepted
+
+**Context:**
+The core-fun review needs three tuned normal-threat levels, immediate Retry and
+Next, and useful development metrics without multiplying scenes or building the
+later full content pipeline.
+
+**Decision:**
+Serialize exactly three small `CoreFunLevelDefinition` records on the existing
+scene controller. Convert them to validated plain `CoreFunLevelConfiguration`
+values before play, order them through stable IDs and contiguous display
+numbers, and replace only the deterministic session when Retry, Next, or
+development Restart Sequence occurs. Keep the scene, controller, input,
+presenters, and subscriptions persistent. Track deterministic in-memory run
+metrics and emit a development Console summary at completion; do not add an
+analytics SDK, backend, save system, or ScriptableObject content framework yet.
+
+**Reasoning:**
+The three-level prototype needs inspectable tuning and repeatable resets, but a
+larger content architecture is premature before the human core-fun gate. Plain
+runtime conversion preserves the no-UnityEngine gameplay boundary and makes
+catalog, reset, and metrics behavior directly testable.
+
+**Consequences:**
+All three levels retain the fixed 10-by-16 board and the existing normal-threat
+mechanic. Retry and Next construct a fresh deterministic session in the same
+scene, reset gesture/pointer/presentation state, and never duplicate scene
+systems. The serialized catalog is intentionally milestone-sized and may be
+replaced by a broader content pipeline only after a later approved need.

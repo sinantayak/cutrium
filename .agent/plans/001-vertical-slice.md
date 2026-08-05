@@ -1416,7 +1416,22 @@ human input at their natural gates:
 - [x] 2026-08-05: The responsive follow-up passes 130 of 130 Edit Mode and 43
   of 43 Play Mode tests, resolved-rectangle thresholds at every target, and a
   byte-stable second setup run with no protected-file diff.
-- [ ] Milestone 3 complete; human core-fun review recorded; checkpointed.
+- [x] 2026-08-05: Milestone 3 core-fun build started from clean commit
+  `8fe4e56`; Unity `6000.3.21f1`, URP `17.3.0`, the enabled persistent
+  `VerticalSlice` scene, and all protected baseline hashes were reverified.
+- [x] 2026-08-05: Added a validated serialized three-level catalog, in-place
+  Retry/Next/development-restart flow, deterministic session replacement,
+  level-aware compact HUD, and in-memory completion metrics without adding a
+  new mechanic, scene, dependency, or content framework.
+- [x] 2026-08-05: Hardened the core-fun build with catalog/data/metrics,
+  sustained high-speed, narrow-room split, gesture/reset, full-sequence,
+  UI-blocking, mapping, and responsive Play Mode coverage.
+- [x] 2026-08-05: Milestone 3 automated implementation passes 146 of 146 Edit
+  Mode and 55 of 55 Play Mode tests, zero project-code compiler diagnostics,
+  byte-idempotent scene setup, and every protected-file gate. It is
+  checkpointed by the commit containing this plan update.
+- [ ] Human Milestone 3 core-fun review and explicit `GO`, `TUNE`, or `STOP`
+  decision recorded. Milestone 4 remains blocked until that human decision.
 - [ ] Milestone 4 complete, validated, and checkpointed.
 - [ ] Milestone 5 complete, validated, and checkpointed.
 - [ ] Milestone 6 complete, validated, and checkpointed.
@@ -1496,6 +1511,14 @@ human input at their natural gates:
   safe-area padding/spacing, and a flexible-height-1 dominant `BoardViewport`.
   The 88-by-36 `UI TEST` button remains the explicit UI-start blocking target.
   Every controlled HUD child has its own non-flexible `LayoutElement`.
+- **2026-08-05 — Implemented:** Milestone 3 uses exactly three serialized
+  `CoreFunLevelDefinition` entries converted to validated plain gameplay
+  configurations. Retry, Next, and development Restart Sequence replace only
+  the deterministic session while the scene/controller/input/presenters remain
+  singular and persistent. Deterministic in-memory metrics record sequence
+  start offsets, elapsed time, attempts, breaks, locks, largest capture, final
+  capture, Retry, Next, and sequence completion; ADR-013 records this bounded
+  pre-content-gate architecture.
 
 ## Discoveries
 
@@ -1629,6 +1652,24 @@ human input at their natural gates:
   height, and rebuilding cloned serialized hierarchies, the same targets
   resolve TopHUD/BoardViewport/BottomHUD as 60/1808/32,
   60/2034.63/32, and 60/1550.77/32. UI TEST is 88-by-36 at every target.
+- Milestone 3 did not need ScriptableObject assets or a scene-per-level flow.
+  Three serialized records on the existing controller provide inspectable
+  tuning, while conversion to `CoreFunLevelConfiguration` keeps validation and
+  runtime initialization plain and independent of UnityEngine.
+- The first Milestone 3 Edit Mode run passed 145 of 146. The sole failure was
+  NUnit attempting to reflect a `Count` property through a collection
+  constraint on an `IReadOnlyList`; asserting its explicit `Count` corrected
+  the test without changing production behavior or expectations.
+- The first Milestone 3 Play Mode run passed 54 of 55. Every new Milestone 3
+  case passed. The old exact-87.5% overlay fixture's fixed wait no longer
+  guaranteed a safe third cut after the approved Level 1 tuning changed. The
+  fixture now retries the same deterministic cut after ordinary barrier
+  failure until a safe timing window, preserving its exact capture geometry,
+  completion, overlay, and Retry assertions without changing the solver.
+- Consecutive final setup runs produced identical scene SHA-256
+  `3ECA1FD449AA18A9D52935B238D44265133D9FF540901950D23D549ADDB1EAEB`.
+  The scene retains one controller, gesture adapter, threat/barrier/capture/HUD
+  presenter set, and one persistent Canvas hierarchy across the full sequence.
 
 ## Validation Record
 
@@ -2099,6 +2140,70 @@ errors and zero C# compiler warnings. Package files, `SampleScene.unity`, all
 `ProjectSettings`, `EditorSettings.asset`, and `EditorBuildSettings.asset`
 remain protected and unchanged. Interactive Game View review remains required.
 
+### 2026-08-05 — Milestone 3 core-fun build validation
+
+Milestone 3 started from clean commit `8fe4e56`. The final serialized level
+values are:
+
+| Level | Stable ID | Target | Threat | Barrier growth | Radius | Cut margin |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | `learn-the-cut` | 62.5% | 2.6 | 9.5 | 0.35 | 0.75 |
+| 2 | `timing-and-failure` | 70% | 3.2 | 8.0 | 0.35 | 0.60 |
+| 3 | `confident-capture` | 75% | 3.6 | 7.5 | 0.35 | 0.80 |
+
+Every level uses board `(0,0,10,16)`, collision half-width `0.08`, eight
+maximum threat impacts per tick, sixteen maximum barrier-solver iterations,
+eight catch-up ticks, and an optional 45-second expected-completion marker.
+Directions are normalized during conversion. The tuning increases timing
+pressure through target, speed, growth, spawn/direction, and margin while
+retaining the single approved normal-threat mechanic.
+
+The final exact Edit Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-EditMode-Final.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-EditMode-Final.log'
+```
+
+Result: 146 discovered, 146 passed, 0 failed, 0 skipped. This includes all 130
+prior cases plus level conversion/validation, ordered stable IDs, illegal
+target/speed/radius/direction/spawn rejection, deterministic initialization,
+metrics accumulation/reset/sequence behavior, sustained high-speed repeated
+wall impacts, and monotonic area invariants through repeated narrow-room
+splits.
+
+The final exact Play Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-PlayMode-Final.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-PlayMode-Final.log'
+```
+
+Result: 55 discovered, 55 passed, 0 failed, 0 skipped. This includes all 43
+prior cases plus serialized three-level references, Level 1 initialization,
+completion/HUD state, in-scene Retry/Next/Level 3 restart, repeated full
+sequences without duplicate systems, completion/UI start blocking, gesture
+edge cases after resets, margin rejection after transitions, completion
+metrics, and overlay layout at 1080-by-1920, 1080-by-2400, and 1536-by-2048.
+
+The final setup command was run twice consecutively, using `Final-1` and
+`Final-2` log suffixes:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone3SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Setup-Final-1.log'
+```
+
+Both runs succeeded and left `VerticalSlice.unity` at identical SHA-256
+`3ECA1FD449AA18A9D52935B238D44265133D9FF540901950D23D549ADDB1EAEB`.
+Final setup/Edit/Play logs contain zero C# compiler errors, zero C# compiler
+warnings, and zero unhandled exception markers. Package manifest/lock,
+`SampleScene.unity`, `ProjectSettings.asset`, `EditorSettings.asset`, and
+`EditorBuildSettings.asset` retain their starting hashes and have no Git diff.
+Unity's transient untracked `SceneTemplateSettings.json` was removed after the
+last run. No scene or asset YAML was hand-edited.
+
+Automated Milestone 3 implementation is complete. Interactive completion of
+all three levels, device/safe-area feel, 20–45-second pacing, and the required
+human `GO`, `TUNE`, or `STOP` core-fun decision remain explicitly pending.
+
 ## Final Outcome
 
 Outcome as of 2026-08-05: Phase 2A is checkpointed at `079617d`, and Phase 2B
@@ -2111,5 +2216,12 @@ checkpointed at `0993950`. The focused manual-acceptance cleanup now passes
 130 of 130 Edit Mode and 43 of 43 Play Mode tests; its scene setup is
 byte-idempotent and protected files remain unchanged. The responsive follow-up
 also passes those full suites with measured 60/remaining-flex/32 layout bands
-at all three portrait targets. It is ready for a human-created follow-up
-checkpoint after interactive visual review. Work stops here before Milestone 3.
+at all three portrait targets and is checkpointed at `f5ac4ea`.
+
+Milestone 3 now delivers one persistent-scene three-level normal-threat
+sequence with deterministic Retry, Next, final development restart, compact
+level-aware HUD, and in-memory human-review metrics. It passes 146 of 146 Edit
+Mode and 55 of 55 Play Mode tests with byte-idempotent setup, zero project-code
+compiler diagnostics, and no protected-file change. Automated implementation
+is ready for the human core-fun review. The review outcome remains pending and
+is not inferred from test success; work stops here before Milestone 4.
