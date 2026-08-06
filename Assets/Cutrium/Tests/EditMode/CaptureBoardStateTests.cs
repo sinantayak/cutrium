@@ -77,6 +77,14 @@ namespace Cutrium.Gameplay.EditModeTests
         }
 
         [Test]
+        public void MultipleThreats_RequireUniqueStableIds()
+        {
+            Assert.Throws<ArgumentException>(() => Board(
+                Threat(1, 2f, 8f),
+                Threat(1, 8f, 8f)));
+        }
+
+        [Test]
         public void ToleranceTie_ReportsDiagnosticAndUsesVelocityFallback()
         {
             var tinyThreat = new ThreatState(

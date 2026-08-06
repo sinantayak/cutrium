@@ -1430,8 +1430,43 @@ human input at their natural gates:
   Mode and 55 of 55 Play Mode tests, zero project-code compiler diagnostics,
   byte-idempotent scene setup, and every protected-file gate. It is
   checkpointed by the commit containing this plan update.
-- [ ] Human Milestone 3 core-fun review and explicit `GO`, `TUNE`, or `STOP`
-  decision recorded. Milestone 4 remains blocked until that human decision.
+- [x] 2026-08-05: Human Milestone 3 core-fun review recorded `TUNE`: Levels
+  1/2/3 completed in 1.9/3.2/4.9 seconds with the same large-cut strategy,
+  Level 2 did not teach vulnerable timing, and Level 3 did not create a
+  strategic choice. This is not a positive core-fun gate.
+- [x] 2026-08-05: The focused tuning implementation gives Levels 1/2/3 the
+  compact purpose lines `LEARN THE CUT`, `WATCH THE THREAT`, and
+  `KEEP THEM TOGETHER`; Level 3 narrowly reuses the existing normal analytic
+  solver for two stable-ID threats without a new behavior or framework.
+- [x] 2026-08-06: Focused Milestone 3 tuning setup and automated validation
+  pass 152 of 152 Edit Mode and 58 of 58 Play Mode tests with byte-idempotent
+  settled scene setup, zero C# compiler diagnostics, and no protected-file
+  diff. Human replay remains required; the positive core-fun gate is not
+  inferred and Milestone 4 remains unstarted.
+- [x] 2026-08-06: Reproduced and fixed the alternating-orientation blocker.
+  Barrier cut-margin validation now uses the split axis while growth targets
+  continue to use the barrier axis; transient gesture origin/axis state is
+  cleared after commit, failure, cancellation, Retry, Next, and Restart.
+- [x] 2026-08-06: Alternating H-V-H-V and V-H-V-H coverage, real mouse/touch
+  integration, child-room target/parent validation, failure/reset paths, and
+  all three aspect cases pass. Final validation is 162 of 162 Edit Mode and
+  66 of 66 Play Mode tests with byte-idempotent setup and no protected diff.
+- [x] 2026-08-06: Reproduced the follow-up Level 3 small-room failure outside
+  Unity licensing: a growth-boundary origin threw for a zero positive target,
+  while a 3-by-3 room under the 1.8 margin rejected both orientations.
+- [x] 2026-08-06: Added clean zero-span rejection, terminal-room cut
+  availability, side-effect-free start validation, and preview/commit parity
+  against the selected current room. All changed assemblies compile and the
+  six focused deterministic cases pass; full Unity Edit/Play suites remain
+  pending because the sandbox account cannot access the installed license.
+- [x] 2026-08-06: Human replay rejected Level 1's remaining 3-unit placement
+  margin because it produced an approximately 20% forbidden band. Barrier
+  starts now accept every tolerance-interior point of the current active room;
+  exact/tolerance-close boundaries remain invalid geometry.
+- [x] 2026-08-06: Added near-bottom horizontal and near-left vertical
+  regressions, retained boundary/no-mutation cases, compiled all changed
+  assemblies without diagnostics, and passed nine focused deterministic
+  cases. Full licensed Unity suites remain pending.
 - [ ] Milestone 4 complete, validated, and checkpointed.
 - [ ] Milestone 5 complete, validated, and checkpointed.
 - [ ] Milestone 6 complete, validated, and checkpointed.
@@ -1519,6 +1554,24 @@ human input at their natural gates:
   start offsets, elapsed time, attempts, breaks, locks, largest capture, final
   capture, Retry, Next, and sequence completion; ADR-013 records this bounded
   pre-content-gate architecture.
+- **2026-08-05 — Human decision:** the first core-fun review outcome is
+  `TUNE`, not `GO`. Retune all three authored configurations around distinct
+  decisions and do not enter Milestone 4 or full content production.
+- **2026-08-05 — Implemented:** Level 3 uses two instances of the existing
+  normal threat with stable IDs and the same analytic solver. A shared growing
+  barrier is governed by the earliest deterministic contact across threats;
+  the existing player-favorable tolerance tie remains unchanged. ADR-014
+  records the focused collection/session/presenter generalization.
+- **2026-08-06 — Implemented:** preserve the authored cut margin while at
+  least one room orientation remains legal, but relax it only when both axes
+  would otherwise be unavailable. Reject zero growth spans explicitly and use
+  the same non-mutating validation for preview and commit. ADR-015 records this
+  focused anti-softlock and presentation-parity rule.
+- **2026-08-06 — Human decision:** supersede margin-gated placement. Every
+  point strictly inside the selected active room must allow either orientation;
+  only centralized-tolerance boundary protection remains. ADR-016 records the
+  rule, while legacy serialized margin values are retained without placement
+  authority to avoid an unrelated scene/data migration.
 
 ## Discoveries
 
@@ -1670,6 +1723,89 @@ human input at their natural gates:
   `3ECA1FD449AA18A9D52935B238D44265133D9FF540901950D23D549ADDB1EAEB`.
   The scene retains one controller, gesture adapter, threat/barrier/capture/HUD
   presenter set, and one persistent Canvas hierarchy across the full sequence.
+- The first human core-fun replay showed that increasing target, threat speed,
+  and decreasing growth speed was not enough to change decisions: every level
+  still presented one centrally readable threat, allowed the same repeated
+  empty-side large cuts, produced no breaks, and ended before five seconds.
+- Multi-threat support did not require a parallel simulation architecture.
+  `CaptureBoardState` already owned a stable-ID threat collection and already
+  kept both children active with zero capture when a split left threats on
+  both sides. The remaining single-threat assumptions were localized to
+  serialized level data, session motion/barrier dispatch, and view
+  reconciliation.
+- Level 2's authored crossing has a deterministic teaching window. Its
+  normalized velocity is approximately `(1.399, 2.767)` from `(4.5, 3.5)`.
+  An immediate horizontal barrier at y=8 is contacted at about 1.46 seconds,
+  before its 2.083-second lock; after waiting 1.85 seconds the threat is above
+  the vulnerable band and moving away, allowing the same barrier to lock
+  before the next wall reflection.
+- The first tuning compile failure was test-only: a new assertion referenced
+  `GeometryTolerancePolicy.Time` instead of the existing `TimeTolerance`
+  property. Correcting the property name allowed setup and all assemblies to
+  compile; no production behavior changed for that error.
+- Legacy gesture tests that started horizontal cuts at x=2 became invalid when
+  Level 1's growth-axis margin increased to 3. They now use legal centered
+  starts and continue to verify the same mouse/touch, preview, serialized-view,
+  and reload behavior.
+- A largest-cut-only automated completer can create the same strategic dead
+  ends the tuning intends to expose. The final test helper preserves both
+  orientation options until the target-crossing cut, probes each candidate
+  through the authoritative analytic growing-barrier solver, and in Level 3
+  rejects a candidate if any threat crosses to the opposite side before lock.
+  This made validation exercise timing and grouping without changing or
+  bypassing production collision rules.
+- The first successful setup introduced a one-time nested-array scene
+  serialization change. The next two immediate setup runs were byte-identical
+  at SHA-256
+  `FFD69D9FFD87CDED9D61487473908061889847FB3266A413D28D3413CE6AC650`,
+  and the hash stayed unchanged through final test activity.
+- The alternating-orientation failure was not stale input, stale parent-room
+  ownership, uncleared active-barrier state, or presentation-only state.
+  `BarrierFactory` correctly calculated horizontal growth from X bounds and
+  vertical growth from Y bounds, but it incorrectly reused those growth
+  lengths for `MinimumEdgeMargin`. A horizontal split can leave a short child
+  height; the next valid vertical cut then has short Y growth targets and was
+  rejected as `TooCloseToRoomEdge`, even though its X split coordinate was
+  legal. The inverse sequence failed for the symmetric reason in a narrow
+  child width. Preview remained visible because the gesture layer selects the
+  current axis before gameplay factory validation and does not manufacture a
+  `BarrierState` after a rejected request.
+- The pre-fix deterministic reproduction locked a horizontal barrier at
+  `(5,10)` in room 1, producing active child room 3 with bounds
+  `(0,10,10,6)`. A vertical intent at `(5,13)` resolved room 3 and had correct
+  growth targets 3 and 3, but the old code compared those targets to the
+  3-unit cut margin and rejected it. The correct perpendicular split margins
+  are 5 and 5. The focused pre-fix Unity run therefore failed 0/1 exactly at
+  the expected accepted start; the same test passes after the correction.
+- Five old Milestone 2C Play Mode fixtures encoded the same mistaken axis by
+  treating a Level 1 vertical split at x=2 as legal with a 3-unit margin.
+  Those test-only inputs were moved to the legal x=4 equivalent and their
+  expected logical capture changed from 20% to 40%; level tuning and production
+  capture rules were not changed.
+- The Level 3 small-room report exposed two related but distinct paths. Room
+  lookup intentionally includes tolerance-close boundaries; `BarrierFactory`
+  then constructed a barrier before checking that both growth targets were
+  positive, so an origin at the selected room's maximum growth boundary threw
+  for `positiveTargetLength = 0`. Separately, a room whose width and height are
+  both at most `2 * 1.8 = 3.6` had no legal orientation under the authored
+  margin and could remain above the 90% target, creating a real softlock.
+- The old preview did not consult gameplay start validation and always drew
+  across the original 10-by-16 board. That is why a dominant-axis preview
+  appeared even when the eventual factory request either rejected or threw.
+  The presenter now asks the session's side-effect-free validation and renders
+  only an accepted span across the returned current parent-room bounds.
+- Unity batch mode in this managed shell runs under a different Windows
+  security account than the installed Hub license. The exact 6000.3.21f1
+  command therefore exits with license code 198 even after the interactive
+  Editor is closed. Direct Roslyn compilation with Unity's generated response
+  files succeeds for Gameplay, Unity, Presentation, Edit tests, and Play tests;
+  a Unity-Mono focused runner passes the six new deterministic Edit cases.
+- Level 1's 3-unit authored margin divided by its 16-unit height explains the
+  observed bottom/top dead band exactly: `3 / 16 = 18.75%`. Pre-fix automated
+  calls at horizontal `(5,0.1)` and vertical `(0.1,8)` both returned
+  `TooCloseToRoomEdge`; after margin gating was removed both return accepted.
+  Exact and tolerance-close room boundaries still reject, so free placement
+  cannot construct zero-area child rooms.
 
 ## Validation Record
 
@@ -2204,6 +2340,196 @@ Automated Milestone 3 implementation is complete. Interactive completion of
 all three levels, device/safe-area feel, 20–45-second pacing, and the required
 human `GO`, `TUNE`, or `STOP` core-fun decision remain explicitly pending.
 
+### 2026-08-06 — Focused Milestone 3 core-fun tuning validation
+
+The human review returned `TUNE` with Level 1/2/3 times of 1.9/3.2/4.9
+seconds, no barrier breaks, and one repeated large-cut strategy. The focused
+pass started from checkpoint `56f1581` and retained the existing scene,
+gesture, 1/60 simulation, analytic solver, layout, completion flow, and
+metrics. Final authored values are:
+
+| Level | Purpose | Threat spawn / direction / speed / radius | Target | Growth | Margin | Expected human time |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| 1 | `LEARN THE CUT` | `(5,8)` / `(0.8,0.6)` / `1.6` / `0.35` | 82.5% | 3.0 | 3.0 | 8–15s |
+| 2 | `WATCH THE THREAT` | `(4.5,3.5)` / `(0.45,0.89)` / `3.1` / `0.38` | 85% | 2.4 | 2.5 | 15–30s |
+| 3 | `KEEP THEM TOGETHER` | `(3,5)` / `(0.9,0.44)` / `2.7` / `0.35`; `(7,11)` / `(-0.82,-0.57)` / `2.9` / `0.35` | 90% | 2.8 | 1.8 | 25–45s |
+
+All directions are normalized during runtime conversion. Every level retains
+board `(0,0,10,16)`, barrier collision half-width `0.08`, eight maximum
+normal-threat impacts per tick, sixteen maximum barrier-solver iterations,
+and eight catch-up ticks. Level 3 uses two stable-ID instances of the existing
+normal analytic threat; no behavior type or simulation framework was added.
+
+The setup command was run until two immediately consecutive successful runs
+were stable (the final pair used log suffixes `Setup-2` and `Setup-3`):
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone3SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Tuning-Setup-3.log'
+```
+
+The first successful nested-array serialization pass changed the scene once;
+the next two runs and all subsequent test activity retained exact
+`VerticalSlice.unity` SHA-256
+`FFD69D9FFD87CDED9D61487473908061889847FB3266A413D28D3413CE6AC650`.
+
+The exact final Edit Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Tuning-EditMode-Acceptance.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Tuning-EditMode-Acceptance.log'
+```
+
+Result: 152 discovered, 152 passed, 0 failed, 0 skipped.
+
+The exact final Play Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Tuning-PlayMode-Acceptance.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Tuning-PlayMode-Acceptance.log'
+```
+
+Result: 58 discovered, 58 passed, 0 failed, 0 skipped. New coverage proves
+Level 1 cannot complete from one ordinary opening cut; Level 2 has both an
+immediate fair break and a later safe lock window; Level 3 initializes and
+moves two stable-ID normal threats, captures no area when one remains in each
+child, restores both through Retry/Next/restart, reconciles two replaceable
+views without duplicates, and counts each shared barrier once in metrics.
+Existing responsive cases continue to cover 1080-by-1920, 1080-by-2400, and
+1536-by-2048.
+
+Final setup/Edit/Play logs contain zero C# compiler errors and zero C# compiler
+warnings. Manifest, lock, `SampleScene`, `ProjectSettings.asset`,
+`EditorSettings.asset`, and `EditorBuildSettings.asset` retain their starting
+hashes and have no Git diff. Unity's transient untracked
+`ProjectSettings/SceneTemplateSettings.json` was removed. No scene YAML was
+hand-edited. The automated tuning pass is complete, but a fresh human replay
+must decide `GO`, further `TUNE`, or `STOP`; Milestone 4 remains blocked.
+
+### 2026-08-06 — Milestone 3 alternating-orientation blocker validation
+
+Before production code changed, the focused deterministic reproduction was
+run with the exact Editor:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testFilter 'Cutrium.Gameplay.EditModeTests.BarrierStateTests.Session_HorizontalLockThenVerticalStart_UsesCurrentChildBounds' -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Alternating-Reproduction.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Alternating-Reproduction.log'
+```
+
+Result before the fix: 1 discovered, 0 passed, 1 failed. The locked first cut
+left child room 3 at `(0,10,10,6)`; the perpendicular request at `(5,13)` was
+rejected instead of creating its 3/3-target vertical barrier.
+
+The final exact Edit Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Alternating-Final-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Alternating-Final-EditMode.log'
+```
+
+Result: 162 discovered, 162 passed, 0 failed, 0 skipped.
+
+The final exact Play Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Alternating-Final-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Alternating-Final-PlayMode.log'
+```
+
+Result: 66 discovered, 66 passed, 0 failed, 0 skipped. The final suite covers
+real mouse H-then-V, primary-touch V-then-H with touch IDs 27 and 28,
+preview/committed-axis agreement, nonzero visible growth in both halves,
+failure/cancel/Retry/Next/Restart resets, and mapping at 1080-by-1920,
+1080-by-2400, and 1536-by-2048. Deterministic Edit Mode cases cover both
+four-cut alternating orders, every current child parent ID and target length,
+rejection diagnostics, and rejection immutability.
+
+The retained setup utility was run twice:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone3SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-Alternating-Setup-1.log'
+```
+
+The second command differed only by the `Setup-2.log` filename. Both exited
+successfully and retained exact `VerticalSlice.unity` SHA-256
+`FFD69D9FFD87CDED9D61487473908061889847FB3266A413D28D3413CE6AC650`.
+Final setup/Edit/Play logs contain zero C# compiler errors, zero C# compiler
+warnings, and zero script-compilation failures. Manifest, lock, SampleScene,
+ProjectSettings, EditorSettings, and EditorBuildSettings retain their accepted
+hashes and have no Git diff. The transient scene-template settings file and an
+untracked task-generated Codex sandbox config were removed after validation.
+No scene YAML was hand-edited. This Milestone 3 blocker is fixed; the human
+core-fun replay remains pending, and Milestone 4 remains unstarted.
+
+### 2026-08-06 — Level 3 terminal-room blocker diagnosis and partial validation
+
+The human Console trace and a pre-fix executable harness against the current
+gameplay sources reproduced both failure paths:
+
+```text
+BOUNDARY_EXCEPTION=positiveTargetLength
+Horizontal_ACCEPTED=False REASON=TooCloseToRoomEdge
+Vertical_ACCEPTED=False REASON=TooCloseToRoomEdge
+```
+
+The boundary case used room `(0,0,10,16)` with a horizontal origin at
+`(10,8)`, yielding growth targets 10 and 0. The terminal case used a 3-by-3
+room and the unchanged Level 3 margin 1.8; because both spans were no greater
+than `2 * 1.8 = 3.6`, neither centered orientation was legal. After the fix,
+the same harness reports no boundary exception and accepts both interior
+terminal-room orientations. A focused reflection runner executed the six new
+Edit cases and reported six passes: two boundary cases, two terminal-room
+orientations, preservation of the configured margin when one axis remains
+available, and non-mutating validation matching the eventual start.
+
+Unity's generated Roslyn response files compiled `Cutrium.Gameplay`,
+`Cutrium.Unity`, `Cutrium.Presentation`, `Cutrium.Gameplay.EditModeTests`, and
+`Cutrium.PlayModeTests` with zero errors and zero warnings. The exact Unity
+command attempted from the managed shell was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testFilter 'Cutrium.Gameplay.EditModeTests.BarrierStateTests' -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-SmallRoom-Reproduction.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M3-SmallRoom-Reproduction.log' -quit
+```
+
+It exited before test discovery with Unity licensing code 198 because this
+managed shell runs under a different Windows security account than the Hub
+license. The full expected suites are now 168 Edit Mode cases and 67 Play Mode
+cases, but those counts are not claimed as passing until the user-account
+commands produce XML. The requested final commands use
+`Cutrium-M3-SmallRoom-Final-EditMode.xml` and
+`Cutrium-M3-SmallRoom-Final-PlayMode.xml` under `Logs/`.
+
+Git diff inspection shows no change under Packages, ProjectSettings,
+`SampleScene.unity`, EditorSettings, or EditorBuildSettings. No scene or asset
+YAML was edited. Source/document `git diff --check` is clean. The execution
+environment regenerated an untracked `.codex/config.toml`; its ACL prevents
+this managed account from deleting it, so it is explicitly excluded from any
+recommended project commit.
+
+### 2026-08-06 — Free interior barrier placement follow-up
+
+Human replay showed the remaining Level 1 restriction directly: the authored
+3-unit placement margin created a `3 / 16 = 18.75%` horizontal dead band near
+the bottom and top, plus a 3/10 side band for vertical starts. A pre-fix
+executable reproduction using the real factory returned
+`False TooCloseToRoomEdge` for both horizontal `(5,0.1)` and vertical
+`(0.1,8)` intents. The accepted human rule supersedes margin-gated placement.
+
+`BarrierFactory` now compares perpendicular split spans only to zero through
+`GeometryTolerancePolicy.DistanceTolerance`. The same reproduction returns
+`True None` for both near-edge interior points. Exact and tolerance-close
+boundaries still reject as `TooCloseToRoomEdge`; growth-axis zero spans still
+reject as `NoGrowthSpan`. The current-room preview and non-mutating validation
+from the previous fix are unchanged.
+
+Unity's generated response files compiled Gameplay, Unity, Presentation, Edit
+tests, and Play tests with zero errors and zero warnings. A focused Unity-Mono
+runner reported nine passes covering both free interior orientations, four
+exact/tolerance boundary cases, both orientations in a previously constrained
+room, and two rejection-immutability cases. A Play Mode regression now performs
+real Level 1 near-bottom horizontal and near-left vertical gestures and checks
+actual growing barrier state and visible halves. The expected full totals are
+170 Edit Mode and 68 Play Mode cases; licensed Unity XML confirmation remains
+pending for the same managed-account licensing limitation recorded above.
+
+No package, scene, SampleScene, ProjectSettings, EditorSettings, or
+EditorBuildSettings file changed in this follow-up. Milestone 4 remains
+unstarted.
+
 ## Final Outcome
 
 Outcome as of 2026-08-05: Phase 2A is checkpointed at `079617d`, and Phase 2B
@@ -2220,8 +2546,36 @@ at all three portrait targets and is checkpointed at `f5ac4ea`.
 
 Milestone 3 now delivers one persistent-scene three-level normal-threat
 sequence with deterministic Retry, Next, final development restart, compact
-level-aware HUD, and in-memory human-review metrics. It passes 146 of 146 Edit
-Mode and 55 of 55 Play Mode tests with byte-idempotent setup, zero project-code
-compiler diagnostics, and no protected-file change. Automated implementation
-is ready for the human core-fun review. The review outcome remains pending and
-is not inferred from test success; work stops here before Milestone 4.
+level-aware HUD, and in-memory human-review metrics. The first human review
+returned `TUNE`; the focused retune now gives Level 1 a multi-cut learning
+goal, Level 2 a deliberate vulnerable-barrier timing window, and Level 3 two
+stable-ID normal threats whose grouping controls capture. It passes 152 of 152
+Edit Mode and 58 of 58 Play Mode tests with byte-idempotent settled setup, zero
+project-code compiler diagnostics, and no protected-file change. A fresh human
+replay must decide `GO`, further `TUNE`, or `STOP`; no positive decision is
+inferred from automation, and work stops here before Milestone 4.
+
+The subsequent alternating-orientation blocker is fixed without changing any
+level value or solver rule. Margin validation now constrains the actual split
+coordinate, every gesture clears its transient point/orientation state, and
+H-V-H-V plus V-H-V-H creation works through child rooms and all reset paths.
+Final automated evidence is 162 of 162 Edit Mode and 66 of 66 Play Mode tests,
+two byte-identical setup runs, zero compiler diagnostics, and no protected-file
+diff. Human replay remains required before the core-fun decision; Milestone 4
+has not started.
+
+The subsequent Level 3 terminal-room blocker has an implemented focused fix:
+zero growth spans reject without throwing, rooms that would otherwise lose
+both orientations retain an interior cut path, and preview uses the exact same
+non-mutating start decision and current parent-room span as commit. Focused
+deterministic cases and every changed assembly compile successfully, protected
+files remain unchanged, and Milestone 4 remains unstarted. Full Unity Edit and
+Play Mode confirmation is pending a run under the licensed user account and is
+not inferred from the partial validation.
+
+The latest human placement decision supersedes terminal-only margin relaxation:
+all tolerance-interior points of every active room now accept horizontal or
+vertical barrier starts. Only actual/tolerance-close room boundaries remain
+invalid. The focused reproduction and nine deterministic regressions pass and
+all changed assemblies compile, while full licensed Unity suites and human
+feel verification remain pending. No Milestone 4 work has begun.

@@ -303,3 +303,118 @@ mechanic. Retry and Next construct a fresh deterministic session in the same
 scene, reset gesture/pointer/presentation state, and never duplicate scene
 systems. The serialized catalog is intentionally milestone-sized and may be
 replaced by a broader content pipeline only after a later approved need.
+
+---
+
+## ADR-014 — Multiple Normal Threats Reuse the Existing Analytic Session
+
+**Status:** Accepted
+
+**Context:**
+The first Milestone 3 human review returned `TUNE`: all three authored levels
+completed in under five seconds with the same large-cut strategy, Level 2 did
+not teach vulnerable-barrier timing, and Level 3 did not create a strategic
+choice. The approved Level 3 identity needs two normal threats so a split can
+leave a threat in each child and capture neither child.
+
+**Decision:**
+Allow a core-fun level to configure one or more instances of the existing
+normal threat. Assign stable sequential threat IDs from serialized order, move
+every threat with the existing 1/60 analytic normal solver, and resolve a
+shared growing barrier against the earliest deterministic threat contact.
+Keep the existing player-favorable lock/contact tolerance tie. Capture and
+room assignment remain collection-based: a child containing any threat stays
+active, so threats on both sides capture no area. Presentation reconciles a
+replaceable view per stable threat ID through the existing presenter.
+
+**Reasoning:**
+The board state and capture classifier already supported threat collections,
+stable IDs, and both-sides-active splits. Extending serialized configuration,
+session iteration, and view reconciliation is therefore a narrow
+generalization, not a new threat behavior or parallel simulation framework.
+
+**Consequences:**
+Retry, Next, and Restart Sequence must restore the authored threat count and
+initial state. Barrier failure is aggregated once per barrier attempt even
+when more than one threat is tested. Tests must cover earliest-contact event
+ordering, two-threat room assignment and zero-capture splits, stable-ID view
+creation/removal, and repeated transitions without duplicate systems or views.
+This decision does not approve hunter, pulse, boss, or other threat behavior.
+ADR-012's 75% target described the Milestone 2 one-level first playable; the
+three tuned Milestone 3 targets now come from the serialized level catalog and
+supersede that value for the current prototype sequence.
+
+---
+
+## ADR-015 — Terminal Rooms Preserve a Legal Cut Path
+
+**Status:** Superseded by ADR-016
+
+**Context:**
+The authored minimum cut margin is meaningful while at least one barrier
+orientation remains available. Repeated valid splits can nevertheless produce
+an active room whose width and height are both no greater than twice that
+margin. Such a room can still keep the level below its capture target, but the
+configured margin rejects both orientations and creates a geometric softlock.
+An origin on a room's growth boundary also previously reached the
+`BarrierState` constructor with a zero target length and threw instead of being
+rejected.
+
+**Decision:**
+Keep the configured minimum cut margin unchanged whenever the current room has
+at least one legal orientation. If both room axes are unavailable under that
+margin, relax the effective margin only for that terminal room so a strictly
+interior cut remains possible. A zero or tolerance-zero growth half is never a
+valid barrier and returns the explicit `NoGrowthSpan` rejection without state
+mutation. Preview and commit use the same non-mutating barrier-start
+validation, and a valid preview spans the selected current room rather than
+the original board.
+
+**Reasoning:**
+This removes a reachable Level 3 dead end without changing the authored level
+values, board dimensions, solver, collision tolerances, gesture, or capture
+rules. Keeping the relaxation conditional preserves the intended margin in
+every room where it still leaves a route, while validation parity prevents the
+presentation from promising a barrier that gameplay will reject.
+
+**Consequences:**
+Tests must cover both orientations in a terminal small room, preservation of
+the configured margin when one orientation remains available, clean boundary
+rejection, non-mutating preview validation, and hidden preview for rejected
+origins. Milestone 4 remains blocked on the human core-fun decision.
+
+---
+
+## ADR-016 — Every Interior Active-Room Point Allows a Barrier
+
+**Status:** Accepted
+
+**Context:**
+Human replay showed that Level 1's authored 3-unit minimum cut margin created
+an approximately 18.75% forbidden band at the top and bottom of the 16-unit
+board, with symmetric side bands for vertical cuts. The restriction made the
+gesture feel arbitrarily constrained even though preview selection and
+current-room targeting were otherwise correct. The accepted player
+expectation is free placement inside the active room.
+
+**Decision:**
+Accept horizontal or vertical barrier origins at every point strictly inside
+the selected active room. Reject only a true room boundary or a point within
+the centralized distance tolerance of that boundary, because such a split
+would create a zero-size child or a zero-length growth half. Authored legacy
+minimum-margin values no longer gate barrier creation. Preserve current-room
+preview, dominant-axis drag and release, analytic growth/collision, capture,
+board dimensions, and all level values.
+
+**Reasoning:**
+The room itself is the understandable spatial rule. A hidden percentage-based
+band is difficult to perceive and makes valid-looking gestures silently fail.
+Tolerance-only boundary protection retains valid geometry without limiting
+player expression.
+
+**Consequences:**
+Focused tests must prove near-edge interior horizontal and vertical starts,
+real-boundary rejection, preview/commit parity, and state immutability after a
+rejection. The serialized margin fields remain temporarily for scene and data
+compatibility but have no barrier-placement authority; removing that legacy
+data is a separate migration, not part of this focused defect fix.

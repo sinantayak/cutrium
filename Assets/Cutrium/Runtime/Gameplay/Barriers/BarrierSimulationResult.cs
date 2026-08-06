@@ -32,7 +32,8 @@ namespace Cutrium.Gameplay.Barriers
             BarrierSimulationEvent simulationEvent,
             BarrierContactKind contactKind,
             BarrierSimulationDiagnostic diagnostic,
-            int iterationCount)
+            int iterationCount,
+            float elapsedUntilEvent)
         {
             Threat = threat;
             Barrier = barrier;
@@ -40,6 +41,7 @@ namespace Cutrium.Gameplay.Barriers
             ContactKind = contactKind;
             Diagnostic = diagnostic;
             IterationCount = iterationCount;
+            ElapsedUntilEvent = elapsedUntilEvent;
         }
 
         public ThreatState Threat { get; }
@@ -48,5 +50,6 @@ namespace Cutrium.Gameplay.Barriers
         public BarrierContactKind ContactKind { get; }
         public BarrierSimulationDiagnostic Diagnostic { get; }
         public int IterationCount { get; }
+        public float ElapsedUntilEvent { get; }
     }
 }

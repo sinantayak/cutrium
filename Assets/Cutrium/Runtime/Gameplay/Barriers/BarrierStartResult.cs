@@ -7,7 +7,8 @@ namespace Cutrium.Gameplay.Barriers
         OriginOutsideActiveRoom = 2,
         TooCloseToRoomEdge = 3,
         BarrierAlreadyActive = 4,
-        LevelCompleted = 5
+        LevelCompleted = 5,
+        NoGrowthSpan = 6
     }
 
     public readonly struct BarrierStartResult

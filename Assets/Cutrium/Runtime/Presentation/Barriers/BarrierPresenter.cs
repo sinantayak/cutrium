@@ -1,5 +1,6 @@
 using System;
 using Cutrium.Gameplay.Barriers;
+using Cutrium.Gameplay.Board;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Unity.Input;
 using Cutrium.Unity.Simulation;
@@ -153,28 +154,43 @@ namespace Cutrium.Presentation.Barriers
 
         private void RenderPreview()
         {
-            bool visible = _gesture != null
+            bool gestureCanPreview = _gesture != null
                 && _gesture.IsTracking
                 && _gesture.SelectedOrientation != BarrierOrientation.None
                 && _controller.Session.LevelStatus
                     == Cutrium.Gameplay.Session.CaptureLevelStatus.Playing
                 && !_controller.Session.ActiveBarrier.HasValue;
+            BarrierStartResult validation = default;
+            RoomState room = default;
+            if (gestureCanPreview)
+            {
+                validation = _controller.ValidateBarrierIntent(
+                    new BarrierIntent(
+                        _gesture.Origin,
+                        _gesture.SelectedOrientation));
+            }
+
+            bool visible = gestureCanPreview
+                && validation.Accepted
+                && _controller.Session.Board.TryGetActiveRoom(
+                    validation.Barrier.ParentRoomId,
+                    out room);
             _preview.gameObject.SetActive(visible);
             if (!visible)
             {
                 return;
             }
 
-            LogicalRect board = _controller.BoardBounds;
+            LogicalRect bounds = room.Bounds;
             LogicalPoint origin = _gesture.Origin;
             LogicalPoint start = _gesture.SelectedOrientation
                 == BarrierOrientation.Horizontal
-                    ? new LogicalPoint(board.MinX, origin.Y)
-                    : new LogicalPoint(origin.X, board.MinY);
+                    ? new LogicalPoint(bounds.MinX, origin.Y)
+                    : new LogicalPoint(origin.X, bounds.MinY);
             LogicalPoint end = _gesture.SelectedOrientation
                 == BarrierOrientation.Horizontal
-                    ? new LogicalPoint(board.MaxX, origin.Y)
-                    : new LogicalPoint(origin.X, board.MaxY);
+                    ? new LogicalPoint(bounds.MaxX, origin.Y)
+                    : new LogicalPoint(origin.X, bounds.MaxY);
             RenderSegment(
                 _preview,
                 start,

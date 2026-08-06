@@ -38,6 +38,7 @@ namespace Cutrium.Gameplay.Board
             InitialBounds = initialBounds;
             var initialRoom = new RoomState(new RoomId(1), initialBounds);
             _activeRooms.Add(initialRoom);
+            var threatIds = new HashSet<int>();
             for (int index = 0; index < threats.Count; index++)
             {
                 ThreatState threat = threats[index];
@@ -46,6 +47,13 @@ namespace Cutrium.Gameplay.Board
                 {
                     throw new ArgumentException(
                         "Every initial threat must fit inside the initial room.",
+                        nameof(threats));
+                }
+
+                if (!threatIds.Add(threat.Id.Value))
+                {
+                    throw new ArgumentException(
+                        "Initial threat IDs must be unique.",
                         nameof(threats));
                 }
 
@@ -435,9 +443,15 @@ namespace Cutrium.Gameplay.Board
                 }
             }
 
+            var threatIds = new HashSet<int>();
             for (int index = 0; index < threats.Count; index++)
             {
                 ThreatState threat = threats[index];
+                if (!threatIds.Add(threat.Id.Value))
+                {
+                    return false;
+                }
+
                 int containingRooms = 0;
                 for (int roomIndex = 0; roomIndex < active.Count; roomIndex++)
                 {

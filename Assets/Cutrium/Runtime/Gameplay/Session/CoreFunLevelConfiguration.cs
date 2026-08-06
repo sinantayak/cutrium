@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Geometry;
 
@@ -6,6 +8,9 @@ namespace Cutrium.Gameplay.Session
 {
     public readonly struct CoreFunLevelConfiguration
     {
+        private readonly ReadOnlyCollection<ThreatMotionConfiguration>
+            _threatMotions;
+
         public static readonly LogicalRect FixedBoardBounds =
             new LogicalRect(0f, 0f, 10f, 16f);
 
@@ -17,7 +22,31 @@ namespace Cutrium.Gameplay.Session
             CaptureLevelConfiguration capture,
             int maximumCatchUpTicks,
             string developmentNote,
-            float maximumExpectedCompletionSeconds)
+            float maximumExpectedCompletionSeconds,
+            string purposeLine = "")
+            : this(
+                stableId,
+                displayNumber,
+                new[] { threatMotion },
+                barrier,
+                capture,
+                maximumCatchUpTicks,
+                developmentNote,
+                maximumExpectedCompletionSeconds,
+                purposeLine)
+        {
+        }
+
+        public CoreFunLevelConfiguration(
+            string stableId,
+            int displayNumber,
+            IReadOnlyList<ThreatMotionConfiguration> threatMotions,
+            BarrierConfiguration barrier,
+            CaptureLevelConfiguration capture,
+            int maximumCatchUpTicks,
+            string developmentNote,
+            float maximumExpectedCompletionSeconds,
+            string purposeLine = "")
         {
             if (string.IsNullOrWhiteSpace(stableId))
             {
@@ -31,29 +60,26 @@ namespace Cutrium.Gameplay.Session
                 throw new ArgumentOutOfRangeException(nameof(displayNumber));
             }
 
-            if (threatMotion.BoardBounds != FixedBoardBounds)
+            if (threatMotions == null || threatMotions.Count == 0)
             {
                 throw new ArgumentException(
-                    "Core-fun levels must use the fixed 10-by-16 board.",
-                    nameof(threatMotion));
+                    "A core-fun level needs at least one normal threat.",
+                    nameof(threatMotions));
             }
 
-            LogicalPoint spawn = threatMotion.InitialPosition;
-            float radius = threatMotion.Radius;
-            if (spawn.X - radius < threatMotion.BoardBounds.MinX
-                || spawn.X + radius > threatMotion.BoardBounds.MaxX
-                || spawn.Y - radius < threatMotion.BoardBounds.MinY
-                || spawn.Y + radius > threatMotion.BoardBounds.MaxY)
+            var copiedThreats =
+                new ThreatMotionConfiguration[threatMotions.Count];
+            for (int index = 0; index < threatMotions.Count; index++)
             {
-                throw new ArgumentException(
-                    "The complete threat spawn circle must fit inside the board.",
-                    nameof(threatMotion));
+                ThreatMotionConfiguration threatMotion = threatMotions[index];
+                ValidateThreat(threatMotion, nameof(threatMotions));
+                copiedThreats[index] = threatMotion;
             }
 
             if (barrier.MinimumEdgeMargin * 2f
                 >= Math.Min(
-                    threatMotion.BoardBounds.Width,
-                    threatMotion.BoardBounds.Height))
+                    FixedBoardBounds.Width,
+                    FixedBoardBounds.Height))
             {
                 throw new ArgumentException(
                     "The minimum cut margin leaves no legal cut span.",
@@ -75,11 +101,12 @@ namespace Cutrium.Gameplay.Session
 
             StableId = stableId;
             DisplayNumber = displayNumber;
-            ThreatMotion = threatMotion;
+            _threatMotions = Array.AsReadOnly(copiedThreats);
             Barrier = barrier;
             Capture = capture;
             MaximumCatchUpTicks = maximumCatchUpTicks;
             DevelopmentNote = developmentNote ?? string.Empty;
+            PurposeLine = purposeLine ?? string.Empty;
             MaximumExpectedCompletionSeconds =
                 maximumExpectedCompletionSeconds;
         }
@@ -88,7 +115,10 @@ namespace Cutrium.Gameplay.Session
 
         public int DisplayNumber { get; }
 
-        public ThreatMotionConfiguration ThreatMotion { get; }
+        public ThreatMotionConfiguration ThreatMotion => _threatMotions[0];
+
+        public IReadOnlyList<ThreatMotionConfiguration> ThreatMotions =>
+            _threatMotions;
 
         public BarrierConfiguration Barrier { get; }
 
@@ -98,7 +128,33 @@ namespace Cutrium.Gameplay.Session
 
         public string DevelopmentNote { get; }
 
+        public string PurposeLine { get; }
+
         public float MaximumExpectedCompletionSeconds { get; }
+
+        private static void ValidateThreat(
+            ThreatMotionConfiguration threatMotion,
+            string parameterName)
+        {
+            if (threatMotion.BoardBounds != FixedBoardBounds)
+            {
+                throw new ArgumentException(
+                    "Core-fun levels must use the fixed 10-by-16 board.",
+                    parameterName);
+            }
+
+            LogicalPoint spawn = threatMotion.InitialPosition;
+            float radius = threatMotion.Radius;
+            if (spawn.X - radius < threatMotion.BoardBounds.MinX
+                || spawn.X + radius > threatMotion.BoardBounds.MaxX
+                || spawn.Y - radius < threatMotion.BoardBounds.MinY
+                || spawn.Y + radius > threatMotion.BoardBounds.MaxY)
+            {
+                throw new ArgumentException(
+                    "Every complete threat spawn circle must fit inside the board.",
+                    parameterName);
+            }
+        }
 
         private static bool IsFinite(float value) =>
             !float.IsNaN(value) && !float.IsInfinity(value);

@@ -212,6 +212,8 @@ namespace Cutrium.Unity.Input
         private void ResetTracking()
         {
             IsTracking = false;
+            Origin = default;
+            CurrentPoint = default;
             SelectedOrientation = BarrierOrientation.None;
         }
 

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
@@ -6,6 +8,54 @@ using UnityEngine;
 
 namespace Cutrium.Unity.Simulation
 {
+    [Serializable]
+    public sealed class CoreFunThreatDefinition
+    {
+        [SerializeField]
+        private Vector2 _initialPosition;
+
+        [SerializeField]
+        private Vector2 _initialDirection;
+
+        [SerializeField]
+        private float _speed;
+
+        [SerializeField]
+        private float _radius;
+
+        [SerializeField]
+        private int _maximumImpactsPerTick;
+
+        public CoreFunThreatDefinition(
+            Vector2 initialPosition,
+            Vector2 initialDirection,
+            float speed,
+            float radius,
+            int maximumImpactsPerTick)
+        {
+            _initialPosition = initialPosition;
+            _initialDirection = initialDirection;
+            _speed = speed;
+            _radius = radius;
+            _maximumImpactsPerTick = maximumImpactsPerTick;
+        }
+
+        public Vector2 InitialPosition => _initialPosition;
+        public Vector2 InitialDirection => _initialDirection;
+        public float Speed => _speed;
+        public float Radius => _radius;
+        public int MaximumImpactsPerTick => _maximumImpactsPerTick;
+
+        public ThreatMotionConfiguration ToRuntimeConfiguration() =>
+            new ThreatMotionConfiguration(
+                CoreFunLevelConfiguration.FixedBoardBounds,
+                new LogicalPoint(_initialPosition.x, _initialPosition.y),
+                new LogicalVector(_initialDirection.x, _initialDirection.y),
+                _speed,
+                _radius,
+                _maximumImpactsPerTick);
+    }
+
     [Serializable]
     public sealed class CoreFunLevelDefinition
     {
@@ -16,16 +66,7 @@ namespace Cutrium.Unity.Simulation
         private int _displayNumber;
 
         [SerializeField]
-        private Vector2 _initialPosition;
-
-        [SerializeField]
-        private Vector2 _initialDirection;
-
-        [SerializeField]
-        private float _threatSpeed;
-
-        [SerializeField]
-        private float _threatRadius;
+        private CoreFunThreatDefinition[] _threats;
 
         [SerializeField]
         private float _targetCapturedFraction;
@@ -40,9 +81,6 @@ namespace Cutrium.Unity.Simulation
         private float _minimumCutMargin;
 
         [SerializeField]
-        private int _maximumThreatImpactsPerTick;
-
-        [SerializeField]
         private int _maximumBarrierSolverIterations;
 
         [SerializeField]
@@ -50,6 +88,9 @@ namespace Cutrium.Unity.Simulation
 
         [SerializeField]
         private string _developmentNote;
+
+        [SerializeField]
+        private string _purposeLine;
 
         [SerializeField]
         private float _maximumExpectedCompletionSeconds;
@@ -70,53 +111,94 @@ namespace Cutrium.Unity.Simulation
             int maximumCatchUpTicks,
             string developmentNote,
             float maximumExpectedCompletionSeconds)
+            : this(
+                stableId,
+                displayNumber,
+                new[]
+                {
+                    new CoreFunThreatDefinition(
+                        initialPosition,
+                        initialDirection,
+                        threatSpeed,
+                        threatRadius,
+                        maximumThreatImpactsPerTick),
+                },
+                targetCapturedFraction,
+                barrierGrowthSpeed,
+                barrierCollisionHalfWidth,
+                minimumCutMargin,
+                maximumBarrierSolverIterations,
+                maximumCatchUpTicks,
+                developmentNote,
+                maximumExpectedCompletionSeconds,
+                string.Empty)
+        {
+        }
+
+        public CoreFunLevelDefinition(
+            string stableId,
+            int displayNumber,
+            IReadOnlyList<CoreFunThreatDefinition> threats,
+            float targetCapturedFraction,
+            float barrierGrowthSpeed,
+            float barrierCollisionHalfWidth,
+            float minimumCutMargin,
+            int maximumBarrierSolverIterations,
+            int maximumCatchUpTicks,
+            string developmentNote,
+            float maximumExpectedCompletionSeconds,
+            string purposeLine)
         {
             _stableId = stableId;
             _displayNumber = displayNumber;
-            _initialPosition = initialPosition;
-            _initialDirection = initialDirection;
-            _threatSpeed = threatSpeed;
-            _threatRadius = threatRadius;
+            _threats = threats?.ToArray()
+                ?? throw new ArgumentNullException(nameof(threats));
             _targetCapturedFraction = targetCapturedFraction;
             _barrierGrowthSpeed = barrierGrowthSpeed;
             _barrierCollisionHalfWidth = barrierCollisionHalfWidth;
             _minimumCutMargin = minimumCutMargin;
-            _maximumThreatImpactsPerTick = maximumThreatImpactsPerTick;
             _maximumBarrierSolverIterations = maximumBarrierSolverIterations;
             _maximumCatchUpTicks = maximumCatchUpTicks;
             _developmentNote = developmentNote;
+            _purposeLine = purposeLine;
             _maximumExpectedCompletionSeconds =
                 maximumExpectedCompletionSeconds;
         }
 
         public string StableId => _stableId;
         public int DisplayNumber => _displayNumber;
-        public Vector2 InitialPosition => _initialPosition;
-        public Vector2 InitialDirection => _initialDirection;
-        public float ThreatSpeed => _threatSpeed;
-        public float ThreatRadius => _threatRadius;
+        public IReadOnlyList<CoreFunThreatDefinition> Threats => _threats;
+        public Vector2 InitialPosition => _threats[0].InitialPosition;
+        public Vector2 InitialDirection => _threats[0].InitialDirection;
+        public float ThreatSpeed => _threats[0].Speed;
+        public float ThreatRadius => _threats[0].Radius;
         public float TargetCapturedFraction => _targetCapturedFraction;
         public float BarrierGrowthSpeed => _barrierGrowthSpeed;
         public float BarrierCollisionHalfWidth => _barrierCollisionHalfWidth;
         public float MinimumCutMargin => _minimumCutMargin;
         public int MaximumThreatImpactsPerTick =>
-            _maximumThreatImpactsPerTick;
+            _threats[0].MaximumImpactsPerTick;
         public int MaximumBarrierSolverIterations =>
             _maximumBarrierSolverIterations;
         public int MaximumCatchUpTicks => _maximumCatchUpTicks;
         public string DevelopmentNote => _developmentNote;
+        public string PurposeLine => _purposeLine;
         public float MaximumExpectedCompletionSeconds =>
             _maximumExpectedCompletionSeconds;
 
         public CoreFunLevelConfiguration ToRuntimeConfiguration()
         {
-            var threat = new ThreatMotionConfiguration(
-                CoreFunLevelConfiguration.FixedBoardBounds,
-                new LogicalPoint(_initialPosition.x, _initialPosition.y),
-                new LogicalVector(_initialDirection.x, _initialDirection.y),
-                _threatSpeed,
-                _threatRadius,
-                _maximumThreatImpactsPerTick);
+            if (_threats == null || _threats.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "A serialized level needs at least one normal threat.");
+            }
+
+            ThreatMotionConfiguration[] threats = _threats
+                .Select(threat => threat?.ToRuntimeConfiguration()
+                    ?? throw new InvalidOperationException(
+                        "Serialized threat definitions cannot be null."))
+                .ToArray();
             var barrier = new BarrierConfiguration(
                 _barrierGrowthSpeed,
                 _barrierCollisionHalfWidth,
@@ -127,12 +209,13 @@ namespace Cutrium.Unity.Simulation
             return new CoreFunLevelConfiguration(
                 _stableId,
                 _displayNumber,
-                threat,
+                threats,
                 barrier,
                 capture,
                 _maximumCatchUpTicks,
                 _developmentNote,
-                _maximumExpectedCompletionSeconds);
+                _maximumExpectedCompletionSeconds,
+                _purposeLine);
         }
 
         public static CoreFunLevelDefinition[] CreateMilestone3Defaults() =>
@@ -141,51 +224,72 @@ namespace Cutrium.Unity.Simulation
                 new CoreFunLevelDefinition(
                     "learn-the-cut",
                     1,
-                    new Vector2(5f, 8f),
-                    new Vector2(0.8f, 0.6f),
-                    2.6f,
-                    0.35f,
-                    0.625f,
-                    9.5f,
+                    new[]
+                    {
+                        new CoreFunThreatDefinition(
+                            new Vector2(5f, 8f),
+                            new Vector2(0.8f, 0.6f),
+                            1.6f,
+                            0.35f,
+                            8),
+                    },
+                    0.825f,
+                    3f,
                     0.08f,
-                    0.75f,
-                    8,
+                    3f,
                     16,
                     8,
-                    "Readable safe cuts and a generous growth race.",
-                    45f),
+                    "Two or more readable cuts teach empty-side capture.",
+                    15f,
+                    "LEARN THE CUT"),
                 new CoreFunLevelDefinition(
                     "timing-and-failure",
                     2,
-                    new Vector2(6.5f, 5f),
-                    new Vector2(-0.65f, 0.76f),
-                    3.2f,
-                    0.35f,
-                    0.7f,
-                    8f,
+                    new[]
+                    {
+                        new CoreFunThreatDefinition(
+                            new Vector2(4.5f, 3.5f),
+                            new Vector2(0.45f, 0.89f),
+                            3.1f,
+                            0.38f,
+                            8),
+                    },
+                    0.85f,
+                    2.4f,
                     0.08f,
-                    0.6f,
-                    8,
+                    2.5f,
                     16,
                     8,
-                    "Slower barriers expose the vulnerable growth window.",
-                    45f),
+                    "A crossing trajectory makes careless growth timing break.",
+                    30f,
+                    "WATCH THE THREAT"),
                 new CoreFunLevelDefinition(
                     "confident-capture",
                     3,
-                    new Vector2(5f, 8f),
-                    new Vector2(0.92f, 0.38f),
-                    3.6f,
-                    0.35f,
-                    0.75f,
-                    7.5f,
+                    new[]
+                    {
+                        new CoreFunThreatDefinition(
+                            new Vector2(3f, 5f),
+                            new Vector2(0.9f, 0.44f),
+                            2.7f,
+                            0.35f,
+                            8),
+                        new CoreFunThreatDefinition(
+                            new Vector2(7f, 11f),
+                            new Vector2(-0.82f, -0.57f),
+                            2.9f,
+                            0.35f,
+                            8),
+                    },
+                    0.9f,
+                    2.8f,
                     0.08f,
-                    0.8f,
-                    8,
+                    1.8f,
                     16,
                     8,
-                    "Higher target and slower growth reward deliberate cuts.",
-                    45f),
+                    "Separated threats make grouping the strategic constraint.",
+                    45f,
+                    "KEEP THEM TOGETHER"),
             };
     }
 }

@@ -64,6 +64,8 @@ namespace Cutrium.Gameplay.EditModeTests
 
             Assert.That(result.SimulationEvent, Is.EqualTo(BarrierSimulationEvent.Failed));
             Assert.That(result.Threat.Velocity.X, Is.LessThan(0f));
+            Assert.That(result.ElapsedUntilEvent,
+                Is.InRange(0.539f, 0.541f));
             AssertInside(result.Threat);
         }
 
@@ -78,6 +80,8 @@ namespace Cutrium.Gameplay.EditModeTests
             Assert.That(result.SimulationEvent, Is.EqualTo(BarrierSimulationEvent.Locked));
             Assert.That(result.Barrier.Lifecycle, Is.EqualTo(BarrierLifecycle.Locked));
             Assert.That(result.ContactKind, Is.EqualTo(BarrierContactKind.None));
+            Assert.That(result.ElapsedUntilEvent,
+                Is.EqualTo(0.01f).Within(Tolerance.TimeTolerance));
         }
 
         [Test]

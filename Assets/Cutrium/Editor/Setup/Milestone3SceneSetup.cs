@@ -93,6 +93,14 @@ namespace Cutrium.Editor.Setup
             ConfigureLayout(levelRect, 68f, 36f, 76f, 36f);
 
             Transform title = RequireChild(topHud, "Title");
+            Text purposeText = title.GetComponent<Text>();
+            purposeText.text = "LEARN THE CUT";
+            purposeText.fontSize = 14;
+            purposeText.resizeTextForBestFit = true;
+            purposeText.resizeTextMinSize = 9;
+            purposeText.resizeTextMaxSize = 14;
+            purposeText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            purposeText.verticalOverflow = VerticalWrapMode.Truncate;
             Transform progress = RequireChild(topHud, "ProgressArea");
             Transform blocker = RequireChild(topHud, "HudBlockerButton");
             title.SetSiblingIndex(0);
@@ -149,6 +157,7 @@ namespace Cutrium.Editor.Setup
             hud.Configure(
                 controller,
                 levelText,
+                purposeText,
                 hud.PercentageText,
                 hud.TargetText,
                 hud.CompleteOverlay,
@@ -160,6 +169,7 @@ namespace Cutrium.Editor.Setup
 
             EditorUtility.SetDirty(controller);
             EditorUtility.SetDirty(levelText);
+            EditorUtility.SetDirty(purposeText);
             EditorUtility.SetDirty(completeText);
             EditorUtility.SetDirty(retryLabel);
             EditorUtility.SetDirty(nextImage);
@@ -193,9 +203,17 @@ namespace Cutrium.Editor.Setup
                 .Select(definition => definition.ToRuntimeConfiguration())
                 .ToArray();
             var catalog = new CoreFunLevelCatalog(runtime);
-            float[] targets = { 0.625f, 0.7f, 0.75f };
-            float[] speeds = { 2.6f, 3.2f, 3.6f };
-            float[] growthSpeeds = { 9.5f, 8f, 7.5f };
+            float[] targets = { 0.825f, 0.85f, 0.9f };
+            float[] speeds = { 1.6f, 3.1f, 2.7f };
+            float[] growthSpeeds = { 3f, 2.4f, 2.8f };
+            float[] cutMargins = { 3f, 2.5f, 1.8f };
+            int[] threatCounts = { 1, 1, 2 };
+            string[] purposeLines =
+            {
+                "LEARN THE CUT",
+                "WATCH THE THREAT",
+                "KEEP THEM TOGETHER",
+            };
             for (int index = 0; index < catalog.Count; index++)
             {
                 CoreFunLevelConfiguration level = catalog[index];
@@ -209,15 +227,32 @@ namespace Cutrium.Editor.Setup
                         speeds[index])
                     || !Mathf.Approximately(
                         level.Barrier.GrowthSpeed,
-                        growthSpeeds[index]))
+                        growthSpeeds[index])
+                    || !Mathf.Approximately(
+                        level.Barrier.MinimumEdgeMargin,
+                        cutMargins[index])
+                    || level.ThreatMotions.Count != threatCounts[index]
+                    || !string.Equals(
+                        level.PurposeLine,
+                        purposeLines[index],
+                        StringComparison.Ordinal))
                 {
                     throw new InvalidOperationException(
                         $"Level {index + 1} tuning differs from Milestone 3.");
                 }
             }
 
+            if (!Mathf.Approximately(
+                    catalog[2].ThreatMotions[1].Speed,
+                    2.9f))
+            {
+                throw new InvalidOperationException(
+                    "Level 3 second-threat tuning differs from Milestone 3.");
+            }
+
             if (hud.Controller != controller
                 || hud.LevelText == null
+                || hud.PurposeText == null
                 || hud.PercentageText == null
                 || hud.TargetText == null
                 || hud.CompleteOverlay == null

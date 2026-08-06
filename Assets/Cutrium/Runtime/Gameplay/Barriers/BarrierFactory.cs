@@ -31,10 +31,28 @@ namespace Cutrium.Gameplay.Barriers
                 : room.Bounds.MaxY - intent.Origin.Y;
             if (tolerance.IsLessThanOrApproximatelyEqualDistance(
                     negativeTarget,
-                    configuration.MinimumEdgeMargin)
+                    0f)
                 || tolerance.IsLessThanOrApproximatelyEqualDistance(
                     positiveTarget,
-                    configuration.MinimumEdgeMargin))
+                    0f))
+            {
+                return Reject(BarrierRejectionReason.NoGrowthSpan);
+            }
+
+            float negativeSplitMargin = intent.Orientation
+                == BarrierOrientation.Horizontal
+                    ? intent.Origin.Y - room.Bounds.MinY
+                    : intent.Origin.X - room.Bounds.MinX;
+            float positiveSplitMargin = intent.Orientation
+                == BarrierOrientation.Horizontal
+                    ? room.Bounds.MaxY - intent.Origin.Y
+                    : room.Bounds.MaxX - intent.Origin.X;
+            if (tolerance.IsLessThanOrApproximatelyEqualDistance(
+                    negativeSplitMargin,
+                    0f)
+                || tolerance.IsLessThanOrApproximatelyEqualDistance(
+                    positiveSplitMargin,
+                    0f))
             {
                 return Reject(BarrierRejectionReason.TooCloseToRoomEdge);
             }

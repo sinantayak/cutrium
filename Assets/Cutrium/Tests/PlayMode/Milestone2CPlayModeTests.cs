@@ -2,8 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Cutrium.Gameplay.Barriers;
+using Cutrium.Gameplay.Board;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
+using Cutrium.Gameplay.Threats;
 using Cutrium.Presentation.Capture;
 using Cutrium.Presentation.HUD;
 using Cutrium.Unity.Input;
@@ -49,7 +51,7 @@ namespace Cutrium.PlayModeTests
             Assert.That(_hudPresenter.CompleteOverlay, Is.Not.Null);
             Assert.That(_hudPresenter.CompletionCanvasGroup, Is.Not.Null);
             Assert.That(_hudPresenter.RetryButton, Is.Not.Null);
-            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.625f));
+            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.825f));
         }
 
         [Test]
@@ -71,7 +73,7 @@ namespace Cutrium.PlayModeTests
         [Test]
         public void SuccessfulLock_CreatesCapturedChildLineAndPercentageView()
         {
-            CompleteCut(new LogicalPoint(2f, 8f), BarrierOrientation.Vertical);
+            CompleteCut(new LogicalPoint(4f, 8f), BarrierOrientation.Vertical);
             _boardPresenter.RefreshNow();
             _hudPresenter.RefreshNow();
 
@@ -80,13 +82,13 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Session.Board.ActiveRooms,
                 Has.Count.EqualTo(1));
             Assert.That(_controller.Session.CapturedFraction,
-                Is.EqualTo(0.2f).Within(0.0001f));
+                Is.EqualTo(0.4f).Within(0.0001f));
             Assert.That(_boardPresenter.VisibleCapturedRegionCount,
                 Is.EqualTo(1));
             Assert.That(_boardPresenter.VisibleCompletedBarrierCount,
                 Is.EqualTo(1));
             Assert.That(_hudPresenter.PercentageText.text,
-                Does.Contain("20%"));
+                Does.Contain("40%"));
             Assert.That(_boardPresenter.CapturedRegionRoot.GetChild(0)
                 .gameObject.activeSelf, Is.True);
         }
@@ -101,7 +103,8 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Session.LevelStatus,
                 Is.EqualTo(CaptureLevelStatus.Completed));
             Assert.That(_controller.Session.CapturedFraction,
-                Is.EqualTo(0.75f).Within(0.0001f));
+                Is.GreaterThanOrEqualTo(
+                    _controller.TargetCapturedFraction - 0.0001f));
             Assert.That(_hudPresenter.CompleteOverlay.activeSelf, Is.True);
             Assert.That(_hudPresenter.CompletionCanvasGroup.alpha,
                 Is.EqualTo(1f));
@@ -135,20 +138,11 @@ namespace Cutrium.PlayModeTests
         [UnityTest]
         public IEnumerator AboveTarget_ShowsOverlayAndRetryResetsWholeLoop()
         {
-            CompleteCut(new LogicalPoint(2f, 8f), BarrierOrientation.Vertical);
-            CompleteCut(new LogicalPoint(4f, 8f), BarrierOrientation.Vertical);
-            for (int tick = 0; tick < 90; tick++)
-            {
-                _controller.AdvanceSimulation(
-                    FirstPlayableController.SimulationStep);
-            }
-
-            CompleteCutEventually(
-                new LogicalPoint(7f, 38f / 3f),
-                BarrierOrientation.Horizontal);
+            CompleteLevel();
 
             Assert.That(_controller.Session.CapturedFraction,
-                Is.EqualTo(0.875f).Within(0.000001f));
+                Is.GreaterThanOrEqualTo(
+                    _controller.TargetCapturedFraction - 0.0001f));
             Assert.That(_controller.Session.LevelStatus,
                 Is.EqualTo(CaptureLevelStatus.Completed));
 
@@ -156,7 +150,7 @@ namespace Cutrium.PlayModeTests
 
             CanvasGroup group = _hudPresenter.CompletionCanvasGroup;
             Assert.That(_hudPresenter.PercentageText.text,
-                Is.EqualTo("Captured 88%"));
+                Does.StartWith("Captured "));
             Assert.That(_hudPresenter.CompleteOverlay.activeSelf, Is.True);
             Assert.That(_hudPresenter.CompleteOverlay.activeInHierarchy, Is.True);
             Assert.That(group.alpha, Is.EqualTo(1f));
@@ -180,9 +174,9 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Session.Threat.Position,
                 Is.EqualTo(new LogicalPoint(5f, 8f)));
             Assert.That(_controller.Session.Threat.Velocity.X,
-                Is.EqualTo(2.08f).Within(0.000001f));
+                Is.EqualTo(1.28f).Within(0.000001f));
             Assert.That(_controller.Session.Threat.Velocity.Y,
-                Is.EqualTo(1.56f).Within(0.000001f));
+                Is.EqualTo(0.96f).Within(0.000001f));
             Assert.That(_controller.Session.Board.CapturedRooms, Is.Empty);
             Assert.That(_controller.Session.Board.CompletedBarriers, Is.Empty);
             Assert.That(_controller.Session.ActiveBarrier.HasValue, Is.False);
@@ -255,7 +249,7 @@ namespace Cutrium.PlayModeTests
             Assert.That(_hudPresenter.CompleteOverlay.transform.GetSiblingIndex(),
                 Is.EqualTo(safeArea.childCount - 1));
             Assert.That(safeArea.Find("TopHUD/Title").GetComponent<Text>().text,
-                Is.EqualTo("CUTRIUM"));
+                Is.EqualTo("LEARN THE CUT"));
             Assert.That(safeArea.Find("TopHUD/HudBlockerButton/Label")
                 .GetComponent<Text>().text, Is.EqualTo("UI TEST"));
             Assert.That(safeArea.Find("BoardViewport/BoardFrame/BoardLabel")
@@ -331,10 +325,10 @@ namespace Cutrium.PlayModeTests
         {
             _boardPresenter.enabled = false;
 
-            CompleteCut(new LogicalPoint(2f, 8f), BarrierOrientation.Vertical);
+            CompleteCut(new LogicalPoint(4f, 8f), BarrierOrientation.Vertical);
 
             Assert.That(_controller.Session.CapturedFraction,
-                Is.EqualTo(0.2f).Within(0.0001f));
+                Is.EqualTo(0.4f).Within(0.0001f));
             Assert.That(_controller.Session.Board.CapturedRooms,
                 Has.Count.EqualTo(1));
         }
@@ -351,20 +345,35 @@ namespace Cutrium.PlayModeTests
             Assert.That(fitted.width / fitted.height,
                 Is.EqualTo(10f / 16f).Within(0.0001f));
 
-            CompleteCut(new LogicalPoint(2f, 8f), BarrierOrientation.Vertical);
+            CompleteCut(new LogicalPoint(4f, 8f), BarrierOrientation.Vertical);
 
             Assert.That(_controller.Session.Board.InitialBounds,
                 Is.EqualTo(new LogicalRect(0f, 0f, 10f, 16f)));
             Assert.That(_controller.Session.CapturedFraction,
-                Is.EqualTo(0.2f).Within(0.0001f));
+                Is.EqualTo(0.4f).Within(0.0001f));
         }
 
         private void CompleteLevel()
         {
-            CompleteCut(new LogicalPoint(2f, 8f), BarrierOrientation.Vertical);
-            CompleteCut(new LogicalPoint(4f, 8f), BarrierOrientation.Vertical);
-            CompleteCut(new LogicalPoint(6f, 8f), BarrierOrientation.Vertical);
-            CompleteCut(new LogicalPoint(8f, 6f), BarrierOrientation.Horizontal);
+            for (int attempt = 0;
+                 attempt < 240
+                 && _controller.Session.LevelStatus
+                    == CaptureLevelStatus.Playing;
+                 attempt++)
+            {
+                for (int tick = 0; tick < 30; tick++)
+                {
+                    _controller.AdvanceSimulation(
+                        FirstPlayableController.SimulationStep);
+                }
+
+                Assert.That(TryChooseCapturingIntent(
+                    out BarrierIntent intent), Is.True);
+                CompleteCutEventually(intent.Origin, intent.Orientation);
+            }
+
+            Assert.That(_controller.Session.LevelStatus,
+                Is.EqualTo(CaptureLevelStatus.Completed));
         }
 
         private void CompleteCut(
@@ -375,7 +384,7 @@ namespace Cutrium.PlayModeTests
                 new BarrierIntent(origin, orientation));
             Assert.That(start.Accepted, Is.True, start.RejectionReason.ToString());
             for (int tick = 0;
-                 tick < 120 && _controller.Session.ActiveBarrier.HasValue;
+                 tick < 600 && _controller.Session.ActiveBarrier.HasValue;
                  tick++)
             {
                 _controller.AdvanceSimulation(
@@ -400,7 +409,7 @@ namespace Cutrium.PlayModeTests
                     Is.True,
                     start.RejectionReason.ToString());
                 for (int tick = 0;
-                     tick < 120 && _controller.Session.ActiveBarrier.HasValue;
+                     tick < 600 && _controller.Session.ActiveBarrier.HasValue;
                      tick++)
                 {
                     _controller.AdvanceSimulation(
@@ -422,7 +431,87 @@ namespace Cutrium.PlayModeTests
                 }
             }
 
-            Assert.Fail("The deterministic 87.5% cut never found a safe window.");
+            Assert.Fail("The deterministic cut never found a safe window.");
+        }
+
+        private bool TryChooseCapturingIntent(out BarrierIntent intent)
+        {
+            ThreatMotionSession session = _controller.Session;
+            float margin = _controller.BarrierMinimumEdgeMargin;
+            float collisionHalfWidth =
+                _controller.BarrierCollisionHalfWidth;
+            var best = new CutCandidate(default, -1f);
+            foreach (RoomState room in session.Board.ActiveRooms)
+            {
+                ThreatState[] threats = session.Threats
+                    .Where(threat => threat.RoomId == room.Id)
+                    .ToArray();
+                float clearance = threats.Max(threat => threat.Radius)
+                    + collisionHalfWidth
+                    + 0.1f;
+                if (room.Bounds.Height * 0.5f > margin + 0.001f)
+                {
+                    float below = threats.Min(threat => threat.Position.Y)
+                        - clearance;
+                    ConsiderCandidate(
+                        room,
+                        new BarrierIntent(
+                            new LogicalPoint(room.Bounds.Center.X, below),
+                            BarrierOrientation.Horizontal),
+                        (below - room.Bounds.MinY) * room.Bounds.Width,
+                        ref best);
+                    float above = threats.Max(threat => threat.Position.Y)
+                        + clearance;
+                    ConsiderCandidate(
+                        room,
+                        new BarrierIntent(
+                            new LogicalPoint(room.Bounds.Center.X, above),
+                            BarrierOrientation.Horizontal),
+                        (room.Bounds.MaxY - above) * room.Bounds.Width,
+                        ref best);
+                }
+
+                if (room.Bounds.Width * 0.5f > margin + 0.001f)
+                {
+                    float left = threats.Min(threat => threat.Position.X)
+                        - clearance;
+                    ConsiderCandidate(
+                        room,
+                        new BarrierIntent(
+                            new LogicalPoint(left, room.Bounds.Center.Y),
+                            BarrierOrientation.Vertical),
+                        (left - room.Bounds.MinX) * room.Bounds.Height,
+                        ref best);
+                    float right = threats.Max(threat => threat.Position.X)
+                        + clearance;
+                    ConsiderCandidate(
+                        room,
+                        new BarrierIntent(
+                            new LogicalPoint(right, room.Bounds.Center.Y),
+                            BarrierOrientation.Vertical),
+                        (room.Bounds.MaxX - right) * room.Bounds.Height,
+                        ref best);
+                }
+            }
+
+            intent = best.Intent;
+            return best.CapturedArea > 0f;
+        }
+
+        private static void ConsiderCandidate(
+            RoomState room,
+            BarrierIntent intent,
+            float capturedArea,
+            ref CutCandidate best)
+        {
+            if (capturedArea <= 0f
+                || !room.Bounds.Contains(intent.Origin)
+                || capturedArea <= best.CapturedArea)
+            {
+                return;
+            }
+
+            best = new CutCandidate(intent, capturedArea);
         }
 
         private void BindScene()
@@ -579,6 +668,19 @@ namespace Cutrium.PlayModeTests
             public Vector2 OverlaySize { get; }
 
             public Rect FittedBoard { get; }
+        }
+
+        private readonly struct CutCandidate
+        {
+            public CutCandidate(BarrierIntent intent, float capturedArea)
+            {
+                Intent = intent;
+                CapturedArea = capturedArea;
+            }
+
+            public BarrierIntent Intent { get; }
+
+            public float CapturedArea { get; }
         }
     }
 }

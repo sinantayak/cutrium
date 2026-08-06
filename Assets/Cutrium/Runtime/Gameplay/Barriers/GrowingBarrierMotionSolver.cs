@@ -34,7 +34,8 @@ namespace Cutrium.Gameplay.Barriers
                     maximumThreatImpacts,
                     tolerance,
                     BarrierSimulationEvent.None,
-                    0);
+                    0,
+                    float.PositiveInfinity);
             }
 
             if (barrier.Lifecycle == BarrierLifecycle.Failed
@@ -46,7 +47,8 @@ namespace Cutrium.Gameplay.Barriers
                     BarrierSimulationEvent.None,
                     BarrierContactKind.None,
                     BarrierSimulationDiagnostic.None,
-                    0);
+                    0,
+                    float.PositiveInfinity);
             }
 
             float minX = room.Bounds.MinX + threat.Radius;
@@ -75,7 +77,8 @@ namespace Cutrium.Gameplay.Barriers
                         BarrierSimulationEvent.None,
                         BarrierContactKind.None,
                         BarrierSimulationDiagnostic.IterationLimitReached,
-                        iterations);
+                        iterations,
+                        float.PositiveInfinity);
                 }
 
                 iterations++;
@@ -126,6 +129,8 @@ namespace Cutrium.Gameplay.Barriers
                     x += velocityX * contactTime;
                     y += velocityY * contactTime;
                     barrier = barrier.AdvanceGrowth(contactTime, tolerance).Fail();
+                    float elapsedUntilEvent =
+                        elapsedTime - remaining + contactTime;
                     float afterContact = remaining - contactTime;
                     ThreatState contactThreat = threat.WithMotion(
                         new LogicalPoint(x, y),
@@ -142,7 +147,8 @@ namespace Cutrium.Gameplay.Barriers
                         BarrierSimulationEvent.Failed,
                         contactKind,
                         ToDiagnostic(continuation.Diagnostic),
-                        iterations);
+                        iterations,
+                        elapsedUntilEvent);
                 }
 
                 x += velocityX * horizon;
@@ -181,7 +187,8 @@ namespace Cutrium.Gameplay.Barriers
                         maximumThreatImpacts,
                         tolerance,
                         BarrierSimulationEvent.Locked,
-                        iterations);
+                        iterations,
+                        elapsedTime - remaining);
                 }
 
                 if (horizon == remaining && remaining == 0f)
@@ -201,7 +208,8 @@ namespace Cutrium.Gameplay.Barriers
                 BarrierSimulationEvent.None,
                 BarrierContactKind.None,
                 BarrierSimulationDiagnostic.None,
-                iterations);
+                iterations,
+                float.PositiveInfinity);
         }
 
         private static BarrierSimulationResult MoveAfterLock(
@@ -212,7 +220,8 @@ namespace Cutrium.Gameplay.Barriers
             int maximumThreatImpacts,
             GeometryTolerancePolicy tolerance,
             BarrierSimulationEvent simulationEvent,
-            int iterations)
+            int iterations,
+            float elapsedUntilEvent)
         {
             RoomState threatSide = CreateThreatSideRoom(
                 parentRoom,
@@ -230,7 +239,8 @@ namespace Cutrium.Gameplay.Barriers
                 simulationEvent,
                 BarrierContactKind.None,
                 ToDiagnostic(moved.Diagnostic),
-                iterations);
+                iterations,
+                elapsedUntilEvent);
         }
 
         private static RoomState CreateThreatSideRoom(

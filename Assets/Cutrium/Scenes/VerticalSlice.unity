@@ -926,6 +926,7 @@ MonoBehaviour:
   _controller: {fileID: 797435164}
   _percentageText: {fileID: 607038957}
   _levelText: {fileID: 1518728884}
+  _purposeText: {fileID: 842705168}
   _targetText: {fileID: 1502529041}
   _completeOverlay: {fileID: 139414941}
   _completionCanvasGroup: {fileID: 139414945}
@@ -1392,48 +1393,59 @@ MonoBehaviour:
   _levelDefinitions:
   - _stableId: learn-the-cut
     _displayNumber: 1
-    _initialPosition: {x: 5, y: 8}
-    _initialDirection: {x: 0.8, y: 0.6}
-    _threatSpeed: 2.6
-    _threatRadius: 0.35
-    _targetCapturedFraction: 0.625
-    _barrierGrowthSpeed: 9.5
+    _threats:
+    - _initialPosition: {x: 5, y: 8}
+      _initialDirection: {x: 0.8, y: 0.6}
+      _speed: 1.6
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+    _targetCapturedFraction: 0.825
+    _barrierGrowthSpeed: 3
     _barrierCollisionHalfWidth: 0.08
-    _minimumCutMargin: 0.75
-    _maximumThreatImpactsPerTick: 8
+    _minimumCutMargin: 3
     _maximumBarrierSolverIterations: 16
     _maximumCatchUpTicks: 8
-    _developmentNote: Readable safe cuts and a generous growth race.
-    _maximumExpectedCompletionSeconds: 45
+    _developmentNote: Two or more readable cuts teach empty-side capture.
+    _purposeLine: LEARN THE CUT
+    _maximumExpectedCompletionSeconds: 15
   - _stableId: timing-and-failure
     _displayNumber: 2
-    _initialPosition: {x: 6.5, y: 5}
-    _initialDirection: {x: -0.65, y: 0.76}
-    _threatSpeed: 3.2
-    _threatRadius: 0.35
-    _targetCapturedFraction: 0.7
-    _barrierGrowthSpeed: 8
+    _threats:
+    - _initialPosition: {x: 4.5, y: 3.5}
+      _initialDirection: {x: 0.45, y: 0.89}
+      _speed: 3.1
+      _radius: 0.38
+      _maximumImpactsPerTick: 8
+    _targetCapturedFraction: 0.85
+    _barrierGrowthSpeed: 2.4
     _barrierCollisionHalfWidth: 0.08
-    _minimumCutMargin: 0.6
-    _maximumThreatImpactsPerTick: 8
+    _minimumCutMargin: 2.5
     _maximumBarrierSolverIterations: 16
     _maximumCatchUpTicks: 8
-    _developmentNote: Slower barriers expose the vulnerable growth window.
-    _maximumExpectedCompletionSeconds: 45
+    _developmentNote: A crossing trajectory makes careless growth timing break.
+    _purposeLine: WATCH THE THREAT
+    _maximumExpectedCompletionSeconds: 30
   - _stableId: confident-capture
     _displayNumber: 3
-    _initialPosition: {x: 5, y: 8}
-    _initialDirection: {x: 0.92, y: 0.38}
-    _threatSpeed: 3.6
-    _threatRadius: 0.35
-    _targetCapturedFraction: 0.75
-    _barrierGrowthSpeed: 7.5
+    _threats:
+    - _initialPosition: {x: 3, y: 5}
+      _initialDirection: {x: 0.9, y: 0.44}
+      _speed: 2.7
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+    - _initialPosition: {x: 7, y: 11}
+      _initialDirection: {x: -0.82, y: -0.57}
+      _speed: 2.9
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+    _targetCapturedFraction: 0.9
+    _barrierGrowthSpeed: 2.8
     _barrierCollisionHalfWidth: 0.08
-    _minimumCutMargin: 0.8
-    _maximumThreatImpactsPerTick: 8
+    _minimumCutMargin: 1.8
     _maximumBarrierSolverIterations: 16
     _maximumCatchUpTicks: 8
-    _developmentNote: Higher target and slower growth reward deliberate cuts.
+    _developmentNote: Separated threats make grouping the strategic constraint.
+    _purposeLine: KEEP THEM TOGETHER
     _maximumExpectedCompletionSeconds: 45
   _distanceTolerance: 0.0001
   _timeTolerance: 0.00001
@@ -1519,18 +1531,18 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-    m_FontSize: 16
+    m_FontSize: 14
     m_FontStyle: 1
-    m_BestFit: 0
-    m_MinSize: 10
-    m_MaxSize: 40
+    m_BestFit: 1
+    m_MinSize: 9
+    m_MaxSize: 14
     m_Alignment: 3
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: CUTRIUM
+  m_Text: LEARN THE CUT
 --- !u!222 &842705169
 CanvasRenderer:
   m_ObjectHideFlags: 0

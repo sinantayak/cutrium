@@ -1,6 +1,7 @@
 using System;
-using Cutrium.Gameplay.Board;
+using System.Collections.Generic;
 using Cutrium.Gameplay.Barriers;
+using Cutrium.Gameplay.Board;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Threats;
 
@@ -8,7 +9,8 @@ namespace Cutrium.Gameplay.Session
 {
     public sealed class ThreatMotionSession
     {
-        private readonly ThreatMotionConfiguration _configuration;
+        private readonly ThreatMotionConfiguration[] _configurations;
+        private readonly BarrierSimulationResult[] _barrierResults;
         private readonly GeometryTolerancePolicy _tolerance;
         private readonly BarrierConfiguration _barrierConfiguration;
         private readonly CaptureLevelConfiguration _captureConfiguration;
@@ -18,7 +20,7 @@ namespace Cutrium.Gameplay.Session
             ThreatMotionConfiguration configuration,
             GeometryTolerancePolicy tolerance)
             : this(
-                configuration,
+                new[] { configuration },
                 new BarrierConfiguration(8f, 0.08f, 0.6f, 16),
                 new CaptureLevelConfiguration(0.75f),
                 tolerance)
@@ -30,7 +32,7 @@ namespace Cutrium.Gameplay.Session
             BarrierConfiguration barrierConfiguration,
             GeometryTolerancePolicy tolerance)
             : this(
-                configuration,
+                new[] { configuration },
                 barrierConfiguration,
                 new CaptureLevelConfiguration(0.75f),
                 tolerance)
@@ -42,18 +44,68 @@ namespace Cutrium.Gameplay.Session
             BarrierConfiguration barrierConfiguration,
             CaptureLevelConfiguration captureConfiguration,
             GeometryTolerancePolicy tolerance)
+            : this(
+                new[] { configuration },
+                barrierConfiguration,
+                captureConfiguration,
+                tolerance)
         {
-            _configuration = configuration;
+        }
+
+        public ThreatMotionSession(
+            IReadOnlyList<ThreatMotionConfiguration> configurations,
+            GeometryTolerancePolicy tolerance)
+            : this(
+                configurations,
+                new BarrierConfiguration(8f, 0.08f, 0.6f, 16),
+                new CaptureLevelConfiguration(0.75f),
+                tolerance)
+        {
+        }
+
+        public ThreatMotionSession(
+            IReadOnlyList<ThreatMotionConfiguration> configurations,
+            BarrierConfiguration barrierConfiguration,
+            CaptureLevelConfiguration captureConfiguration,
+            GeometryTolerancePolicy tolerance)
+        {
+            if (configurations == null || configurations.Count == 0)
+            {
+                throw new ArgumentException(
+                    "A motion session needs at least one normal threat.",
+                    nameof(configurations));
+            }
+
+            _configurations =
+                new ThreatMotionConfiguration[configurations.Count];
+            LogicalRect boardBounds = configurations[0].BoardBounds;
+            for (int index = 0; index < configurations.Count; index++)
+            {
+                ThreatMotionConfiguration configuration = configurations[index];
+                if (configuration.BoardBounds != boardBounds)
+                {
+                    throw new ArgumentException(
+                        "All threats in a session must use the same board.",
+                        nameof(configurations));
+                }
+
+                _configurations[index] = configuration;
+            }
+
+            _barrierResults =
+                new BarrierSimulationResult[_configurations.Length];
             _barrierConfiguration = barrierConfiguration;
             _captureConfiguration = captureConfiguration;
             _tolerance = tolerance;
-            InitialRoom = new RoomState(new RoomId(1), configuration.BoardBounds);
+            InitialRoom = new RoomState(new RoomId(1), boardBounds);
             Reset();
         }
 
         public RoomState InitialRoom { get; }
 
-        public ThreatState Threat { get; private set; }
+        public ThreatState Threat => Board.Threats[0];
+
+        public IReadOnlyList<ThreatState> Threats => Board.Threats;
 
         public CaptureBoardState Board { get; private set; }
 
@@ -76,7 +128,11 @@ namespace Cutrium.Gameplay.Session
 
         public BarrierContactKind LastBarrierContact { get; private set; }
 
-        public BarrierSimulationDiagnostic LastBarrierDiagnostic { get; private set; }
+        public BarrierSimulationDiagnostic LastBarrierDiagnostic
+        {
+            get;
+            private set;
+        }
 
         public int FailedBarrierCount { get; private set; }
 
@@ -89,6 +145,7 @@ namespace Cutrium.Gameplay.Session
             LastBarrierEvent = BarrierSimulationEvent.None;
             LastBarrierContact = BarrierContactKind.None;
             LastBarrierDiagnostic = BarrierSimulationDiagnostic.None;
+            LastDiagnostic = ThreatMotionDiagnostic.None;
             if (LevelStatus == CaptureLevelStatus.Completed)
             {
                 return;
@@ -96,92 +153,30 @@ namespace Cutrium.Gameplay.Session
 
             if (ActiveBarrier.HasValue)
             {
-                if (!Board.TryGetActiveRoom(
-                        ActiveBarrier.Value.ParentRoomId,
-                        out RoomState barrierRoom))
-                {
-                    throw new InvalidOperationException(
-                        "The active barrier parent room is no longer active.");
-                }
-
-                BarrierSimulationResult barrierResult =
-                    GrowingBarrierMotionSolver.Move(
-                        barrierRoom,
-                        Threat,
-                        ActiveBarrier.Value,
-                        elapsedTime,
-                        _barrierConfiguration.MaximumSolverIterations,
-                        _configuration.MaximumImpactsPerTick,
-                        _tolerance);
-                Threat = barrierResult.Threat;
-                LastBarrierEvent = barrierResult.SimulationEvent;
-                LastBarrierContact = barrierResult.ContactKind;
-                LastBarrierDiagnostic = barrierResult.Diagnostic;
-                LastDiagnostic = barrierResult.Diagnostic
-                    == BarrierSimulationDiagnostic.ThreatImpactLimitReached
-                        ? ThreatMotionDiagnostic.ImpactLimitReached
-                        : ThreatMotionDiagnostic.None;
-                LastBarrierSnapshot = barrierResult.Barrier;
-                Board.UpdateThreat(Threat);
-                if (barrierResult.SimulationEvent
-                    == BarrierSimulationEvent.Failed)
-                {
-                    FailedBarrierCount++;
-                    ActiveBarrier = null;
-                }
-                else
-                {
-                    ActiveBarrier = barrierResult.Barrier;
-                    if (barrierResult.SimulationEvent
-                        == BarrierSimulationEvent.Locked)
-                    {
-                        LockedBarrierCount++;
-                        LastRoomSplitResult =
-                            Board.TryApplyLockedBarrier(barrierResult.Barrier);
-                        if (!LastRoomSplitResult.Applied)
-                        {
-                            throw new InvalidOperationException(
-                                "A locked barrier could not split its active room: "
-                                + LastRoomSplitResult.Diagnostic + ".");
-                        }
-
-                        Threat = Board.GetThreat(Threat.Id);
-                        ActiveBarrier = null;
-                        float capturedTargetArea =
-                            TargetCapturedFraction * InitialRoom.Bounds.Area;
-                        if (Board.CapturedArea > capturedTargetArea
-                            || _tolerance.IsAreaApproximatelyEqual(
-                                Board.CapturedArea,
-                                capturedTargetArea))
-                        {
-                            LevelStatus = CaptureLevelStatus.Completed;
-                        }
-                    }
-                }
-
-                TickCount++;
-                return;
+                TickActiveBarrier(elapsedTime);
             }
-
-            if (!Board.TryGetActiveRoom(Threat.RoomId, out RoomState room))
+            else
             {
-                throw new InvalidOperationException(
-                    "The live threat has no active room.");
+                MoveAllThreats(elapsedTime);
             }
 
-            ThreatMotionResult result = ThreatMotionSolver.Move(
-                room,
-                Threat,
-                elapsedTime,
-                _configuration.MaximumImpactsPerTick,
-                _tolerance);
-            Threat = result.Threat;
-            Board.UpdateThreat(Threat);
-            LastDiagnostic = result.Diagnostic;
             TickCount++;
         }
 
         public BarrierStartResult TryStartBarrier(BarrierIntent intent)
+        {
+            BarrierStartResult result = ValidateBarrierStart(intent);
+            if (result.Accepted)
+            {
+                ActiveBarrier = result.Barrier;
+                LastBarrierSnapshot = result.Barrier;
+                _nextBarrierId++;
+            }
+
+            return result;
+        }
+
+        public BarrierStartResult ValidateBarrierStart(BarrierIntent intent)
         {
             if (LevelStatus == CaptureLevelStatus.Completed)
             {
@@ -207,39 +202,39 @@ namespace Cutrium.Gameplay.Session
                     default);
             }
 
-            BarrierStartResult result = BarrierFactory.TryCreate(
+            return BarrierFactory.TryCreate(
                 new BarrierId(_nextBarrierId),
                 room,
                 intent,
                 _barrierConfiguration,
                 _tolerance);
-            if (result.Accepted)
-            {
-                ActiveBarrier = result.Barrier;
-                LastBarrierSnapshot = result.Barrier;
-                _nextBarrierId++;
-            }
-
-            return result;
         }
 
         public void Reset()
         {
-            Threat = new ThreatState(
-                new ThreatId(1),
-                InitialRoom.Id,
-                _configuration.InitialPosition,
-                _configuration.InitialDirection * _configuration.Speed,
-                _configuration.Radius);
-            ThreatMotionSolver.Move(
-                InitialRoom,
-                Threat,
-                0f,
-                _configuration.MaximumImpactsPerTick,
-                _tolerance);
+            var initialThreats = new ThreatState[_configurations.Length];
+            for (int index = 0; index < _configurations.Length; index++)
+            {
+                ThreatMotionConfiguration configuration =
+                    _configurations[index];
+                var threat = new ThreatState(
+                    new ThreatId(index + 1),
+                    InitialRoom.Id,
+                    configuration.InitialPosition,
+                    configuration.InitialDirection * configuration.Speed,
+                    configuration.Radius);
+                ThreatMotionSolver.Move(
+                    InitialRoom,
+                    threat,
+                    0f,
+                    configuration.MaximumImpactsPerTick,
+                    _tolerance);
+                initialThreats[index] = threat;
+            }
+
             Board = new CaptureBoardState(
                 InitialRoom.Bounds,
-                new[] { Threat },
+                initialThreats,
                 _tolerance);
             LevelStatus = CaptureLevelStatus.Playing;
             LastRoomSplitResult = default;
@@ -253,6 +248,245 @@ namespace Cutrium.Gameplay.Session
             LockedBarrierCount = 0;
             _nextBarrierId = 1;
             TickCount = 0;
+        }
+
+        private void TickActiveBarrier(float elapsedTime)
+        {
+            BarrierState initialBarrier = ActiveBarrier.Value;
+            if (!Board.TryGetActiveRoom(
+                    initialBarrier.ParentRoomId,
+                    out RoomState barrierRoom))
+            {
+                throw new InvalidOperationException(
+                    "The active barrier parent room is no longer active.");
+            }
+
+            int firstParentThreatIndex = -1;
+            int lockedResultIndex = -1;
+            int earliestFailureIndex = -1;
+            float earliestFailureTime = float.PositiveInfinity;
+            for (int index = 0; index < Board.Threats.Count; index++)
+            {
+                ThreatState threat = Board.Threats[index];
+                if (threat.RoomId != barrierRoom.Id)
+                {
+                    continue;
+                }
+
+                if (firstParentThreatIndex < 0)
+                {
+                    firstParentThreatIndex = index;
+                }
+
+                ThreatMotionConfiguration configuration =
+                    ConfigurationFor(threat.Id);
+                BarrierSimulationResult result =
+                    GrowingBarrierMotionSolver.Move(
+                        barrierRoom,
+                        threat,
+                        initialBarrier,
+                        elapsedTime,
+                        _barrierConfiguration.MaximumSolverIterations,
+                        configuration.MaximumImpactsPerTick,
+                        _tolerance);
+                _barrierResults[index] = result;
+                if (result.SimulationEvent == BarrierSimulationEvent.Locked)
+                {
+                    lockedResultIndex = index;
+                }
+
+                if (result.SimulationEvent != BarrierSimulationEvent.Failed)
+                {
+                    continue;
+                }
+
+                if (earliestFailureIndex < 0
+                    || result.ElapsedUntilEvent < earliestFailureTime
+                    && !_tolerance.IsTimeApproximatelyEqual(
+                        result.ElapsedUntilEvent,
+                        earliestFailureTime))
+                {
+                    earliestFailureIndex = index;
+                    earliestFailureTime = result.ElapsedUntilEvent;
+                }
+            }
+
+            if (firstParentThreatIndex < 0)
+            {
+                throw new InvalidOperationException(
+                    "An active room must retain at least one threat.");
+            }
+
+            if (earliestFailureIndex >= 0)
+            {
+                ApplyEarliestBarrierFailure(
+                    barrierRoom,
+                    initialBarrier,
+                    elapsedTime,
+                    earliestFailureIndex,
+                    earliestFailureTime);
+                return;
+            }
+
+            int representativeIndex = lockedResultIndex >= 0
+                ? lockedResultIndex
+                : firstParentThreatIndex;
+            BarrierSimulationResult representative =
+                _barrierResults[representativeIndex];
+            for (int index = 0; index < Board.Threats.Count; index++)
+            {
+                ThreatState threat = Board.Threats[index];
+                if (threat.RoomId == barrierRoom.Id)
+                {
+                    BarrierSimulationResult result = _barrierResults[index];
+                    Board.UpdateThreat(result.Threat);
+                    IncludeBarrierDiagnostic(result.Diagnostic);
+                }
+                else
+                {
+                    MoveThreat(threat, elapsedTime);
+                }
+            }
+
+            ActiveBarrier = representative.Barrier;
+            LastBarrierSnapshot = representative.Barrier;
+            LastBarrierEvent = representative.SimulationEvent;
+            if (representative.SimulationEvent != BarrierSimulationEvent.Locked)
+            {
+                return;
+            }
+
+            LockedBarrierCount++;
+            LastRoomSplitResult =
+                Board.TryApplyLockedBarrier(representative.Barrier);
+            if (!LastRoomSplitResult.Applied)
+            {
+                throw new InvalidOperationException(
+                    "A locked barrier could not split its active room: "
+                    + LastRoomSplitResult.Diagnostic + ".");
+            }
+
+            ActiveBarrier = null;
+            float capturedTargetArea =
+                TargetCapturedFraction * InitialRoom.Bounds.Area;
+            if (Board.CapturedArea > capturedTargetArea
+                || _tolerance.IsAreaApproximatelyEqual(
+                    Board.CapturedArea,
+                    capturedTargetArea))
+            {
+                LevelStatus = CaptureLevelStatus.Completed;
+            }
+        }
+
+        private void ApplyEarliestBarrierFailure(
+            RoomState barrierRoom,
+            BarrierState initialBarrier,
+            float elapsedTime,
+            int failureIndex,
+            float failureTime)
+        {
+            BarrierSimulationResult failure = _barrierResults[failureIndex];
+            float remaining = Math.Max(0f, elapsedTime - failureTime);
+            for (int index = 0; index < Board.Threats.Count; index++)
+            {
+                ThreatState threat = Board.Threats[index];
+                if (threat.RoomId != barrierRoom.Id)
+                {
+                    MoveThreat(threat, elapsedTime);
+                    continue;
+                }
+
+                ThreatMotionConfiguration configuration =
+                    ConfigurationFor(threat.Id);
+                BarrierSimulationResult prefix =
+                    GrowingBarrierMotionSolver.Move(
+                        barrierRoom,
+                        threat,
+                        initialBarrier,
+                        failureTime,
+                        _barrierConfiguration.MaximumSolverIterations,
+                        configuration.MaximumImpactsPerTick,
+                        _tolerance);
+                ThreatMotionResult continuation = ThreatMotionSolver.Move(
+                    barrierRoom,
+                    prefix.Threat,
+                    remaining,
+                    configuration.MaximumImpactsPerTick,
+                    _tolerance);
+                Board.UpdateThreat(continuation.Threat);
+                IncludeBarrierDiagnostic(prefix.Diagnostic);
+                IncludeThreatDiagnostic(continuation.Diagnostic);
+            }
+
+            LastBarrierEvent = BarrierSimulationEvent.Failed;
+            LastBarrierContact = failure.ContactKind;
+            IncludeBarrierDiagnostic(failure.Diagnostic);
+            LastBarrierSnapshot = failure.Barrier;
+            FailedBarrierCount++;
+            ActiveBarrier = null;
+        }
+
+        private void MoveAllThreats(float elapsedTime)
+        {
+            for (int index = 0; index < Board.Threats.Count; index++)
+            {
+                MoveThreat(Board.Threats[index], elapsedTime);
+            }
+        }
+
+        private void MoveThreat(ThreatState threat, float elapsedTime)
+        {
+            if (!Board.TryGetActiveRoom(threat.RoomId, out RoomState room))
+            {
+                throw new InvalidOperationException(
+                    "A live threat has no active room.");
+            }
+
+            ThreatMotionConfiguration configuration =
+                ConfigurationFor(threat.Id);
+            ThreatMotionResult result = ThreatMotionSolver.Move(
+                room,
+                threat,
+                elapsedTime,
+                configuration.MaximumImpactsPerTick,
+                _tolerance);
+            Board.UpdateThreat(result.Threat);
+            IncludeThreatDiagnostic(result.Diagnostic);
+        }
+
+        private ThreatMotionConfiguration ConfigurationFor(ThreatId id)
+        {
+            int index = id.Value - 1;
+            if (index < 0 || index >= _configurations.Length)
+            {
+                throw new InvalidOperationException(
+                    $"No motion configuration exists for {id}.");
+            }
+
+            return _configurations[index];
+        }
+
+        private void IncludeBarrierDiagnostic(
+            BarrierSimulationDiagnostic diagnostic)
+        {
+            if (diagnostic != BarrierSimulationDiagnostic.None)
+            {
+                LastBarrierDiagnostic = diagnostic;
+            }
+
+            if (diagnostic
+                == BarrierSimulationDiagnostic.ThreatImpactLimitReached)
+            {
+                LastDiagnostic = ThreatMotionDiagnostic.ImpactLimitReached;
+            }
+        }
+
+        private void IncludeThreatDiagnostic(ThreatMotionDiagnostic diagnostic)
+        {
+            if (diagnostic != ThreatMotionDiagnostic.None)
+            {
+                LastDiagnostic = diagnostic;
+            }
         }
     }
 }

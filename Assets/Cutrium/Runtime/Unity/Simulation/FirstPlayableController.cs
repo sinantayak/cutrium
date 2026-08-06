@@ -93,6 +93,12 @@ namespace Cutrium.Unity.Simulation
             ? CurrentLevelConfiguration.ThreatMotion.Speed
             : _threatSpeed;
 
+        public int ThreatCount => Session != null
+            ? Session.Threats.Count
+            : _levelCatalog != null
+                ? CurrentLevelConfiguration.ThreatMotions.Count
+                : 1;
+
         public Vector2 InitialPosition => _levelCatalog != null
             ? new Vector2(
                 CurrentLevelConfiguration.ThreatMotion.InitialPosition.X,
@@ -279,6 +285,12 @@ namespace Cutrium.Unity.Simulation
             return LastBarrierStartResult;
         }
 
+        public BarrierStartResult ValidateBarrierIntent(BarrierIntent intent)
+        {
+            InitializeOnce();
+            return Session.ValidateBarrierStart(intent);
+        }
+
         public void RetryLevel()
         {
             InitializeOnce();
@@ -450,10 +462,8 @@ namespace Cutrium.Unity.Simulation
 
         private void LoadCurrentLevel()
         {
-            ThreatMotionConfiguration threat =
-                CurrentLevelConfiguration.ThreatMotion;
             Session = new ThreatMotionSession(
-                threat,
+                CurrentLevelConfiguration.ThreatMotions,
                 CurrentLevelConfiguration.Barrier,
                 CurrentLevelConfiguration.Capture,
                 Tolerance);

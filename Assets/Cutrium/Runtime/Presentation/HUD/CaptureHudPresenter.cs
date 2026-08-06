@@ -18,6 +18,9 @@ namespace Cutrium.Presentation.HUD
         private Text _levelText;
 
         [SerializeField]
+        private Text _purposeText;
+
+        [SerializeField]
         private Text _targetText;
 
         [SerializeField]
@@ -47,6 +50,8 @@ namespace Cutrium.Presentation.HUD
 
         public Text LevelText => _levelText;
 
+        public Text PurposeText => _purposeText;
+
         public Text TargetText => _targetText;
 
         public GameObject CompleteOverlay => _completeOverlay;
@@ -71,6 +76,7 @@ namespace Cutrium.Presentation.HUD
             Configure(
                 controller,
                 null,
+                null,
                 percentageText,
                 targetText,
                 completeOverlay,
@@ -84,6 +90,7 @@ namespace Cutrium.Presentation.HUD
         public void Configure(
             FirstPlayableController controller,
             Text levelText,
+            Text purposeText,
             Text percentageText,
             Text targetText,
             GameObject completeOverlay,
@@ -96,6 +103,7 @@ namespace Cutrium.Presentation.HUD
             UnsubscribeButtons();
             _controller = controller;
             _levelText = levelText;
+            _purposeText = purposeText;
             _percentageText = percentageText;
             _targetText = targetText;
             _completeOverlay = completeOverlay;
@@ -123,6 +131,12 @@ namespace Cutrium.Presentation.HUD
             if (_levelText != null)
             {
                 _levelText.text = $"LEVEL {_controller.CurrentLevelNumber}";
+            }
+
+            if (_purposeText != null)
+            {
+                _purposeText.text =
+                    _controller.CurrentLevelConfiguration.PurposeLine;
             }
 
             if (_percentageText != null)
