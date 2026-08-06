@@ -42,6 +42,8 @@ crashlytics-build.properties
 # Gradle
 .gradle/
 
+.codex
+
 # Addressables build artifacts if added later
 /[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
