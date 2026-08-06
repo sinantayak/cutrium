@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cutrium.Gameplay.Barriers;
+using Cutrium.Gameplay.Feedback;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
 using Cutrium.Unity.Input;
@@ -58,6 +59,10 @@ namespace Cutrium.Unity.Simulation
         private CoreFunLevelDefinition[] _levelDefinitions =
             Array.Empty<CoreFunLevelDefinition>();
 
+        [Header("Feedback")]
+        [SerializeField]
+        private FeedbackTuningDefinition _feedbackTuning;
+
         [Header("Geometry Tolerances")]
         [SerializeField]
         private float _distanceTolerance = 0.0001f;
@@ -77,6 +82,8 @@ namespace Cutrium.Unity.Simulation
         private bool _completionReported;
 
         public ThreatMotionSession Session { get; private set; }
+
+        public event Action<FeedbackEvent> FeedbackEventRaised;
 
         public GeometryTolerancePolicy Tolerance { get; private set; }
 
@@ -172,6 +179,8 @@ namespace Cutrium.Unity.Simulation
 
         public int CompletionLogCount { get; private set; }
 
+        public FeedbackTuningDefinition FeedbackTuning => _feedbackTuning;
+
         private void Awake()
         {
             InitializeOnce();
@@ -248,6 +257,13 @@ namespace Cutrium.Unity.Simulation
             _targetCapturedFraction = targetCapturedFraction;
         }
 
+        public void ConfigureFeedbackForSetup(
+            FeedbackTuningDefinition feedbackTuning)
+        {
+            _feedbackTuning = feedbackTuning
+                ?? throw new ArgumentNullException(nameof(feedbackTuning));
+        }
+
         public void ConfigureLevelsForSetup(
             IReadOnlyList<CoreFunLevelDefinition> levelDefinitions)
         {
@@ -281,6 +297,8 @@ namespace Cutrium.Unity.Simulation
             {
                 Metrics.RecordBarrierAttempt();
             }
+
+            DispatchFeedbackEvents();
 
             return LastBarrierStartResult;
         }
@@ -351,6 +369,18 @@ namespace Cutrium.Unity.Simulation
                 : RestartSequence();
         }
 
+        public void NotifyUiFeedback()
+        {
+            InitializeOnce();
+            FeedbackEventRaised?.Invoke(new FeedbackEvent(
+                FeedbackEventKind.Ui,
+                default,
+                0f,
+                Session.CapturedFraction,
+                float.PositiveInfinity,
+                Session.ComboCount));
+        }
+
         private void InitializeOnce()
         {
             if (Session != null)
@@ -382,6 +412,7 @@ namespace Cutrium.Unity.Simulation
 
             float capturedBefore = Session.CapturedFraction;
             Session.Tick(elapsedTime);
+            DispatchFeedbackEvents();
             if (Session.LastBarrierEvent == BarrierSimulationEvent.Failed)
             {
                 Metrics.RecordBarrierFailure(Session.CapturedFraction);
@@ -466,6 +497,9 @@ namespace Cutrium.Unity.Simulation
                 CurrentLevelConfiguration.ThreatMotions,
                 CurrentLevelConfiguration.Barrier,
                 CurrentLevelConfiguration.Capture,
+                _feedbackTuning != null
+                    ? _feedbackTuning.ToRuntimeConfiguration()
+                    : FeedbackTuningConfiguration.Default,
                 Tolerance);
             _accumulator = new FixedStepAccumulator(
                 SimulationStep,
@@ -478,6 +512,21 @@ namespace Cutrium.Unity.Simulation
             DroppedSimulationTime = 0f;
             _completionReported = false;
             LevelLoadCount++;
+            DispatchFeedbackEvents();
+        }
+
+        private void DispatchFeedbackEvents()
+        {
+            if (Session == null || FeedbackEventRaised == null)
+            {
+                return;
+            }
+
+            IReadOnlyList<FeedbackEvent> events = Session.FeedbackEvents;
+            for (int index = 0; index < events.Count; index++)
+            {
+                FeedbackEventRaised.Invoke(events[index]);
+            }
         }
 
         private void OnBarrierIntentCommitted(BarrierIntent intent)

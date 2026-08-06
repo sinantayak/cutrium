@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Board;
+using Cutrium.Gameplay.Feedback;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Threats;
 
@@ -14,7 +15,14 @@ namespace Cutrium.Gameplay.Session
         private readonly GeometryTolerancePolicy _tolerance;
         private readonly BarrierConfiguration _barrierConfiguration;
         private readonly CaptureLevelConfiguration _captureConfiguration;
+        private readonly FeedbackTuningConfiguration _feedbackConfiguration;
+        private readonly List<BarrierApproachSample> _approachSamples =
+            new List<BarrierApproachSample>(128);
+        private readonly List<FeedbackEvent> _feedbackEvents =
+            new List<FeedbackEvent>(8);
         private int _nextBarrierId;
+        private float _barrierElapsed;
+        private ComboState _combo;
 
         public ThreatMotionSession(
             ThreatMotionConfiguration configuration,
@@ -68,6 +76,21 @@ namespace Cutrium.Gameplay.Session
             BarrierConfiguration barrierConfiguration,
             CaptureLevelConfiguration captureConfiguration,
             GeometryTolerancePolicy tolerance)
+            : this(
+                configurations,
+                barrierConfiguration,
+                captureConfiguration,
+                FeedbackTuningConfiguration.Default,
+                tolerance)
+        {
+        }
+
+        public ThreatMotionSession(
+            IReadOnlyList<ThreatMotionConfiguration> configurations,
+            BarrierConfiguration barrierConfiguration,
+            CaptureLevelConfiguration captureConfiguration,
+            FeedbackTuningConfiguration feedbackConfiguration,
+            GeometryTolerancePolicy tolerance)
         {
             if (configurations == null || configurations.Count == 0)
             {
@@ -96,6 +119,7 @@ namespace Cutrium.Gameplay.Session
                 new BarrierSimulationResult[_configurations.Length];
             _barrierConfiguration = barrierConfiguration;
             _captureConfiguration = captureConfiguration;
+            _feedbackConfiguration = feedbackConfiguration;
             _tolerance = tolerance;
             InitialRoom = new RoomState(new RoomId(1), boardBounds);
             Reset();
@@ -115,6 +139,10 @@ namespace Cutrium.Gameplay.Session
             _captureConfiguration.TargetCapturedFraction;
 
         public float CapturedFraction => Board.CapturedFraction;
+
+        public int ComboCount => _combo.Count;
+
+        public IReadOnlyList<FeedbackEvent> FeedbackEvents => _feedbackEvents;
 
         public RoomSplitApplyResult LastRoomSplitResult { get; private set; }
 
@@ -142,6 +170,7 @@ namespace Cutrium.Gameplay.Session
 
         public void Tick(float elapsedTime)
         {
+            _feedbackEvents.Clear();
             LastBarrierEvent = BarrierSimulationEvent.None;
             LastBarrierContact = BarrierContactKind.None;
             LastBarrierDiagnostic = BarrierSimulationDiagnostic.None;
@@ -165,11 +194,20 @@ namespace Cutrium.Gameplay.Session
 
         public BarrierStartResult TryStartBarrier(BarrierIntent intent)
         {
+            _feedbackEvents.Clear();
             BarrierStartResult result = ValidateBarrierStart(intent);
             if (result.Accepted)
             {
                 ActiveBarrier = result.Barrier;
                 LastBarrierSnapshot = result.Barrier;
+                _barrierElapsed = 0f;
+                _approachSamples.Clear();
+                RecordApproachSamples(result.Barrier, 0f);
+                AddFeedback(
+                    FeedbackEventKind.BarrierStarted,
+                    result.Barrier.Id,
+                    0f,
+                    float.PositiveInfinity);
                 _nextBarrierId++;
             }
 
@@ -248,6 +286,15 @@ namespace Cutrium.Gameplay.Session
             LockedBarrierCount = 0;
             _nextBarrierId = 1;
             TickCount = 0;
+            _barrierElapsed = 0f;
+            _approachSamples.Clear();
+            _combo = _combo.Reset();
+            _feedbackEvents.Clear();
+            AddFeedback(
+                FeedbackEventKind.SessionReset,
+                default,
+                0f,
+                float.PositiveInfinity);
         }
 
         private void TickActiveBarrier(float elapsedTime)
@@ -333,6 +380,21 @@ namespace Cutrium.Gameplay.Session
                 : firstParentThreatIndex;
             BarrierSimulationResult representative =
                 _barrierResults[representativeIndex];
+            if (representative.SimulationEvent == BarrierSimulationEvent.Locked)
+            {
+                RecordApproachSamplesAtLock(
+                    barrierRoom,
+                    initialBarrier,
+                    representative.ElapsedUntilEvent,
+                    _barrierElapsed + representative.ElapsedUntilEvent);
+            }
+            else
+            {
+                RecordResultApproachSamples(
+                    barrierRoom.Id,
+                    _barrierElapsed + elapsedTime);
+            }
+
             for (int index = 0; index < Board.Threats.Count; index++)
             {
                 ThreatState threat = Board.Threats[index];
@@ -353,9 +415,16 @@ namespace Cutrium.Gameplay.Session
             LastBarrierEvent = representative.SimulationEvent;
             if (representative.SimulationEvent != BarrierSimulationEvent.Locked)
             {
+                _barrierElapsed += elapsedTime;
+                AddFeedback(
+                    FeedbackEventKind.BarrierGrowing,
+                    representative.Barrier.Id,
+                    0f,
+                    float.PositiveInfinity);
                 return;
             }
 
+            float capturedAreaBefore = Board.CapturedArea;
             LockedBarrierCount++;
             LastRoomSplitResult =
                 Board.TryApplyLockedBarrier(representative.Barrier);
@@ -367,6 +436,65 @@ namespace Cutrium.Gameplay.Session
             }
 
             ActiveBarrier = null;
+            float capturedAreaDelta = Board.CapturedArea - capturedAreaBefore;
+            float capturedFractionDelta =
+                capturedAreaDelta / InitialRoom.Bounds.Area;
+            AddFeedback(
+                FeedbackEventKind.BarrierLocked,
+                representative.Barrier.Id,
+                capturedFractionDelta,
+                float.PositiveInfinity);
+            if (capturedAreaDelta > _tolerance.AreaTolerance)
+            {
+                AddFeedback(
+                    FeedbackEventKind.RegionCaptured,
+                    representative.Barrier.Id,
+                    capturedFractionDelta,
+                    float.PositiveInfinity);
+                if (LargeCaptureEvaluator.IsLargeCapture(
+                        capturedAreaDelta,
+                        InitialRoom.Bounds.Area,
+                        _feedbackConfiguration,
+                        _tolerance))
+                {
+                    AddFeedback(
+                        FeedbackEventKind.LargeCapture,
+                        representative.Barrier.Id,
+                        capturedFractionDelta,
+                        float.PositiveInfinity);
+                }
+
+                _combo = _combo.OnCapturingLock();
+                AddFeedback(
+                    FeedbackEventKind.ComboChanged,
+                    representative.Barrier.Id,
+                    capturedFractionDelta,
+                    float.PositiveInfinity);
+            }
+            else
+            {
+                _combo = _combo.OnNoAreaLock();
+            }
+
+            float lockTime =
+                _barrierElapsed + representative.ElapsedUntilEvent;
+            NearMissEvaluation nearMiss = NearMissEvaluator.Evaluate(
+                _approachSamples,
+                lockTime,
+                false,
+                _feedbackConfiguration,
+                _tolerance);
+            if (nearMiss.IsNearMiss)
+            {
+                AddFeedback(
+                    FeedbackEventKind.NearMiss,
+                    representative.Barrier.Id,
+                    capturedFractionDelta,
+                    nearMiss.ClosestClearance);
+            }
+
+            _approachSamples.Clear();
+            _barrierElapsed = 0f;
             float capturedTargetArea =
                 TargetCapturedFraction * InitialRoom.Bounds.Area;
             if (Board.CapturedArea > capturedTargetArea
@@ -375,6 +503,11 @@ namespace Cutrium.Gameplay.Session
                     capturedTargetArea))
             {
                 LevelStatus = CaptureLevelStatus.Completed;
+                AddFeedback(
+                    FeedbackEventKind.LevelCompleted,
+                    representative.Barrier.Id,
+                    capturedFractionDelta,
+                    nearMiss.ClosestClearance);
             }
         }
 
@@ -424,6 +557,139 @@ namespace Cutrium.Gameplay.Session
             LastBarrierSnapshot = failure.Barrier;
             FailedBarrierCount++;
             ActiveBarrier = null;
+            _approachSamples.Clear();
+            _barrierElapsed = 0f;
+            AddFeedback(
+                FeedbackEventKind.BarrierBroken,
+                failure.Barrier.Id,
+                0f,
+                float.PositiveInfinity);
+            if (_combo.Count > 0)
+            {
+                _combo = _combo.OnBarrierFailure();
+                AddFeedback(
+                    FeedbackEventKind.ComboChanged,
+                    failure.Barrier.Id,
+                    0f,
+                    float.PositiveInfinity);
+            }
+        }
+
+        private void RecordApproachSamples(
+            BarrierState barrier,
+            float elapsedSeconds)
+        {
+            for (int index = 0; index < Board.Threats.Count; index++)
+            {
+                ThreatState threat = Board.Threats[index];
+                if (threat.RoomId != barrier.ParentRoomId)
+                {
+                    continue;
+                }
+
+                _approachSamples.Add(new BarrierApproachSample(
+                    elapsedSeconds,
+                    BarrierApproachCalculator.CalculateClearance(
+                        barrier,
+                        threat.Position,
+                        threat.Radius)));
+            }
+
+            PruneApproachSamples(elapsedSeconds);
+        }
+
+        private void RecordResultApproachSamples(
+            RoomId parentRoomId,
+            float elapsedSeconds)
+        {
+            for (int index = 0; index < Board.Threats.Count; index++)
+            {
+                ThreatState threat = Board.Threats[index];
+                if (threat.RoomId != parentRoomId)
+                {
+                    continue;
+                }
+
+                BarrierSimulationResult result = _barrierResults[index];
+                _approachSamples.Add(new BarrierApproachSample(
+                    elapsedSeconds,
+                    BarrierApproachCalculator.CalculateClearance(
+                        result.Barrier,
+                        result.Threat.Position,
+                        result.Threat.Radius)));
+            }
+
+            PruneApproachSamples(elapsedSeconds);
+        }
+
+        private void RecordApproachSamplesAtLock(
+            RoomState room,
+            BarrierState initialBarrier,
+            float elapsedUntilLock,
+            float lockTime)
+        {
+            for (int index = 0; index < Board.Threats.Count; index++)
+            {
+                ThreatState threat = Board.Threats[index];
+                if (threat.RoomId != room.Id)
+                {
+                    continue;
+                }
+
+                ThreatMotionConfiguration configuration =
+                    ConfigurationFor(threat.Id);
+                BarrierSimulationResult atLock =
+                    GrowingBarrierMotionSolver.Move(
+                        room,
+                        threat,
+                        initialBarrier,
+                        elapsedUntilLock,
+                        _barrierConfiguration.MaximumSolverIterations,
+                        configuration.MaximumImpactsPerTick,
+                        _tolerance);
+                _approachSamples.Add(new BarrierApproachSample(
+                    lockTime,
+                    BarrierApproachCalculator.CalculateClearance(
+                        atLock.Barrier,
+                        atLock.Threat.Position,
+                        atLock.Threat.Radius)));
+            }
+
+            PruneApproachSamples(lockTime);
+        }
+
+        private void PruneApproachSamples(float elapsedSeconds)
+        {
+            float oldest = Math.Max(
+                0f,
+                elapsedSeconds - _feedbackConfiguration.NearMissWindowSeconds
+                    - _tolerance.TimeTolerance);
+            int removeCount = 0;
+            while (removeCount < _approachSamples.Count
+                && _approachSamples[removeCount].ElapsedSeconds < oldest)
+            {
+                removeCount++;
+            }
+
+            if (removeCount > 0)
+            {
+                _approachSamples.RemoveRange(0, removeCount);
+            }
+        }
+
+        private void AddFeedback(
+            FeedbackEventKind kind,
+            BarrierId barrierId,
+            float capturedFractionDelta,
+            float closestClearance)
+        {
+            _feedbackEvents.Add(new FeedbackEvent(
+                kind,
+                barrierId,
+                capturedFractionDelta,
+                Board?.CapturedFraction ?? 0f,
+                closestClearance,
+                _combo.Count));
         }
 
         private void MoveAllThreats(float elapsedTime)

@@ -1467,7 +1467,34 @@ human input at their natural gates:
   regressions, retained boundary/no-mutation cases, compiled all changed
   assemblies without diagnostics, and passed nine focused deterministic
   cases. Full licensed Unity suites remain pending.
-- [ ] Milestone 4 complete, validated, and checkpointed.
+- [x] 2026-08-06: Identity Run start gate inspected from the licensed-user
+  result artifacts: 170 of 170 Edit Mode and 68 of 68 Play Mode tests passed,
+  logs contain no compiler/test-runner failure signature, Unity remains
+  6000.3.21f1 with URP 17.3.0, protected paths have no diff, and the transient
+  generated scene-template settings file was removed to restore a clean start
+  at `85f20d5`.
+- [x] 2026-08-06: Implemented the Milestone 4 source/test/setup candidate:
+  deterministic fixed-step logical Near Miss history, initial-board-area Large
+  Capture, compact combo state, ordered feedback events, flat fallback capture
+  reveal, exact-target percentage animation, restrained queued labels/frame
+  emphasis, missing-clip-safe audio hooks, and `IHapticFeedback` with a no-op
+  service. No theme, Hunter/Pulse, power, package, or native implementation was
+  added.
+- [x] 2026-08-06: Unity-generated Roslyn response files compiled Gameplay,
+  Unity, Presentation, Editor, Edit tests, and Play tests with the Milestone 4
+  additions and zero C# errors or warnings. This is diagnostic compilation,
+  not a substitute for Unity setup, test discovery, or scene validation.
+- [x] 2026-08-06: Licensed-user Milestone 4 setup passed twice and converged
+  to identical final scene/tuning artifact IDs. Full suites pass 188 of 188
+  Edit Mode and 77 of 77 Play Mode tests; setup/test logs have zero C# compiler
+  errors, zero C# compiler warnings, and zero test failures. Packages,
+  SampleScene, ProjectSettings, EditorSettings, and EditorBuildSettings retain
+  no diff. The transient scene-template settings file was removed.
+- [x] Milestone 4 complete and validated.
+- [ ] Milestone 4 checkpoint is pending because the managed automation account
+  cannot create `.git/index.lock`; no files were staged and no commit was
+  created. Milestone 5 remains blocked until the repository owner creates the
+  permitted local checkpoint.
 - [ ] Milestone 5 complete, validated, and checkpointed.
 - [ ] Milestone 6 complete, validated, and checkpointed.
 - [ ] Positive Milestone 3 gate confirmed before Milestone 7 content work.
@@ -1572,6 +1599,14 @@ human input at their natural gates:
   only centralized-tolerance boundary protection remains. ADR-016 records the
   rule, while legacy serialized margin values are retained without placement
   authority to avoid an unrelated scene/data migration.
+
+- **2026-08-06 — Implemented pending validation:** logical reward events are
+  derived only from authoritative simulation and capture results. Near Miss
+  uses the minimum recent fixed-step logical clearance across threats and never
+  triggers on failure; Large Capture uses newly captured area divided by the
+  initial board area; capturing locks increment combo, no-area locks leave it
+  unchanged, and failure/session replacement resets it. Presentation is an
+  optional listener with no outcome authority. ADR-017 records the exact rule.
 
 ## Discoveries
 
@@ -1807,7 +1842,72 @@ human input at their natural gates:
   Exact and tolerance-close room boundaries still reject, so free placement
   cannot construct zero-area child rooms.
 
+- The licensed-user Identity Run start artifacts establish a clean 170-Edit /
+  68-Play baseline after the free-interior placement fix; earlier notes that
+  those full suites were pending are historical validation context, not the
+  current start-gate state.
+- The managed automation Windows account cannot connect to the existing
+  `LicenseClient-sinan` channel. A Milestone 4 setup attempt reached exact Unity
+  6000.3.21f1 but timed out before asset import or script compilation. The
+  licensed-user reruns supplied the authoritative setup, compiler, and full
+  test evidence; this account distinction remains relevant for Milestones 5
+  and 6 automation gates.
+
 ## Validation Record
+
+### 2026-08-06 — Identity Run start gate and Milestone 4 final gate
+
+Licensed-user start-gate artifacts report 170/170 Edit Mode and 68/68 Play
+Mode passing. The corresponding logs contain no `error CS`, `warning CS`,
+script-compilation failure, unhandled exception, or failed-test signature.
+The start was clean at `85f20d5`; Unity is 6000.3.21f1, URP is 17.3.0, and
+package/protected paths had no diff.
+
+The Milestone 4 candidate was compiled diagnostically with Unity 6000.3.21f1's
+generated Roslyn response files. `Cutrium.Gameplay`, `Cutrium.Unity`,
+`Cutrium.Presentation`, `Cutrium.Editor`, the Edit Mode test assembly, and the
+Play Mode test assembly all compiled with zero errors and zero warnings. The
+new test source adds 18 parameterized Edit cases and 9 parameterized Play
+cases before Unity discovery confirms their final counts.
+
+The exact setup command attempted from the managed automation account was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone4SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M4-Setup.log'
+```
+
+That managed-account attempt timed out at Unity licensing before
+import/compile, so it supplied no gate evidence. The same command was then run
+twice from the licensed Windows user with logs
+`Cutrium-Identity-M4-Setup-1.log` and
+`Cutrium-Identity-M4-Setup-2.log`; both emitted the Milestone 4 verification
+marker and exited with code 0. Their final imports use the same
+`VerticalSlice.unity` artifact ID
+`5c3c197a2879ae0def296f851199caac` and the same `FeedbackTuning.asset`
+artifact ID `77efec86911016f9a3ff7ecb375aaebd`. The settled scene SHA-256 is
+`4B8BCFFFE1ED1F99548475E83B3CB88F4D9218870D8CD3830A4D193A5742764D`.
+
+The final full Edit Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-Identity-M4-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Identity-M4-EditMode.log'
+```
+
+Result: 188 discovered, 188 passed, 0 failed, 0 skipped.
+
+The final full Play Mode command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-Identity-M4-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Identity-M4-PlayMode.log'
+```
+
+Result: 77 discovered, 77 passed, 0 failed, 0 skipped. Setup and test logs
+contain zero C# compiler errors, zero C# compiler warnings, zero script
+compilation failures, and zero test-runner failures. Manifest, lock,
+SampleScene, ProjectSettings, EditorSettings, and EditorBuildSettings have no
+Git diff. `VerticalSlice.unity` contains six Unity-serialized blank
+`m_Name`/`m_Text` trailing spaces; source/document whitespace checks are clean
+and the scene YAML was not hand-edited.
 
 ### 2026-07-30 — Documentation-only re-audit
 
@@ -2579,3 +2679,14 @@ vertical barrier starts. Only actual/tolerance-close room boundaries remain
 invalid. The focused reproduction and nine deterministic regressions pass and
 all changed assemblies compile, while full licensed Unity suites and human
 feel verification remain pending. No Milestone 4 work has begun.
+
+The subsequent Identity Run authorization advances beyond that historical
+pending state. Milestone 4 now derives Near Miss, Large Capture, combo, and
+ordered feedback cues from deterministic logical state while keeping every
+presenter optional. Flat fallback capture reveal, exact-target percentage
+animation, queued compact labels, safe missing-clip audio hooks, and no-op
+haptics are serialized through the idempotent setup utility. Final evidence is
+188 of 188 Edit Mode and 77 of 77 Play Mode tests, identical second-pass setup
+artifacts, zero compiler diagnostics, and no protected-file diff. Milestone 4
+is complete; the Identity Run may proceed to Milestone 5 after its local
+checkpoint without implying a positive Milestone 7 content gate.

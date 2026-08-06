@@ -32,10 +32,18 @@ namespace Cutrium.Presentation.Capture
         [SerializeField]
         private float _completedBarrierLogicalThickness = 0.22f;
 
+        [SerializeField]
+        [Min(0f)]
+        private float _captureRevealDuration = 0.18f;
+
         private readonly List<RectTransform> _capturedViews =
             new List<RectTransform>();
         private readonly List<RectTransform> _barrierViews =
             new List<RectTransform>();
+        private readonly List<CanvasGroup> _capturedGroups =
+            new List<CanvasGroup>();
+        private readonly List<float> _capturedRevealStarts =
+            new List<float>();
 
         public FirstPlayableController Controller => _controller;
 
@@ -48,6 +56,26 @@ namespace Cutrium.Presentation.Capture
         public int VisibleCapturedRegionCount { get; private set; }
 
         public int VisibleCompletedBarrierCount { get; private set; }
+
+        public float CaptureRevealDuration => _captureRevealDuration;
+
+        public bool AllVisibleCapturesRevealed
+        {
+            get
+            {
+                for (int index = 0;
+                    index < VisibleCapturedRegionCount;
+                    index++)
+                {
+                    if (_capturedGroups[index].alpha < 1f)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
 
         public void Configure(
             FirstPlayableController controller,
@@ -69,6 +97,16 @@ namespace Cutrium.Presentation.Capture
             _completedBarrierRoot = completedBarrierRoot;
             _completedBarrierLogicalThickness =
                 completedBarrierLogicalThickness;
+        }
+
+        public void ConfigureFeedbackRevealForSetup(float duration)
+        {
+            if (!IsFinite(duration) || duration < 0f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(duration));
+            }
+
+            _captureRevealDuration = duration;
         }
 
         public void RefreshNow()
@@ -96,17 +134,51 @@ namespace Cutrium.Presentation.Capture
         {
             EnsureViews(_capturedViews, _capturedRegionRoot, rooms.Count,
                 "CapturedRegion", CapturedColor);
+            EnsureCapturedGroups();
             for (int index = 0; index < _capturedViews.Count; index++)
             {
                 bool visible = index < rooms.Count;
+                bool wasVisible = _capturedViews[index].gameObject.activeSelf;
                 _capturedViews[index].gameObject.SetActive(visible);
                 if (visible)
                 {
+                    if (!wasVisible)
+                    {
+                        _capturedRevealStarts[index] = Time.unscaledTime;
+                        _capturedGroups[index].alpha = 0f;
+                    }
+
                     RenderRectangle(_capturedViews[index], rooms[index].Bounds);
+                    float elapsed =
+                        Time.unscaledTime - _capturedRevealStarts[index];
+                    _capturedGroups[index].alpha =
+                        _captureRevealDuration <= 0f
+                            ? 1f
+                            : Mathf.Clamp01(
+                                elapsed / _captureRevealDuration);
                 }
             }
 
             VisibleCapturedRegionCount = rooms.Count;
+        }
+
+        private void EnsureCapturedGroups()
+        {
+            while (_capturedGroups.Count < _capturedViews.Count)
+            {
+                RectTransform view = _capturedViews[_capturedGroups.Count];
+                CanvasGroup group = view.GetComponent<CanvasGroup>();
+                if (group == null)
+                {
+                    group = view.gameObject.AddComponent<CanvasGroup>();
+                }
+
+                group.interactable = false;
+                group.blocksRaycasts = false;
+                group.alpha = 0f;
+                _capturedGroups.Add(group);
+                _capturedRevealStarts.Add(Time.unscaledTime);
+            }
         }
 
         private void RenderCompletedBarriers(

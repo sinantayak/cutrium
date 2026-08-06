@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c5c4b465a19d3a4bbc0bf417440f17d, type: 3}
+  m_Name: FeedbackTuning
+  m_EditorClassIdentifier: Cutrium.Unity::Cutrium.Unity.Simulation.FeedbackTuningDefinition
+  _nearMissDistance: 0.45
+  _nearMissWindowSeconds: 0.75
+  _largeCaptureFraction: 0.2
+  _captureRevealSeconds: 0.18
+  _percentageAnimationSeconds: 0.22
+  _labelSeconds: 0.65

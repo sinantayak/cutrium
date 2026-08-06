@@ -41,8 +41,17 @@ namespace Cutrium.Presentation.HUD
         [SerializeField]
         private Text _nextButtonLabel;
 
+        [SerializeField]
+        [Min(0f)]
+        private float _percentageAnimationSeconds = 0.22f;
+
         private bool _retryButtonSubscribed;
         private bool _nextButtonSubscribed;
+        private bool _percentageInitialized;
+        private float _displayedCapturedFraction;
+        private float _percentageAnimationStart;
+        private float _percentageAnimationTarget;
+        private float _percentageAnimationElapsed;
 
         public FirstPlayableController Controller => _controller;
 
@@ -63,6 +72,12 @@ namespace Cutrium.Presentation.HUD
         public Button NextButton => _nextButton;
 
         public Text NextButtonLabel => _nextButtonLabel;
+
+        public float DisplayedCapturedFraction =>
+            _displayedCapturedFraction;
+
+        public float PercentageAnimationSeconds =>
+            _percentageAnimationSeconds;
 
         public void Configure(
             FirstPlayableController controller,
@@ -112,6 +127,7 @@ namespace Cutrium.Presentation.HUD
             _retryButton = retryButton;
             _nextButton = nextButton;
             _nextButtonLabel = nextButtonLabel;
+            _percentageInitialized = false;
             SetCompletionVisible(false);
             if (isActiveAndEnabled && Application.isPlaying)
             {
@@ -121,6 +137,39 @@ namespace Cutrium.Presentation.HUD
 
         public void RefreshNow()
         {
+            RefreshPresentation(true, 0f);
+        }
+
+        public void AdvancePercentageAnimation(float elapsedTime)
+        {
+            if (float.IsNaN(elapsedTime)
+                || float.IsInfinity(elapsedTime)
+                || elapsedTime < 0f)
+            {
+                throw new System.ArgumentOutOfRangeException(
+                    nameof(elapsedTime));
+            }
+
+            RefreshPresentation(false, elapsedTime);
+        }
+
+        public void ConfigureFeedbackAnimationForSetup(float duration)
+        {
+            if (float.IsNaN(duration)
+                || float.IsInfinity(duration)
+                || duration < 0f)
+            {
+                throw new System.ArgumentOutOfRangeException(
+                    nameof(duration));
+            }
+
+            _percentageAnimationSeconds = duration;
+        }
+
+        private void RefreshPresentation(
+            bool settleImmediately,
+            float elapsedTime)
+        {
             if (_controller == null || _controller.Session == null)
             {
                 return;
@@ -128,6 +177,10 @@ namespace Cutrium.Presentation.HUD
 
             float captured = _controller.Session.CapturedFraction;
             float target = _controller.Session.TargetCapturedFraction;
+            UpdateDisplayedPercentage(
+                captured,
+                settleImmediately,
+                elapsedTime);
             if (_levelText != null)
             {
                 _levelText.text = $"LEVEL {_controller.CurrentLevelNumber}";
@@ -142,7 +195,7 @@ namespace Cutrium.Presentation.HUD
             if (_percentageText != null)
             {
                 _percentageText.text =
-                    $"Captured {RoundedPercent(captured)}%";
+                    $"Captured {RoundedPercent(_displayedCapturedFraction)}%";
             }
 
             if (_targetText != null)
@@ -190,7 +243,57 @@ namespace Cutrium.Presentation.HUD
 
         private void LateUpdate()
         {
-            RefreshNow();
+            RefreshPresentation(false, Time.unscaledDeltaTime);
+        }
+
+        private void UpdateDisplayedPercentage(
+            float logicalCapturedFraction,
+            bool settleImmediately,
+            float elapsedTime)
+        {
+            if (!_percentageInitialized
+                || settleImmediately
+                || logicalCapturedFraction < _displayedCapturedFraction)
+            {
+                _percentageInitialized = true;
+                _displayedCapturedFraction = logicalCapturedFraction;
+                _percentageAnimationStart = logicalCapturedFraction;
+                _percentageAnimationTarget = logicalCapturedFraction;
+                _percentageAnimationElapsed = 0f;
+                return;
+            }
+
+            if (!Mathf.Approximately(
+                    logicalCapturedFraction,
+                    _percentageAnimationTarget))
+            {
+                _percentageAnimationStart = _displayedCapturedFraction;
+                _percentageAnimationTarget = logicalCapturedFraction;
+                _percentageAnimationElapsed = 0f;
+            }
+
+            if (Mathf.Approximately(
+                    _displayedCapturedFraction,
+                    _percentageAnimationTarget))
+            {
+                _displayedCapturedFraction = _percentageAnimationTarget;
+                return;
+            }
+
+            _percentageAnimationElapsed += elapsedTime;
+            float progress = _percentageAnimationSeconds <= 0f
+                ? 1f
+                : Mathf.Clamp01(
+                    _percentageAnimationElapsed
+                    / _percentageAnimationSeconds);
+            _displayedCapturedFraction = Mathf.Lerp(
+                _percentageAnimationStart,
+                _percentageAnimationTarget,
+                progress);
+            if (progress >= 1f)
+            {
+                _displayedCapturedFraction = _percentageAnimationTarget;
+            }
         }
 
         private void SubscribeButtons()
@@ -226,12 +329,14 @@ namespace Cutrium.Presentation.HUD
 
         private void OnRetryClicked()
         {
+            _controller.NotifyUiFeedback();
             _controller.RetryLevel();
             RefreshNow();
         }
 
         private void OnNextClicked()
         {
+            _controller.NotifyUiFeedback();
             _controller.AdvanceLevelOrRestartSequence();
             RefreshNow();
         }

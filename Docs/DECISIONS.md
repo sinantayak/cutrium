@@ -418,3 +418,51 @@ real-boundary rejection, preview/commit parity, and state immutability after a
 rejection. The serialized margin fields remain temporarily for scene and data
 compatibility but have no barrier-placement authority; removing that legacy
 data is a separate migration, not part of this focused defect fix.
+
+---
+
+## ADR-017 — Logical Reward Events Are Presentation-Independent
+
+**Status:** Accepted
+
+**Context:**
+Milestone 4 must make barrier growth, lock, capture, percentage gain, and
+failure readable without allowing animation, audio, haptics, or frame timing
+to change deterministic gameplay. Near Miss must use the most dangerous
+logical threat approach while a barrier is vulnerable, Large Capture must
+exclude visual barrier thickness, and the compact combo rule must remain
+non-economic and non-gating.
+
+**Decision:**
+The no-UnityEngine gameplay session emits an ordered, read-only feedback event
+sequence from the same authoritative barrier and room-split results. Near Miss
+uses fixed-1/60 simulation-history samples of logical circle-to-growing-barrier
+clearance inside a configurable recent time window, chooses the minimum across
+all normal threats, and never emits after barrier failure. Large Capture uses
+the newly captured logical area divided by the initial 10-by-16 board area and
+emits at most once per applied split. A capturing lock increments combo, a
+failed barrier resets it, Retry/Next/Restart reset it with the session, and a
+valid lock that captures no area leaves combo unchanged. Presentation listens
+to these events but never writes gameplay state.
+
+Store logical thresholds in a validated project-owned feedback configuration.
+Expose replaceable presentation timing through a focused
+`FeedbackTuningDefinition`. Missing audio clips are valid, haptics route
+through `IHapticFeedback`, and the initial concrete service is always a safe
+no-op implementation. No native/plugin haptics or third-party dependency is
+approved.
+
+**Reasoning:**
+Deriving rewards from logical simulation history keeps results deterministic
+across render deltas, aspect ratios, and presentation availability. Ordered
+events let replaceable presenters reconcile rapid captures and percentage
+updates without becoming a second gameplay authority.
+
+**Consequences:**
+Tests must cover threshold boundaries, time-window filtering, multi-threat
+minimum selection, failure exclusion, one-event Large Capture behavior, combo
+reset rules, event order, and equal gameplay outcomes with presentation
+disabled. The serialized scene owns one feedback presenter, one optional
+one-shot audio presenter, and one no-op haptic presenter through explicit
+references. This decision does not approve theme assets, Hunter/Pulse threats,
+powers, production audio, or Milestone 7 content.

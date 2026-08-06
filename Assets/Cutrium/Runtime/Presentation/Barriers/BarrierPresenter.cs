@@ -1,6 +1,7 @@
 using System;
 using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Board;
+using Cutrium.Gameplay.Feedback;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Unity.Input;
 using Cutrium.Unity.Simulation;
@@ -65,6 +66,7 @@ namespace Cutrium.Presentation.Barriers
         private int _observedFailureCount;
         private float _failureHideTime;
         private BarrierState? _failureSnapshot;
+        private bool _feedbackSubscribed;
 
         public FirstPlayableController Controller => _controller;
         public BarrierGestureAdapter Gesture => _gesture;
@@ -76,6 +78,8 @@ namespace Cutrium.Presentation.Barriers
         public float VisualLogicalThickness => _visualLogicalThickness;
         public bool FailureFeedbackVisible =>
             _failureFeedback != null && _failureFeedback.gameObject.activeSelf;
+        public FeedbackEventKind LastFeedbackEventKind { get; private set; }
+        public int FeedbackEventCount { get; private set; }
 
         public void Configure(
             FirstPlayableController controller,
@@ -92,6 +96,7 @@ namespace Cutrium.Presentation.Barriers
             float visualLogicalThickness,
             float failureFeedbackSeconds)
         {
+            UnsubscribeFeedback();
             _controller = controller;
             _gesture = gesture;
             _boardFrame = boardFrame;
@@ -111,6 +116,10 @@ namespace Cutrium.Presentation.Barriers
             }
 
             _failureFeedbackSeconds = failureFeedbackSeconds;
+            if (isActiveAndEnabled && Application.isPlaying)
+            {
+                SubscribeFeedback();
+            }
         }
 
         public void SetVisualLogicalThickness(float value)
@@ -150,6 +159,61 @@ namespace Cutrium.Presentation.Barriers
         private void LateUpdate()
         {
             RefreshNow();
+        }
+
+        private void OnEnable()
+        {
+            if (Application.isPlaying)
+            {
+                SubscribeFeedback();
+            }
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeFeedback();
+        }
+
+        private void SubscribeFeedback()
+        {
+            if (_feedbackSubscribed || _controller == null)
+            {
+                return;
+            }
+
+            _controller.FeedbackEventRaised += OnFeedbackEvent;
+            _feedbackSubscribed = true;
+        }
+
+        private void UnsubscribeFeedback()
+        {
+            if (_feedbackSubscribed && _controller != null)
+            {
+                _controller.FeedbackEventRaised -= OnFeedbackEvent;
+            }
+
+            _feedbackSubscribed = false;
+        }
+
+        private void OnFeedbackEvent(FeedbackEvent feedbackEvent)
+        {
+            LastFeedbackEventKind = feedbackEvent.Kind;
+            FeedbackEventCount++;
+            if (feedbackEvent.Kind == FeedbackEventKind.SessionReset)
+            {
+                _observedFailureCount = 0;
+                ClearFailureFeedbackNow();
+                return;
+            }
+
+            if (feedbackEvent.Kind != FeedbackEventKind.BarrierBroken)
+            {
+                return;
+            }
+
+            _observedFailureCount = _controller.Session.FailedBarrierCount;
+            _failureSnapshot = _controller.Session.LastBarrierSnapshot;
+            _failureHideTime = Time.unscaledTime + _failureFeedbackSeconds;
         }
 
         private void RenderPreview()
