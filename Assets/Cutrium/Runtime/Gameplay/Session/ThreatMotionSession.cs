@@ -16,6 +16,8 @@ namespace Cutrium.Gameplay.Session
         private readonly BarrierConfiguration _barrierConfiguration;
         private readonly CaptureLevelConfiguration _captureConfiguration;
         private readonly FeedbackTuningConfiguration _feedbackConfiguration;
+        private readonly PowerConfiguration _powerConfiguration;
+        private readonly float[] _pulseElapsedSeconds;
         private readonly List<BarrierApproachSample> _approachSamples =
             new List<BarrierApproachSample>(128);
         private readonly List<FeedbackEvent> _feedbackEvents =
@@ -91,6 +93,23 @@ namespace Cutrium.Gameplay.Session
             CaptureLevelConfiguration captureConfiguration,
             FeedbackTuningConfiguration feedbackConfiguration,
             GeometryTolerancePolicy tolerance)
+            : this(
+                configurations,
+                barrierConfiguration,
+                captureConfiguration,
+                feedbackConfiguration,
+                PowerConfiguration.None,
+                tolerance)
+        {
+        }
+
+        public ThreatMotionSession(
+            IReadOnlyList<ThreatMotionConfiguration> configurations,
+            BarrierConfiguration barrierConfiguration,
+            CaptureLevelConfiguration captureConfiguration,
+            FeedbackTuningConfiguration feedbackConfiguration,
+            PowerConfiguration powerConfiguration,
+            GeometryTolerancePolicy tolerance)
         {
             if (configurations == null || configurations.Count == 0)
             {
@@ -117,9 +136,11 @@ namespace Cutrium.Gameplay.Session
 
             _barrierResults =
                 new BarrierSimulationResult[_configurations.Length];
+            _pulseElapsedSeconds = new float[_configurations.Length];
             _barrierConfiguration = barrierConfiguration;
             _captureConfiguration = captureConfiguration;
             _feedbackConfiguration = feedbackConfiguration;
+            _powerConfiguration = powerConfiguration;
             _tolerance = tolerance;
             InitialRoom = new RoomState(new RoomId(1), boardBounds);
             Reset();
@@ -168,6 +189,14 @@ namespace Cutrium.Gameplay.Session
 
         public int TickCount { get; private set; }
 
+        public int FreezePulseChargesRemaining { get; private set; }
+
+        public float FreezePulseRemainingSeconds { get; private set; }
+
+        public int InstantBarrierChargesRemaining { get; private set; }
+
+        public bool InstantBarrierArmed { get; private set; }
+
         public void Tick(float elapsedTime)
         {
             _feedbackEvents.Clear();
@@ -179,6 +208,8 @@ namespace Cutrium.Gameplay.Session
             {
                 return;
             }
+
+            AdvanceBehaviorState(elapsedTime);
 
             if (ActiveBarrier.HasValue)
             {
@@ -198,20 +229,90 @@ namespace Cutrium.Gameplay.Session
             BarrierStartResult result = ValidateBarrierStart(intent);
             if (result.Accepted)
             {
-                ActiveBarrier = result.Barrier;
-                LastBarrierSnapshot = result.Barrier;
+                BarrierState startedBarrier = result.Barrier;
+                if (InstantBarrierArmed)
+                {
+                    startedBarrier = startedBarrier.WithGrowthSpeed(
+                        _powerConfiguration.InstantBarrierGrowthSpeed);
+                    InstantBarrierArmed = false;
+                    InstantBarrierChargesRemaining--;
+                    AddFeedback(
+                        FeedbackEventKind.PowerInstantBarrierConsumed,
+                        startedBarrier.Id,
+                        0f,
+                        float.PositiveInfinity);
+                }
+
+                ApplyHunterReaction(
+                    startedBarrier.ParentRoomId,
+                    intent.Origin);
+                ActiveBarrier = startedBarrier;
+                LastBarrierSnapshot = startedBarrier;
                 _barrierElapsed = 0f;
                 _approachSamples.Clear();
-                RecordApproachSamples(result.Barrier, 0f);
+                RecordApproachSamples(startedBarrier, 0f);
                 AddFeedback(
                     FeedbackEventKind.BarrierStarted,
-                    result.Barrier.Id,
+                    startedBarrier.Id,
                     0f,
                     float.PositiveInfinity);
                 _nextBarrierId++;
+                result = new BarrierStartResult(
+                    true,
+                    BarrierRejectionReason.None,
+                    startedBarrier);
             }
 
             return result;
+        }
+
+        public bool TryActivateFreezePulse()
+        {
+            _feedbackEvents.Clear();
+            if (LevelStatus == CaptureLevelStatus.Completed
+                || FreezePulseChargesRemaining <= 0)
+            {
+                AddFeedback(
+                    FeedbackEventKind.PowerUnavailable,
+                    default,
+                    0f,
+                    float.PositiveInfinity);
+                return false;
+            }
+
+            FreezePulseChargesRemaining--;
+            FreezePulseRemainingSeconds =
+                _powerConfiguration.FreezePulseDurationSeconds;
+            AddFeedback(
+                FeedbackEventKind.PowerFreezePulseActivated,
+                default,
+                0f,
+                float.PositiveInfinity);
+            return true;
+        }
+
+        public bool TryArmInstantBarrier()
+        {
+            _feedbackEvents.Clear();
+            if (LevelStatus == CaptureLevelStatus.Completed
+                || InstantBarrierArmed
+                || InstantBarrierChargesRemaining <= 0)
+            {
+                AddFeedback(
+                    FeedbackEventKind.PowerUnavailable,
+                    default,
+                    0f,
+                    float.PositiveInfinity);
+                return false;
+            }
+
+            InstantBarrierArmed = true;
+            AddFeedback(
+                FeedbackEventKind.PowerInstantBarrierArmed,
+                default,
+                0f,
+                float.PositiveInfinity);
+            return true;
         }
 
         public BarrierStartResult ValidateBarrierStart(BarrierIntent intent)
@@ -289,6 +390,15 @@ namespace Cutrium.Gameplay.Session
             _barrierElapsed = 0f;
             _approachSamples.Clear();
             _combo = _combo.Reset();
+            Array.Clear(
+                _pulseElapsedSeconds,
+                0,
+                _pulseElapsedSeconds.Length);
+            FreezePulseChargesRemaining = _powerConfiguration.FreezePulseCharges;
+            FreezePulseRemainingSeconds = 0f;
+            InstantBarrierChargesRemaining =
+                _powerConfiguration.InstantBarrierCharges;
+            InstantBarrierArmed = false;
             _feedbackEvents.Clear();
             AddFeedback(
                 FeedbackEventKind.SessionReset,
@@ -327,10 +437,11 @@ namespace Cutrium.Gameplay.Session
 
                 ThreatMotionConfiguration configuration =
                     ConfigurationFor(threat.Id);
+                ThreatState prepared = PrepareForTick(threat);
                 BarrierSimulationResult result =
                     GrowingBarrierMotionSolver.Move(
                         barrierRoom,
-                        threat,
+                        prepared,
                         initialBarrier,
                         elapsedTime,
                         _barrierConfiguration.MaximumSolverIterations,
@@ -531,10 +642,11 @@ namespace Cutrium.Gameplay.Session
 
                 ThreatMotionConfiguration configuration =
                     ConfigurationFor(threat.Id);
+                ThreatState prepared = PrepareForTick(threat);
                 BarrierSimulationResult prefix =
                     GrowingBarrierMotionSolver.Move(
                         barrierRoom,
-                        threat,
+                        prepared,
                         initialBarrier,
                         failureTime,
                         _barrierConfiguration.MaximumSolverIterations,
@@ -638,10 +750,11 @@ namespace Cutrium.Gameplay.Session
 
                 ThreatMotionConfiguration configuration =
                     ConfigurationFor(threat.Id);
+                ThreatState prepared = PrepareForTick(threat);
                 BarrierSimulationResult atLock =
                     GrowingBarrierMotionSolver.Move(
                         room,
-                        threat,
+                        prepared,
                         initialBarrier,
                         elapsedUntilLock,
                         _barrierConfiguration.MaximumSolverIterations,
@@ -710,9 +823,10 @@ namespace Cutrium.Gameplay.Session
 
             ThreatMotionConfiguration configuration =
                 ConfigurationFor(threat.Id);
+            ThreatState prepared = PrepareForTick(threat);
             ThreatMotionResult result = ThreatMotionSolver.Move(
                 room,
-                threat,
+                prepared,
                 elapsedTime,
                 configuration.MaximumImpactsPerTick,
                 _tolerance);
@@ -720,7 +834,111 @@ namespace Cutrium.Gameplay.Session
             IncludeThreatDiagnostic(result.Diagnostic);
         }
 
-        private ThreatMotionConfiguration ConfigurationFor(ThreatId id)
+        private void AdvanceBehaviorState(float elapsedTime)
+        {
+            if (FreezePulseRemainingSeconds > 0f)
+            {
+                FreezePulseRemainingSeconds = Math.Max(
+                    0f,
+                    FreezePulseRemainingSeconds - elapsedTime);
+            }
+
+            for (int index = 0; index < _configurations.Length; index++)
+            {
+                if (_configurations[index].Behavior.Kind
+                    == ThreatBehaviorKind.Pulse)
+                {
+                    _pulseElapsedSeconds[index] += elapsedTime;
+                }
+            }
+        }
+
+        private ThreatState PrepareForTick(ThreatState threat)
+        {
+            int index = IndexFor(threat.Id);
+            ThreatMotionConfiguration configuration = _configurations[index];
+            float multiplier = 1f;
+            if (configuration.Behavior.Kind == ThreatBehaviorKind.Pulse)
+            {
+                multiplier *= PulsePhaseMultiplier(
+                    configuration.Behavior,
+                    _pulseElapsedSeconds[index]);
+            }
+
+            if (FreezePulseRemainingSeconds > 0f)
+            {
+                multiplier *= _powerConfiguration.FreezePulseSpeedMultiplier;
+            }
+
+            // Always re-derive magnitude from the authored base speed rather
+            // than reusing the threat's currently stored magnitude: once a
+            // temporary modifier (Pulse phase, Freeze Pulse) has scaled a
+            // threat's speed, a naive "unchanged when multiplier is 1"
+            // shortcut would leave it permanently at that scaled magnitude
+            // after the modifier ends, since nothing else ever restores it.
+            LogicalVector direction = threat.Velocity / threat.Velocity.Length;
+            float targetSpeed = configuration.Speed * multiplier;
+            return threat.WithMotion(threat.Position, direction * targetSpeed);
+        }
+
+        private static float PulsePhaseMultiplier(
+            ThreatBehaviorConfiguration behavior,
+            float elapsedSeconds)
+        {
+            float phase = elapsedSeconds % behavior.PulseCycleSeconds;
+            return phase < behavior.PulseSlowDurationSeconds
+                ? behavior.PulseSlowSpeedMultiplier
+                : behavior.PulseFastSpeedMultiplier;
+        }
+
+        private void ApplyHunterReaction(
+            RoomId roomId,
+            LogicalPoint barrierOrigin)
+        {
+            for (int index = 0; index < Board.Threats.Count; index++)
+            {
+                ThreatState threat = Board.Threats[index];
+                if (threat.RoomId != roomId)
+                {
+                    continue;
+                }
+
+                ThreatBehaviorConfiguration behavior =
+                    _configurations[IndexFor(threat.Id)].Behavior;
+                if (behavior.Kind != ThreatBehaviorKind.Hunter)
+                {
+                    continue;
+                }
+
+                LogicalVector toOrigin = barrierOrigin - threat.Position;
+                if (toOrigin.LengthSquared <= 0f)
+                {
+                    continue;
+                }
+
+                LogicalVector targetDirection = toOrigin / toOrigin.Length;
+                LogicalVector currentDirection =
+                    threat.Velocity / threat.Velocity.Length;
+                LogicalVector blended =
+                    currentDirection * (1f - behavior.HunterSteerFactor)
+                    + targetDirection * behavior.HunterSteerFactor;
+                if (blended.LengthSquared <= 0f)
+                {
+                    continue;
+                }
+
+                LogicalVector newDirection = blended / blended.Length;
+                float baseSpeed = threat.Speed;
+                Board.UpdateThreat(threat.WithMotion(
+                    threat.Position,
+                    newDirection * baseSpeed));
+            }
+        }
+
+        private ThreatMotionConfiguration ConfigurationFor(ThreatId id) =>
+            _configurations[IndexFor(id)];
+
+        private int IndexFor(ThreatId id)
         {
             int index = id.Value - 1;
             if (index < 0 || index >= _configurations.Length)
@@ -729,7 +947,7 @@ namespace Cutrium.Gameplay.Session
                     $"No motion configuration exists for {id}.");
             }
 
-            return _configurations[index];
+            return index;
         }
 
         private void IncludeBarrierDiagnostic(

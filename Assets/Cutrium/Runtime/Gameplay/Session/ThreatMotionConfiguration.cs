@@ -1,5 +1,6 @@
 using System;
 using Cutrium.Gameplay.Geometry;
+using Cutrium.Gameplay.Threats;
 
 namespace Cutrium.Gameplay.Session
 {
@@ -12,6 +13,25 @@ namespace Cutrium.Gameplay.Session
             float speed,
             float radius,
             int maximumImpactsPerTick)
+            : this(
+                boardBounds,
+                initialPosition,
+                initialDirection,
+                speed,
+                radius,
+                maximumImpactsPerTick,
+                ThreatBehaviorConfiguration.Normal)
+        {
+        }
+
+        public ThreatMotionConfiguration(
+            LogicalRect boardBounds,
+            LogicalPoint initialPosition,
+            LogicalVector initialDirection,
+            float speed,
+            float radius,
+            int maximumImpactsPerTick,
+            ThreatBehaviorConfiguration behavior)
         {
             if (boardBounds.Width <= 0f || boardBounds.Height <= 0f)
             {
@@ -60,6 +80,7 @@ namespace Cutrium.Gameplay.Session
             Speed = speed;
             Radius = radius;
             MaximumImpactsPerTick = maximumImpactsPerTick;
+            Behavior = behavior;
         }
 
         public LogicalRect BoardBounds { get; }
@@ -73,6 +94,8 @@ namespace Cutrium.Gameplay.Session
         public float Radius { get; }
 
         public int MaximumImpactsPerTick { get; }
+
+        public ThreatBehaviorConfiguration Behavior { get; }
 
         private static bool IsFinite(float value) =>
             !float.IsNaN(value) && !float.IsInfinity(value);

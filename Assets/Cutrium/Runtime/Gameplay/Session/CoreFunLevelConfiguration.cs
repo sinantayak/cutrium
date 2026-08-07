@@ -33,7 +33,8 @@ namespace Cutrium.Gameplay.Session
                 maximumCatchUpTicks,
                 developmentNote,
                 maximumExpectedCompletionSeconds,
-                purposeLine)
+                purposeLine,
+                PowerConfiguration.None)
         {
         }
 
@@ -47,6 +48,31 @@ namespace Cutrium.Gameplay.Session
             string developmentNote,
             float maximumExpectedCompletionSeconds,
             string purposeLine = "")
+            : this(
+                stableId,
+                displayNumber,
+                threatMotions,
+                barrier,
+                capture,
+                maximumCatchUpTicks,
+                developmentNote,
+                maximumExpectedCompletionSeconds,
+                purposeLine,
+                PowerConfiguration.None)
+        {
+        }
+
+        public CoreFunLevelConfiguration(
+            string stableId,
+            int displayNumber,
+            IReadOnlyList<ThreatMotionConfiguration> threatMotions,
+            BarrierConfiguration barrier,
+            CaptureLevelConfiguration capture,
+            int maximumCatchUpTicks,
+            string developmentNote,
+            float maximumExpectedCompletionSeconds,
+            string purposeLine,
+            PowerConfiguration power)
         {
             if (string.IsNullOrWhiteSpace(stableId))
             {
@@ -109,6 +135,7 @@ namespace Cutrium.Gameplay.Session
             PurposeLine = purposeLine ?? string.Empty;
             MaximumExpectedCompletionSeconds =
                 maximumExpectedCompletionSeconds;
+            Power = power;
         }
 
         public string StableId { get; }
@@ -131,6 +158,8 @@ namespace Cutrium.Gameplay.Session
         public string PurposeLine { get; }
 
         public float MaximumExpectedCompletionSeconds { get; }
+
+        public PowerConfiguration Power { get; }
 
         private static void ValidateThreat(
             ThreatMotionConfiguration threatMotion,

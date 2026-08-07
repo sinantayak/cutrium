@@ -19,6 +19,10 @@ namespace Cutrium.Gameplay.Feedback
         ComboChanged = 9,
         LevelCompleted = 10,
         Ui = 11,
+        PowerFreezePulseActivated = 12,
+        PowerInstantBarrierArmed = 13,
+        PowerInstantBarrierConsumed = 14,
+        PowerUnavailable = 15,
     }
 
     public readonly struct FeedbackEvent

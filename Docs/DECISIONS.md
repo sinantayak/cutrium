@@ -511,3 +511,100 @@ swaps. Stable threat-ID reconciliation must apply the same resolved visual
 style to every view without duplicating presenters. Generated placeholders are
 prototype assets, not final brand art. This decision adds no shader, package,
 audio, gameplay mechanic, Hunter/Pulse behavior, or power.
+
+---
+
+## ADR-019 — Behavior and Power Modulation Stay Inside the Existing Analytic Solvers
+
+**Status:** Accepted
+
+**Context:**
+Milestone 6 must add Hunter and Pulse threat variants plus Freeze Pulse and
+Instant Barrier powers without a duplicate scene-owned controller framework,
+new physics authority, or a weakened barrier/capture rule set. `ThreatState`
+already forbids zero velocity, `ThreatMotionSolver`/`GrowingBarrierMotionSolver`
+already own all collision math, and `BarrierState.GrowthSpeed` is already
+baked per-instance from `BarrierConfiguration` at creation.
+
+**Decision:**
+Add `ThreatBehaviorConfiguration` (Normal/Hunter/Pulse) as an optional field on
+`ThreatMotionConfiguration` and `PowerConfiguration` (Freeze Pulse and Instant
+Barrier charges/duration/multiplier/growth speed) as an optional field on
+`CoreFunLevelConfiguration`, both defaulting to inert no-op values through new
+constructor overloads so every existing call site and test keeps compiling
+unchanged. `ThreatMotionSession` derives a per-tick velocity multiplier from
+Pulse's deterministic elapsed-phase state and any active Freeze Pulse timer,
+applies it to the threat's existing direction before calling the same
+`ThreatMotionSolver`/`GrowingBarrierMotionSolver` calls that already run every
+tick, and never emits a zero-magnitude velocity. Hunter applies one bounded,
+deterministic velocity-direction blend toward the just-started barrier's origin,
+applied once inside `TryStartBarrier` to same-room Hunters only, preserving
+speed magnitude exactly. Instant Barrier arms on request, is consumed only when
+`TryStartBarrier` next accepts a barrier, and replaces only that barrier's
+`GrowthSpeed` (via a new `BarrierState.WithGrowthSpeed`) with a large
+configured value so the existing solver still resolves growth, contact, and
+lock/fail ordering honestly inside the same fixed 1/60 tick, completing within
+one tick without special-casing collision math. Freeze Pulse never sets
+velocity to zero; it multiplies speed by a small configured fraction so
+`ThreatState`'s non-zero-velocity invariant holds without exception.
+
+**Reasoning:**
+Every new behavior is expressed as a velocity input or a growth-speed input to
+existing, already-tested solvers rather than a new movement or collision
+system, so barrier completion, contact tie-breaking (ADR-011), and room-split
+capture rules (ADR-012) stay singly authoritative. Optional-with-safe-default
+parameters preserve every Milestone 1-5 signature and test.
+
+**Consequences:**
+Tests must cover Hunter's bounded one-shot nudge, Pulse's phase multiplier at
+both segments and at its peak speed, Freeze Pulse's non-stacking refresh and
+guaranteed non-zero velocity, and Instant Barrier's same-tick completion,
+charge non-consumption on rejected/cancelled/UI-blocked input, and unchanged
+lock/contact tie rules. Presentation reads only existing session state
+(`FreezePulseChargesRemaining`, `InstantBarrierArmed`, and the new
+`FeedbackEventKind.Power*` events); it does not gain a second gameplay
+authority. This decision adds no new threat sprite/theme fields, no shader, no
+package, and no Milestone 7 content.
+
+---
+
+## ADR-020 — Milestone 6 Identity Levels Stay Out of the Default Scene Catalog
+
+**Status:** Accepted
+
+**Context:**
+`Milestone6SceneSetup.Apply()` originally replaced the scene's serialized
+level catalog with the five Hunter/Pulse/power identity levels. This broke
+ten existing Milestone 2C/3 Play Mode tests, and not only on stale hardcoded
+values: several (`CompleteCurrentLevel`, `LockGestureWhenSafe`) pick a "safe"
+cut by probing `GrowingBarrierMotionSolver.Move` once with the threat's
+current velocity. That probe cannot see Hunter's barrier-start steering or a
+Pulse threat's future speed change, so it can mispredict safety against the
+new behaviors regardless of level order or renumbering.
+
+**Decision:**
+`Milestone6SceneSetup.Apply()` adds the Freeze Pulse/Instant Barrier HUD but
+leaves the scene's level catalog exactly as Milestone 3 left it. A separate,
+explicitly manual `Cutrium/Setup/Load Milestone 6 Identity Levels (Manual
+Playtest)` menu command swaps in the five identity levels for interactive
+review and says so in its own log output; it is never invoked by `Apply()` or
+by any automated test.
+
+**Reasoning:**
+The Milestone 2C/3 flow tests exist to guard retry/next/completion/HUD/gesture
+wiring using a heuristic solver probe that was never designed to reason about
+reactive or time-varying threat behavior. Extending or reordering the catalog
+does not fix that; only decoupling "automated regression scene" from "human
+evaluation scene" does, without weakening either. The identity levels' own
+correctness (Hunter nudge, Pulse phase, Freeze Pulse, Instant Barrier) is
+independently and thoroughly covered by `ThreatBehaviorAndPowerTests`
+(Edit Mode) and an isolated-controller Play Mode test that never depends on
+the shared scene's heuristic.
+
+**Consequences:**
+The checked-in scene keeps passing the full Milestone 2C/3 regression suite
+unchanged. A human running the Identity Review must first run the manual
+loader (and can restore the gate catalog afterward by re-running Milestone 3's
+setup or discarding the change) before playing the five levels. This decision
+does not change any Milestone 3 level's tuning, board geometry, gesture, or
+solver rule.

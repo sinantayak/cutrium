@@ -309,6 +309,34 @@ namespace Cutrium.Unity.Simulation
             return Session.ValidateBarrierStart(intent);
         }
 
+        public bool TryActivateFreezePulse()
+        {
+            InitializeOnce();
+            bool activated = Session.TryActivateFreezePulse();
+            DispatchFeedbackEvents();
+            return activated;
+        }
+
+        public bool TryArmInstantBarrier()
+        {
+            InitializeOnce();
+            bool armed = Session.TryArmInstantBarrier();
+            DispatchFeedbackEvents();
+            return armed;
+        }
+
+        public int FreezePulseChargesRemaining =>
+            Session?.FreezePulseChargesRemaining ?? 0;
+
+        public float FreezePulseRemainingSeconds =>
+            Session?.FreezePulseRemainingSeconds ?? 0f;
+
+        public int InstantBarrierChargesRemaining =>
+            Session?.InstantBarrierChargesRemaining ?? 0;
+
+        public bool InstantBarrierArmed =>
+            Session?.InstantBarrierArmed ?? false;
+
         public void RetryLevel()
         {
             InitializeOnce();
@@ -500,6 +528,7 @@ namespace Cutrium.Unity.Simulation
                 _feedbackTuning != null
                     ? _feedbackTuning.ToRuntimeConfiguration()
                     : FeedbackTuningConfiguration.Default,
+                CurrentLevelConfiguration.Power,
                 Tolerance);
             _accumulator = new FixedStepAccumulator(
                 SimulationStep,

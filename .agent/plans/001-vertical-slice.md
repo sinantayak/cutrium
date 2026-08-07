@@ -1514,8 +1514,27 @@ human input at their natural gates:
 - [x] 2026-08-07: Licensed Setup 1 and Setup 2 both pass with the reacquire
   fix; Edit Mode reports 197/197 and Play Mode reports 86/86 with no compiler
   or Console errors. Milestone 5 is fix-verified but still uncommitted.
-- [ ] Milestone 5 checkpointed (blocked on an explicit commit instruction).
-- [ ] Milestone 6 complete, validated, and checkpointed.
+- [x] 2026-08-07: Milestone 5 checkpointed as `c8c2b5f` ("feat: complete
+  Cutrium milestone 5 theme pipeline"). Verified clean worktree and HEAD
+  matching origin before starting Milestone 6.
+- [x] 2026-08-07: Implemented Milestone 6 — `ThreatBehaviorConfiguration`
+  (Hunter/Pulse) and `PowerConfiguration` (Freeze Pulse/Instant Barrier) as
+  optional fields threaded through `ThreatMotionConfiguration` and
+  `CoreFunLevelConfiguration` via new constructor overloads, preserving every
+  Milestone 1-5 signature. Hunter/Pulse/Freeze all compose as a per-tick
+  velocity multiplier fed into the existing `ThreatMotionSolver`/
+  `GrowingBarrierMotionSolver` calls; Instant Barrier only swaps the accepted
+  barrier's `GrowthSpeed` via a new `BarrierState.WithGrowthSpeed`. See
+  ADR-019. `Milestone6SceneSetup` adds Freeze Pulse/Instant Barrier HUD
+  buttons but deliberately does not overwrite the scene's Milestone 3 level
+  catalog (ADR-020); the five identity levels load via a separate manual-only
+  menu command for human playtesting.
+- [x] 2026-08-07: Licensed Setup 1 and Setup 2 both pass (idempotent, exit 0).
+  Full Edit Mode: 209/209 passed (197 Milestone 5 + 12 new). Full Play Mode:
+  90/90 passed. Zero compiler errors/warnings in either log; Packages and
+  ProjectSettings unchanged. Milestone 6 mechanics are fix-verified and
+  uncommitted.
+- [ ] Milestone 6 checkpointed (blocked on an explicit commit instruction).
 - [ ] Positive Milestone 3 gate confirmed before Milestone 7 content work.
 - [ ] Milestone 7 complete, validated, and checkpointed.
 - [ ] Milestone 8 complete, validated, and checkpointed.
@@ -1952,6 +1971,72 @@ after each run so `ProjectSettings/` stays free of unrelated diffs. No
 `Cutrium.Gameplay` file, package manifest/lock, or other `ProjectSettings` file
 changed. Milestone 5 is fix-verified and uncommitted; it still blocks
 Milestone 6 until checkpointed.
+
+### 2026-08-07 — Milestone 6 licensed gate passed
+
+Milestone 5 checkpoint `c8c2b5f` was verified with a clean worktree and HEAD
+matching `origin/master` before Milestone 6 began.
+
+The first licensed Setup 1 run (`Cutrium-M6-Setup-1.log`) succeeded and
+compiled cleanly, but the full Play Mode rerun then reported 80/90 passed,
+10 failed — every failure in the pre-existing `Milestone2CPlayModeTests` and
+`Milestone3CoreFunPlayModeTests` suites, none in the new Milestone 6 tests.
+Milestone 6's `Configure` step had called
+`controller.ConfigureLevelsForSetup(CoreFunLevelDefinition
+.CreateMilestone6Defaults())`, overwriting the scene's Milestone 3 level
+catalog that those ten tests depend on. Beyond stale hardcoded values (level
+count, target fraction, purpose text), two of the ten
+(`LockGestureWhenSafe`/`CompleteCurrentLevel`, shared by several tests) pick a
+"safe" cut by probing `GrowingBarrierMotionSolver.Move` once with the threat's
+current velocity, which cannot see Hunter's barrier-start steering or a Pulse
+threat's future speed change — reordering or renumbering the catalog would
+not have fixed that class of failure. `Milestone6SceneSetup.Configure` no
+longer touches the level catalog; a separate `LoadIdentityLevelsForPlaytesting`
+menu command (never invoked by `Apply()` or by any test) swaps in the five
+identity levels for human review. See ADR-020.
+
+The exact final Setup 1 command was:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone6SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M6-Setup-1-Fixed.log'
+```
+
+Result: `Milestone 6 scene setup verified. Freeze Pulse/Instant Barrier
+controls are ready...` Exit 0.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone6SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M6-Setup-2-Fixed.log'
+```
+
+Result: identical success message, exit 0; no further working-tree diff,
+confirming idempotence.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M6-EditMode-Fixed.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M6-EditMode-Fixed.log'
+```
+
+Result: 209 discovered, 209 passed, 0 failed, 0 skipped (197 Milestone 5 +
+12 new `ThreatBehaviorAndPowerTests`, covering Hunter's bounded one-shot
+nudge and room-scoping, Pulse's slow/fast phase and peak-speed solver
+stability across 300 ticks, Freeze Pulse's decay/non-stacking-refresh/
+no-charge behavior, Instant Barrier's arm/non-consumption-on-rejection/
+same-tick completion/still-fails-on-genuine-contact, Reset restoring power
+charges and Pulse phase, and the five-level catalog's identities).
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M6-PlayMode-Fixed.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M6-PlayMode-Fixed.log'
+```
+
+Result: 90 discovered, 90 passed, 0 failed, 0 skipped (all ten previously
+failing Milestone 2C/3 tests now pass against the untouched Milestone 3
+catalog; the three new Milestone 6 Play Mode tests cover the HUD wiring,
+UI-blocking over the Freeze Pulse button, and Freeze Pulse/Instant Barrier
+working end-to-end through an isolated controller independent of any
+presenter). Both log files contain no compiler errors/warnings and no failed
+NUnit test-run nodes. The default, all-`userAdded:false`
+`ProjectSettings/SceneTemplateSettings.json` regenerated by each batch-mode
+run was removed after each run. No package manifest/lock or other
+`ProjectSettings` file changed. Milestone 6 is fix-verified and uncommitted.
 
 ### 2026-08-06 — Identity Run start gate and Milestone 4 final gate
 

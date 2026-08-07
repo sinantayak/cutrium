@@ -4,10 +4,91 @@ using System.Linq;
 using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
+using Cutrium.Gameplay.Threats;
 using UnityEngine;
 
 namespace Cutrium.Unity.Simulation
 {
+    public enum CoreFunThreatBehaviorKind
+    {
+        Normal = 0,
+        Hunter = 1,
+        Pulse = 2
+    }
+
+    [Serializable]
+    public sealed class CoreFunThreatBehaviorDefinition
+    {
+        [SerializeField]
+        private CoreFunThreatBehaviorKind _kind = CoreFunThreatBehaviorKind.Normal;
+
+        [Header("Hunter")]
+        [SerializeField]
+        [Range(0.01f, 1f)]
+        private float _hunterSteerFactor = 0.25f;
+
+        [Header("Pulse")]
+        [SerializeField]
+        private float _pulseSlowSpeedMultiplier = 0.5f;
+
+        [SerializeField]
+        private float _pulseFastSpeedMultiplier = 1.5f;
+
+        [SerializeField]
+        private float _pulseSlowDurationSeconds = 1.2f;
+
+        [SerializeField]
+        private float _pulseFastDurationSeconds = 0.8f;
+
+        public CoreFunThreatBehaviorDefinition()
+        {
+        }
+
+        public CoreFunThreatBehaviorDefinition(float hunterSteerFactor)
+        {
+            _kind = CoreFunThreatBehaviorKind.Hunter;
+            _hunterSteerFactor = hunterSteerFactor;
+        }
+
+        public CoreFunThreatBehaviorDefinition(
+            float pulseSlowSpeedMultiplier,
+            float pulseFastSpeedMultiplier,
+            float pulseSlowDurationSeconds,
+            float pulseFastDurationSeconds)
+        {
+            _kind = CoreFunThreatBehaviorKind.Pulse;
+            _pulseSlowSpeedMultiplier = pulseSlowSpeedMultiplier;
+            _pulseFastSpeedMultiplier = pulseFastSpeedMultiplier;
+            _pulseSlowDurationSeconds = pulseSlowDurationSeconds;
+            _pulseFastDurationSeconds = pulseFastDurationSeconds;
+        }
+
+        public CoreFunThreatBehaviorKind Kind => _kind;
+        public float HunterSteerFactor => _hunterSteerFactor;
+        public float PulseSlowSpeedMultiplier => _pulseSlowSpeedMultiplier;
+        public float PulseFastSpeedMultiplier => _pulseFastSpeedMultiplier;
+        public float PulseSlowDurationSeconds => _pulseSlowDurationSeconds;
+        public float PulseFastDurationSeconds => _pulseFastDurationSeconds;
+
+        public ThreatBehaviorConfiguration ToRuntimeConfiguration()
+        {
+            switch (_kind)
+            {
+                case CoreFunThreatBehaviorKind.Hunter:
+                    return ThreatBehaviorConfiguration.CreateHunter(
+                        _hunterSteerFactor);
+                case CoreFunThreatBehaviorKind.Pulse:
+                    return ThreatBehaviorConfiguration.CreatePulse(
+                        _pulseSlowSpeedMultiplier,
+                        _pulseFastSpeedMultiplier,
+                        _pulseSlowDurationSeconds,
+                        _pulseFastDurationSeconds);
+                default:
+                    return ThreatBehaviorConfiguration.Normal;
+            }
+        }
+    }
+
     [Serializable]
     public sealed class CoreFunThreatDefinition
     {
@@ -26,18 +107,39 @@ namespace Cutrium.Unity.Simulation
         [SerializeField]
         private int _maximumImpactsPerTick;
 
+        [SerializeField]
+        private CoreFunThreatBehaviorDefinition _behavior;
+
         public CoreFunThreatDefinition(
             Vector2 initialPosition,
             Vector2 initialDirection,
             float speed,
             float radius,
             int maximumImpactsPerTick)
+            : this(
+                initialPosition,
+                initialDirection,
+                speed,
+                radius,
+                maximumImpactsPerTick,
+                null)
+        {
+        }
+
+        public CoreFunThreatDefinition(
+            Vector2 initialPosition,
+            Vector2 initialDirection,
+            float speed,
+            float radius,
+            int maximumImpactsPerTick,
+            CoreFunThreatBehaviorDefinition behavior)
         {
             _initialPosition = initialPosition;
             _initialDirection = initialDirection;
             _speed = speed;
             _radius = radius;
             _maximumImpactsPerTick = maximumImpactsPerTick;
+            _behavior = behavior;
         }
 
         public Vector2 InitialPosition => _initialPosition;
@@ -45,6 +147,7 @@ namespace Cutrium.Unity.Simulation
         public float Speed => _speed;
         public float Radius => _radius;
         public int MaximumImpactsPerTick => _maximumImpactsPerTick;
+        public CoreFunThreatBehaviorDefinition Behavior => _behavior;
 
         public ThreatMotionConfiguration ToRuntimeConfiguration() =>
             new ThreatMotionConfiguration(
@@ -53,7 +156,69 @@ namespace Cutrium.Unity.Simulation
                 new LogicalVector(_initialDirection.x, _initialDirection.y),
                 _speed,
                 _radius,
-                _maximumImpactsPerTick);
+                _maximumImpactsPerTick,
+                _behavior != null
+                    ? _behavior.ToRuntimeConfiguration()
+                    : ThreatBehaviorConfiguration.Normal);
+    }
+
+    [Serializable]
+    public sealed class CoreFunPowerDefinition
+    {
+        [Header("Freeze Pulse")]
+        [SerializeField]
+        [Min(0)]
+        private int _freezePulseCharges;
+
+        [SerializeField]
+        private float _freezePulseDurationSeconds = 3f;
+
+        [SerializeField]
+        [Range(0.01f, 0.99f)]
+        private float _freezePulseSpeedMultiplier = 0.12f;
+
+        [Header("Instant Barrier")]
+        [SerializeField]
+        [Min(0)]
+        private int _instantBarrierCharges;
+
+        [SerializeField]
+        private float _instantBarrierGrowthSpeed = 600f;
+
+        public CoreFunPowerDefinition()
+        {
+        }
+
+        public CoreFunPowerDefinition(
+            int freezePulseCharges,
+            float freezePulseDurationSeconds,
+            float freezePulseSpeedMultiplier,
+            int instantBarrierCharges,
+            float instantBarrierGrowthSpeed)
+        {
+            _freezePulseCharges = freezePulseCharges;
+            _freezePulseDurationSeconds = freezePulseDurationSeconds;
+            _freezePulseSpeedMultiplier = freezePulseSpeedMultiplier;
+            _instantBarrierCharges = instantBarrierCharges;
+            _instantBarrierGrowthSpeed = instantBarrierGrowthSpeed;
+        }
+
+        public int FreezePulseCharges => _freezePulseCharges;
+        public float FreezePulseDurationSeconds => _freezePulseDurationSeconds;
+
+        public float FreezePulseSpeedMultiplier =>
+            _freezePulseSpeedMultiplier;
+
+        public int InstantBarrierCharges => _instantBarrierCharges;
+        public float InstantBarrierGrowthSpeed => _instantBarrierGrowthSpeed;
+
+        public PowerConfiguration ToRuntimeConfiguration() =>
+            new PowerConfiguration(
+                _freezePulseCharges,
+                _freezePulseDurationSeconds,
+                _freezePulseSpeedMultiplier,
+                _instantBarrierCharges,
+                _instantBarrierGrowthSpeed);
     }
 
     [Serializable]
@@ -94,6 +259,9 @@ namespace Cutrium.Unity.Simulation
 
         [SerializeField]
         private float _maximumExpectedCompletionSeconds;
+
+        [SerializeField]
+        private CoreFunPowerDefinition _power;
 
         public CoreFunLevelDefinition(
             string stableId,
@@ -148,6 +316,37 @@ namespace Cutrium.Unity.Simulation
             string developmentNote,
             float maximumExpectedCompletionSeconds,
             string purposeLine)
+            : this(
+                stableId,
+                displayNumber,
+                threats,
+                targetCapturedFraction,
+                barrierGrowthSpeed,
+                barrierCollisionHalfWidth,
+                minimumCutMargin,
+                maximumBarrierSolverIterations,
+                maximumCatchUpTicks,
+                developmentNote,
+                maximumExpectedCompletionSeconds,
+                purposeLine,
+                null)
+        {
+        }
+
+        public CoreFunLevelDefinition(
+            string stableId,
+            int displayNumber,
+            IReadOnlyList<CoreFunThreatDefinition> threats,
+            float targetCapturedFraction,
+            float barrierGrowthSpeed,
+            float barrierCollisionHalfWidth,
+            float minimumCutMargin,
+            int maximumBarrierSolverIterations,
+            int maximumCatchUpTicks,
+            string developmentNote,
+            float maximumExpectedCompletionSeconds,
+            string purposeLine,
+            CoreFunPowerDefinition power)
         {
             _stableId = stableId;
             _displayNumber = displayNumber;
@@ -163,6 +362,7 @@ namespace Cutrium.Unity.Simulation
             _purposeLine = purposeLine;
             _maximumExpectedCompletionSeconds =
                 maximumExpectedCompletionSeconds;
+            _power = power;
         }
 
         public string StableId => _stableId;
@@ -185,6 +385,7 @@ namespace Cutrium.Unity.Simulation
         public string PurposeLine => _purposeLine;
         public float MaximumExpectedCompletionSeconds =>
             _maximumExpectedCompletionSeconds;
+        public CoreFunPowerDefinition Power => _power;
 
         public CoreFunLevelConfiguration ToRuntimeConfiguration()
         {
@@ -215,7 +416,10 @@ namespace Cutrium.Unity.Simulation
                 _maximumCatchUpTicks,
                 _developmentNote,
                 _maximumExpectedCompletionSeconds,
-                _purposeLine);
+                _purposeLine,
+                _power != null
+                    ? _power.ToRuntimeConfiguration()
+                    : PowerConfiguration.None);
         }
 
         public static CoreFunLevelDefinition[] CreateMilestone3Defaults() =>
@@ -290,6 +494,144 @@ namespace Cutrium.Unity.Simulation
                     "Separated threats make grouping the strategic constraint.",
                     45f,
                     "KEEP THEM TOGETHER"),
+            };
+
+        public static CoreFunLevelDefinition[] CreateMilestone6Defaults() =>
+            new[]
+            {
+                new CoreFunLevelDefinition(
+                    "hunter-alone",
+                    1,
+                    new[]
+                    {
+                        new CoreFunThreatDefinition(
+                            new Vector2(5f, 8f),
+                            new Vector2(0.8f, 0.6f),
+                            2f,
+                            0.35f,
+                            8,
+                            new CoreFunThreatBehaviorDefinition(0.3f)),
+                    },
+                    0.8f,
+                    2.6f,
+                    0.08f,
+                    3f,
+                    16,
+                    8,
+                    "Hunter reacts once per barrier start; verify fairness " +
+                    "and readable, bounded steering.",
+                    30f,
+                    "OUTSMART THE HUNTER",
+                    null),
+                new CoreFunLevelDefinition(
+                    "pulse-alone",
+                    2,
+                    new[]
+                    {
+                        new CoreFunThreatDefinition(
+                            new Vector2(4f, 10f),
+                            new Vector2(0.6f, -0.8f),
+                            2f,
+                            0.35f,
+                            8,
+                            new CoreFunThreatBehaviorDefinition(
+                                0.5f,
+                                1.5f,
+                                1.2f,
+                                0.8f)),
+                    },
+                    0.8f,
+                    2.6f,
+                    0.08f,
+                    3f,
+                    16,
+                    8,
+                    "Pulse cycles slow/fast speed; verify peak-speed solver " +
+                    "reliability and readable timing.",
+                    30f,
+                    "FEEL THE PULSE",
+                    null),
+                new CoreFunLevelDefinition(
+                    "freeze-pulse-rescue",
+                    3,
+                    new[]
+                    {
+                        new CoreFunThreatDefinition(
+                            new Vector2(5f, 8f),
+                            new Vector2(0.7f, 0.71f),
+                            2.4f,
+                            0.35f,
+                            8),
+                    },
+                    0.8f,
+                    2.4f,
+                    0.08f,
+                    3f,
+                    16,
+                    8,
+                    "One Freeze Pulse charge should rescue a risky cut " +
+                    "without a permanent stuck threat.",
+                    30f,
+                    "FREEZE AND CUT",
+                    new CoreFunPowerDefinition(1, 3f, 0.12f, 0, 600f)),
+                new CoreFunLevelDefinition(
+                    "instant-barrier-finish",
+                    4,
+                    new[]
+                    {
+                        new CoreFunThreatDefinition(
+                            new Vector2(5f, 8f),
+                            new Vector2(0.5f, 0.87f),
+                            2.4f,
+                            0.35f,
+                            8),
+                    },
+                    0.8f,
+                    2.4f,
+                    0.08f,
+                    3f,
+                    16,
+                    8,
+                    "One Instant Barrier charge should complete within the " +
+                    "same tick without changing lock/contact rules.",
+                    30f,
+                    "END IT INSTANTLY",
+                    new CoreFunPowerDefinition(0, 3f, 0.12f, 1, 600f)),
+                new CoreFunLevelDefinition(
+                    "identity-mix",
+                    5,
+                    new[]
+                    {
+                        new CoreFunThreatDefinition(
+                            new Vector2(3f, 5f),
+                            new Vector2(0.9f, 0.44f),
+                            2f,
+                            0.35f,
+                            8,
+                            new CoreFunThreatBehaviorDefinition(0.25f)),
+                        new CoreFunThreatDefinition(
+                            new Vector2(7f, 11f),
+                            new Vector2(-0.82f, -0.57f),
+                            2f,
+                            0.35f,
+                            8,
+                            new CoreFunThreatBehaviorDefinition(
+                                0.5f,
+                                1.5f,
+                                1.2f,
+                                0.8f)),
+                    },
+                    0.85f,
+                    2.6f,
+                    0.08f,
+                    3f,
+                    16,
+                    8,
+                    "Combines Hunter, Pulse, Freeze Pulse, and Instant " +
+                    "Barrier for one identity-test pass.",
+                    45f,
+                    "CUTRIUM IDENTITY TEST",
+                    new CoreFunPowerDefinition(1, 3f, 0.12f, 1, 600f)),
             };
     }
 }

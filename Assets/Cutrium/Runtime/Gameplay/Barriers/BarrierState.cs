@@ -144,6 +144,23 @@ namespace Cutrium.Gameplay.Barriers
         public BarrierState Fail() =>
             With(NegativeLength, PositiveLength, BarrierLifecycle.Failed);
 
+        public BarrierState WithGrowthSpeed(float growthSpeed)
+        {
+            ValidateLength(growthSpeed, nameof(growthSpeed), false);
+            return new BarrierState(
+                Id,
+                ParentRoomId,
+                Origin,
+                Orientation,
+                NegativeLength,
+                PositiveLength,
+                NegativeTargetLength,
+                PositiveTargetLength,
+                growthSpeed,
+                CollisionHalfWidth,
+                Lifecycle);
+        }
+
         public bool Equals(BarrierState other) =>
             Id == other.Id
             && ParentRoomId == other.ParentRoomId
