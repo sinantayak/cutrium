@@ -1491,11 +1491,30 @@ human input at their natural gates:
   SampleScene, ProjectSettings, EditorSettings, and EditorBuildSettings retain
   no diff. The transient scene-template settings file was removed.
 - [x] Milestone 4 complete and validated.
-- [ ] Milestone 4 checkpoint is pending because the managed automation account
-  cannot create `.git/index.lock`; no files were staged and no commit was
-  created. Milestone 5 remains blocked until the repository owner creates the
-  permitted local checkpoint.
-- [ ] Milestone 5 complete, validated, and checkpointed.
+- [x] 2026-08-06: Repository-owner PowerShell created the permitted Milestone 4
+  checkpoint `fbdcaa6` (`feat: complete Cutrium milestone 4 feedback loop`).
+  The commit contents and clean worktree were independently verified before
+  Milestone 5 started; nothing was pushed.
+- [x] 2026-08-06: Implemented the Milestone 5 source/test/setup candidate:
+  presentation-only `ThemeDefinition` resolution, cleanup prototype and
+  minimal flat fallback, explicit scene composition, threat scale/offset,
+  shadow/trail hooks, barrier body/cap/preview state hooks, capture
+  sprite/material/color hooks, HUD accents, deterministic generated placeholder
+  tooling, and repository asset provenance. No gameplay type or package changed.
+- [x] 2026-08-06: Unity-generated Roslyn response files compile the changed
+  Presentation, Editor, Edit test, and Play test assemblies with zero C#
+  errors or warnings. Licensed Unity setup/full-suite validation remains
+  pending and Milestone 6 has not started.
+- [x] 2026-08-06: Diagnosed the licensed Milestone 5 Setup 1 failure. Scene
+  opening unloaded native placeholder assets after their temporary Sprite
+  wrappers had been cached, while validation compared those wrappers by Unity
+  object instance. The setup now reacquires themes and sprites after scene
+  opening and validates persistent GUID/file-ID identities with named failures.
+  Affected assemblies compile cleanly; licensed setup and suites remain pending.
+- [x] 2026-08-07: Licensed Setup 1 and Setup 2 both pass with the reacquire
+  fix; Edit Mode reports 197/197 and Play Mode reports 86/86 with no compiler
+  or Console errors. Milestone 5 is fix-verified but still uncommitted.
+- [ ] Milestone 5 checkpointed (blocked on an explicit commit instruction).
 - [ ] Milestone 6 complete, validated, and checkpointed.
 - [ ] Positive Milestone 3 gate confirmed before Milestone 7 content work.
 - [ ] Milestone 7 complete, validated, and checkpointed.
@@ -1607,6 +1626,13 @@ human input at their natural gates:
   initial board area; capturing locks increment combo, no-area locks leave it
   unchanged, and failure/session replacement resets it. Presentation is an
   optional listener with no outcome authority. ADR-017 records the exact rule.
+
+- **2026-08-06 — Implemented pending validation:** themes exist only in the
+  Presentation assembly and resolve optional object fields through selected
+  theme, serialized fallback, then component flat defaults. Generated cleanup
+  placeholders are project-owned procedural PNGs with recorded provenance;
+  the minimal fallback has no Sprite or Material dependency. ADR-018 records
+  the boundary and precedence.
 
 ## Discoveries
 
@@ -1852,8 +1878,80 @@ human input at their natural gates:
   licensed-user reruns supplied the authoritative setup, compiler, and full
   test evidence; this account distinction remains relevant for Milestones 5
   and 6 automation gates.
+- Milestone 5 Setup 1 imported all nine generated sprites and both theme assets
+  correctly. Their serialized GUID/file-ID references match the generated
+  `.meta` files, and the minimal fallback has no Sprite or Material reference.
+  The failed validator instead retained Sprite wrappers from before
+  `OpenScene`, whose unload pass removed 194 unused native assets. Persistent
+  asset identity, not transient Unity object-instance identity, is the correct
+  setup invariant across that scene-load boundary.
 
 ## Validation Record
+
+### 2026-08-06 — Milestone 5 candidate pending licensed Unity gate
+
+Milestone 5 starts from clean checkpoint `fbdcaa6`. The candidate keeps all
+theme and art types in `Cutrium.Presentation`; source search finds no
+UnityEngine, Sprite, Material, GameObject, Transform, AudioClip, or
+ParticleSystem reference in `Cutrium.Gameplay`. Unity 6000.3.21f1's generated
+Roslyn response files compile the changed Presentation, Editor, Edit test, and
+Play test assemblies with zero errors and zero warnings. Source/document
+whitespace checks and the package/protected-path diff are clean.
+
+Licensed Setup 1 imported the generated PNG/Sprite assets and both theme assets,
+then failed before saving the Milestone 5 scene. The generated `.meta` GUIDs and
+the three representative Cleanup theme references (`normal_threat`,
+`barrier_body`, and `capture_fill`) match exactly; MinimalFallback serializes
+null Sprite and Material fields as intended. The setup had cached Sprite
+wrappers before `EditorSceneManager.OpenScene`, whose unload pass removed 194
+unused native assets, then compared the cached wrappers to durable theme
+references by Unity object instance. Setup now reacquires both themes and every
+generated Sprite after opening the scene and validates GUID plus local file ID.
+The original validation rules remain and now emit the exact failed rule rather
+than one compound diagnostic.
+
+After that correction, Unity 6000.3.21f1's generated Roslyn response files
+compiled `Cutrium.Presentation`, `Cutrium.Editor`, the Edit Mode test assembly,
+and the Play Mode test assembly with exit code 0 and no C# diagnostic.
+
+### 2026-08-07 — Milestone 5 licensed gate passed
+
+Licensed-user reruns confirm the reacquire-after-`OpenScene` fix:
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone5SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M5-Diagnose-Setup-1.log'
+```
+
+Result: `Milestone 5 scene setup verified. Cleanup prototype and minimal
+fallback themes are replaceable and presentation-only.` Batchmode exited 0.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.Milestone5SceneSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M5-Diagnose-Setup-2.log'
+```
+
+Result: identical success message, exit 0. Rerunning `Apply` a second time
+produced no further working-tree diff beyond what Setup 1 already produced,
+confirming idempotence.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M5-Diagnose-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M5-Diagnose-EditMode.log'
+```
+
+Result: 197 discovered, 197 passed, 0 failed, 0 skipped.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-M5-Diagnose-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-M5-Diagnose-PlayMode.log'
+```
+
+Result: 86 discovered, 86 passed, 0 failed, 0 skipped. Both log files contain
+no compiler errors/warnings and no failed NUnit test-run nodes. Each
+batch-mode run regenerated the default, all-`userAdded:false`
+`ProjectSettings/SceneTemplateSettings.json` that Unity 6000.3 writes on first
+Editor init for a project; it carries no project-specific data and was removed
+after each run so `ProjectSettings/` stays free of unrelated diffs. No
+`Cutrium.Gameplay` file, package manifest/lock, or other `ProjectSettings` file
+changed. Milestone 5 is fix-verified and uncommitted; it still blocks
+Milestone 6 until checkpointed.
 
 ### 2026-08-06 — Identity Run start gate and Milestone 4 final gate
 

@@ -4,6 +4,7 @@
   "references": [
     "Cutrium.Gameplay",
     "Cutrium.Unity",
+    "Cutrium.Presentation",
     "Unity.InputSystem"
   ],
   "includePlatforms": [

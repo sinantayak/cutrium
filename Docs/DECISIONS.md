@@ -466,3 +466,48 @@ disabled. The serialized scene owns one feedback presenter, one optional
 one-shot audio presenter, and one no-op haptic presenter through explicit
 references. This decision does not approve theme assets, Hunter/Pulse threats,
 powers, production audio, or Milestone 7 content.
+
+---
+
+## ADR-018 — Themes Resolve Only Presentation Data
+
+**Status:** Accepted
+
+**Context:**
+Milestone 5 must prove that Cutrium can receive a coherent identity and be
+reskinned without allowing sprite bounds, visual scale, offsets, materials, or
+effects to become gameplay authority. The prototype needs one readable
+cleanup/infection-chamber direction and a deliberately minimal fallback, but
+does not approve final purchased art or a required shader.
+
+**Decision:**
+Store replaceable environment, threat, barrier, capture, and HUD presentation
+fields in `ThemeDefinition` ScriptableObjects owned by the Presentation
+assembly. Resolve every optional object field in this order: selected theme,
+serialized fallback theme, then the presenter's project-owned flat default.
+Colors and scale/offset values come from the selected theme when present, then
+the fallback, then documented component defaults. Theme application may set
+sprites, colors, materials, visual scale/offset, shadow/trail views, barrier
+body/cap/preview views, captured-fill presentation, and compact HUD accents;
+it never writes the gameplay session.
+
+Generate the cleanup prototype's small PNG placeholders deterministically
+through the reviewed idempotent Editor setup utility. The formulas are the
+source, no external download or third-party material is used, and provenance
+is recorded in `Docs/ASSET_PROVENANCE.md`. The minimal fallback deliberately
+uses no Sprite or Material reference and remains readable through flat UI
+colors.
+
+**Reasoning:**
+Keeping theme definitions outside `Cutrium.Gameplay` makes the architectural
+boundary enforceable by assembly and reflection tests. Explicit serialized
+composition supports Inspector replacement and theme preview while a stable
+fallback prevents missing optional art from breaking play.
+
+**Consequences:**
+Threat logical radius, barrier collision width/endpoints, board/room geometry,
+captured area, solver outcomes, and metrics must be identical across theme
+swaps. Stable threat-ID reconciliation must apply the same resolved visual
+style to every view without duplicating presenters. Generated placeholders are
+prototype assets, not final brand art. This decision adds no shader, package,
+audio, gameplay mechanic, Hunter/Pulse behavior, or power.

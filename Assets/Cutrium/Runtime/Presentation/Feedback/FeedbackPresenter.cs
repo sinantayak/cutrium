@@ -47,6 +47,15 @@ namespace Cutrium.Presentation.Feedback
 
         public float GrowthIntensity { get; private set; }
 
+        public void SetBaseFrameColor(Color color)
+        {
+            _baseFrameColor = color;
+            if (_boardFrameGraphic != null && _emphasis <= 0f)
+            {
+                _boardFrameGraphic.color = color;
+            }
+        }
+
         public void Configure(
             FirstPlayableController controller,
             FeedbackTuningDefinition tuning,

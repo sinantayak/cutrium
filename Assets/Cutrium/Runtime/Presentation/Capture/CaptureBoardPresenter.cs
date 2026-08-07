@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Board;
 using Cutrium.Gameplay.Geometry;
+using Cutrium.Presentation.Theme;
 using Cutrium.Unity.Simulation;
 using UnityEngine;
 using UnityEngine.UI;
@@ -44,6 +45,8 @@ namespace Cutrium.Presentation.Capture
             new List<CanvasGroup>();
         private readonly List<float> _capturedRevealStarts =
             new List<float>();
+        private CaptureVisualStyle _themeStyle;
+        private bool _hasThemeStyle;
 
         public FirstPlayableController Controller => _controller;
 
@@ -58,6 +61,10 @@ namespace Cutrium.Presentation.Capture
         public int VisibleCompletedBarrierCount { get; private set; }
 
         public float CaptureRevealDuration => _captureRevealDuration;
+
+        public CaptureVisualStyle ThemeStyle => _themeStyle;
+
+        public bool HasThemeStyle => _hasThemeStyle;
 
         public bool AllVisibleCapturesRevealed
         {
@@ -109,6 +116,23 @@ namespace Cutrium.Presentation.Capture
             _captureRevealDuration = duration;
         }
 
+        public void ApplyTheme(CaptureVisualStyle style)
+        {
+            _themeStyle = style;
+            _hasThemeStyle = true;
+            for (int index = 0; index < _capturedViews.Count; index++)
+            {
+                ApplyCapturedStyle(
+                    _capturedViews[index].GetComponent<Image>());
+            }
+
+            for (int index = 0; index < _barrierViews.Count; index++)
+            {
+                ApplyCompletedBarrierStyle(
+                    _barrierViews[index].GetComponent<Image>());
+            }
+        }
+
         public void RefreshNow()
         {
             if (_controller == null
@@ -142,6 +166,8 @@ namespace Cutrium.Presentation.Capture
                 _capturedViews[index].gameObject.SetActive(visible);
                 if (visible)
                 {
+                    ApplyCapturedStyle(
+                        _capturedViews[index].GetComponent<Image>());
                     if (!wasVisible)
                     {
                         _capturedRevealStarts[index] = Time.unscaledTime;
@@ -192,6 +218,8 @@ namespace Cutrium.Presentation.Capture
                 _barrierViews[index].gameObject.SetActive(visible);
                 if (visible)
                 {
+                    ApplyCompletedBarrierStyle(
+                        _barrierViews[index].GetComponent<Image>());
                     BarrierState barrier = barriers[index];
                     RenderSegment(
                         _barrierViews[index],
@@ -201,6 +229,42 @@ namespace Cutrium.Presentation.Capture
             }
 
             VisibleCompletedBarrierCount = barriers.Count;
+        }
+
+        private void ApplyCapturedStyle(Image image)
+        {
+            if (image == null)
+            {
+                return;
+            }
+
+            image.sprite = _hasThemeStyle ? _themeStyle.Sprite : null;
+            image.material = _hasThemeStyle ? _themeStyle.Material : null;
+            image.color = _hasThemeStyle
+                ? _themeStyle.Color
+                : CapturedColor;
+            image.type = Image.Type.Simple;
+            image.preserveAspect = false;
+            image.raycastTarget = false;
+        }
+
+        private void ApplyCompletedBarrierStyle(Image image)
+        {
+            if (image == null)
+            {
+                return;
+            }
+
+            image.sprite = _hasThemeStyle
+                ? _themeStyle.CompletedBarrierSprite
+                : null;
+            image.material = null;
+            image.color = _hasThemeStyle
+                ? _themeStyle.CompletedBarrierColor
+                : CompletedBarrierColor;
+            image.type = Image.Type.Simple;
+            image.preserveAspect = false;
+            image.raycastTarget = false;
         }
 
         private static void EnsureViews(

@@ -3,6 +3,7 @@ using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Board;
 using Cutrium.Gameplay.Feedback;
 using Cutrium.Gameplay.Geometry;
+using Cutrium.Presentation.Theme;
 using Cutrium.Unity.Input;
 using Cutrium.Unity.Simulation;
 using UnityEngine;
@@ -67,6 +68,10 @@ namespace Cutrium.Presentation.Barriers
         private float _failureHideTime;
         private BarrierState? _failureSnapshot;
         private bool _feedbackSubscribed;
+        private BarrierVisualStyle _themeStyle;
+        private bool _hasThemeStyle;
+        private Image _negativeCap;
+        private Image _positiveCap;
 
         public FirstPlayableController Controller => _controller;
         public BarrierGestureAdapter Gesture => _gesture;
@@ -80,6 +85,8 @@ namespace Cutrium.Presentation.Barriers
             _failureFeedback != null && _failureFeedback.gameObject.activeSelf;
         public FeedbackEventKind LastFeedbackEventKind { get; private set; }
         public int FeedbackEventCount { get; private set; }
+        public BarrierVisualStyle ThemeStyle => _themeStyle;
+        public bool HasThemeStyle => _hasThemeStyle;
 
         public void Configure(
             FirstPlayableController controller,
@@ -120,6 +127,22 @@ namespace Cutrium.Presentation.Barriers
             {
                 SubscribeFeedback();
             }
+        }
+
+        public void ApplyTheme(BarrierVisualStyle style)
+        {
+            _themeStyle = style;
+            _hasThemeStyle = true;
+            _previewImage.sprite = style.PreviewSprite;
+            _negativeImage.sprite = style.BodySprite;
+            _positiveImage.sprite = style.BodySprite;
+            _failureImage.sprite = style.CapSprite ?? style.BodySprite;
+            _negativeCap = GetOrCreateCap(_negativeHalf, "NegativeCap");
+            _positiveCap = GetOrCreateCap(_positiveHalf, "PositiveCap");
+            _negativeCap.sprite = style.CapSprite;
+            _positiveCap.sprite = style.CapSprite;
+            _negativeCap.color = style.GrowingColor;
+            _positiveCap.color = style.GrowingColor;
         }
 
         public void SetVisualLogicalThickness(float value)
@@ -262,8 +285,12 @@ namespace Cutrium.Presentation.Barriers
                 _visualLogicalThickness * 0.55f);
             _previewImage.color = _gesture.SelectedOrientation
                 == BarrierOrientation.Horizontal
-                    ? HorizontalPreview
-                    : VerticalPreview;
+                    ? _hasThemeStyle
+                        ? _themeStyle.PreviewColor
+                        : HorizontalPreview
+                    : _hasThemeStyle
+                        ? _themeStyle.PreviewColor
+                        : VerticalPreview;
         }
 
         private void RenderBarrier()
@@ -289,10 +316,17 @@ namespace Cutrium.Presentation.Barriers
                 barrier.PositiveEndpoint,
                 _visualLogicalThickness);
             Color stateColor = barrier.Lifecycle == BarrierLifecycle.Locked
-                ? LockedColor
-                : GrowingColor;
+                ? _hasThemeStyle ? _themeStyle.LockedColor : LockedColor
+                : _hasThemeStyle ? _themeStyle.GrowingColor : GrowingColor;
             _negativeImage.color = stateColor;
             _positiveImage.color = stateColor;
+            if (_negativeCap != null && _positiveCap != null)
+            {
+                _negativeCap.color = stateColor;
+                _positiveCap.color = stateColor;
+                PositionCap(_negativeCap, false, _negativeHalf.sizeDelta.y);
+                PositionCap(_positiveCap, true, _positiveHalf.sizeDelta.y);
+            }
         }
 
         private void ObserveFailure()
@@ -328,7 +362,47 @@ namespace Cutrium.Presentation.Barriers
             _failureFeedback.anchoredPosition = position;
             float size = _visualLogicalThickness * scale * 2.5f;
             _failureFeedback.sizeDelta = new Vector2(size, size);
-            _failureImage.color = FailedColor;
+            _failureImage.color = _hasThemeStyle
+                ? _themeStyle.BreakColor
+                : FailedColor;
+        }
+
+        private static Image GetOrCreateCap(
+            RectTransform parent,
+            string name)
+        {
+            Transform existing = parent.Find(name);
+            if (existing != null)
+            {
+                return existing.GetComponent<Image>()
+                    ?? existing.gameObject.AddComponent<Image>();
+            }
+
+            var gameObject = new GameObject(
+                name,
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image));
+            var rect = (RectTransform)gameObject.transform;
+            rect.SetParent(parent, false);
+            Image image = gameObject.GetComponent<Image>();
+            image.raycastTarget = false;
+            return image;
+        }
+
+        private static void PositionCap(
+            Image image,
+            bool positive,
+            float thickness)
+        {
+            RectTransform rect = (RectTransform)image.transform;
+            float anchor = positive ? 1f : 0f;
+            rect.anchorMin = new Vector2(anchor, 0.5f);
+            rect.anchorMax = new Vector2(anchor, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.localRotation = Quaternion.identity;
+            rect.sizeDelta = new Vector2(thickness, thickness);
         }
 
         private void RenderSegment(

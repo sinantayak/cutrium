@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Threats;
+using Cutrium.Presentation.Theme;
 using Cutrium.Unity.Simulation;
 using UnityEngine;
 using UnityEngine.UI;
@@ -35,6 +36,8 @@ namespace Cutrium.Presentation.Threats
         private readonly List<ThreatView> _availableViews =
             new List<ThreatView>();
         private ThreatView _primaryView;
+        private ThreatVisualStyle _themeStyle;
+        private bool _hasThemeStyle;
 
         public FirstPlayableController Controller => _controller;
 
@@ -55,6 +58,10 @@ namespace Cutrium.Presentation.Threats
         public IReadOnlyCollection<ThreatId> PresentedThreatIds =>
             _activeViews.Keys;
 
+        public ThreatVisualStyle ThemeStyle => _themeStyle;
+
+        public bool HasThemeStyle => _hasThemeStyle;
+
         public void Configure(
             FirstPlayableController controller,
             RectTransform boardFrame,
@@ -73,6 +80,22 @@ namespace Cutrium.Presentation.Threats
             _primaryView = null;
             SetVisualLogicalDiameter(visualLogicalDiameter);
             ApplyOptionalSprite(_image);
+        }
+
+        public void ApplyTheme(ThreatVisualStyle style)
+        {
+            if (!ThemeDefinition.IsValidScale(style.Scale))
+            {
+                throw new ArgumentOutOfRangeException(nameof(style));
+            }
+
+            _themeStyle = style;
+            _hasThemeStyle = true;
+            EnsurePrimaryView();
+            foreach (ThreatView view in _activeViews.Values)
+            {
+                ApplyStyle(view);
+            }
         }
 
         public void SetVisualLogicalDiameter(float visualLogicalDiameter)
@@ -174,7 +197,7 @@ namespace Cutrium.Presentation.Threats
                     ? "ThreatVisual"
                     : $"ThreatVisual_{id.Value}";
                 view.RectTransform.gameObject.SetActive(true);
-                ApplyOptionalSprite(view.Image);
+                ApplyStyle(view);
                 _activeViews.Add(id, view);
             }
         }
@@ -242,8 +265,108 @@ namespace Cutrium.Presentation.Threats
                 (normalizedX - 0.5f) * frameRect.width,
                 (normalizedY - 0.5f) * frameRect.height);
             float diameter = _visualLogicalDiameter * logicalScale;
-            rect.sizeDelta = new Vector2(diameter, diameter);
-            ApplyOptionalSprite(view.Image);
+            Vector2 visualScale = _hasThemeStyle
+                ? _themeStyle.Scale
+                : Vector2.one;
+            Vector2 logicalOffset = _hasThemeStyle
+                ? _themeStyle.Offset
+                : Vector2.zero;
+            rect.anchoredPosition += logicalOffset * logicalScale;
+            rect.sizeDelta = new Vector2(
+                diameter * visualScale.x,
+                diameter * visualScale.y);
+            ApplyStyle(view);
+            PositionDecorations(view, threat, diameter);
+        }
+
+        private void ApplyStyle(ThreatView view)
+        {
+            EnsureDecorations(view);
+            view.Image.sprite = _hasThemeStyle
+                ? _themeStyle.Sprite ?? _optionalSprite
+                : _optionalSprite;
+            if (_hasThemeStyle)
+            {
+                view.Image.color = _themeStyle.Color;
+                view.ShadowImage.sprite = _themeStyle.ShadowSprite;
+                view.ShadowImage.color = _themeStyle.ShadowColor;
+                view.TrailImage.sprite = _themeStyle.TrailSprite;
+                view.TrailImage.color = _themeStyle.TrailColor;
+            }
+
+            view.Image.preserveAspect = false;
+            view.Image.raycastTarget = false;
+            view.ShadowImage.raycastTarget = false;
+            view.TrailImage.raycastTarget = false;
+        }
+
+        private static void EnsureDecorations(ThreatView view)
+        {
+            if (view.ShadowImage == null)
+            {
+                view.ShadowImage = GetOrCreateDecoration(
+                    view.RectTransform,
+                    "ThreatShadow");
+            }
+
+            if (view.TrailImage == null)
+            {
+                view.TrailImage = GetOrCreateDecoration(
+                    view.RectTransform,
+                    "ThreatTrail");
+            }
+
+            view.TrailImage.transform.SetSiblingIndex(0);
+            view.ShadowImage.transform.SetSiblingIndex(1);
+        }
+
+        private static Image GetOrCreateDecoration(
+            RectTransform parent,
+            string name)
+        {
+            Transform existing = parent.Find(name);
+            if (existing != null)
+            {
+                return existing.GetComponent<Image>()
+                    ?? existing.gameObject.AddComponent<Image>();
+            }
+
+            var gameObject = new GameObject(
+                name,
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image));
+            var rect = (RectTransform)gameObject.transform;
+            rect.SetParent(parent, false);
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            return gameObject.GetComponent<Image>();
+        }
+
+        private static void PositionDecorations(
+            ThreatView view,
+            ThreatState threat,
+            float diameter)
+        {
+            RectTransform shadow =
+                (RectTransform)view.ShadowImage.transform;
+            shadow.anchoredPosition = new Vector2(
+                diameter * 0.08f,
+                -diameter * 0.1f);
+            shadow.sizeDelta = new Vector2(diameter * 1.15f, diameter * 1.15f);
+
+            Vector2 direction = new Vector2(
+                threat.Velocity.X,
+                threat.Velocity.Y).normalized;
+            RectTransform trail =
+                (RectTransform)view.TrailImage.transform;
+            trail.anchoredPosition = -direction * diameter * 0.55f;
+            trail.localRotation = Quaternion.Euler(
+                0f,
+                0f,
+                Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
+            trail.sizeDelta = new Vector2(diameter * 1.2f, diameter * 0.4f);
         }
 
         private void ApplyOptionalSprite(Image image)
@@ -268,6 +391,10 @@ namespace Cutrium.Presentation.Threats
             public RectTransform RectTransform { get; }
 
             public Image Image { get; }
+
+            public Image ShadowImage { get; set; }
+
+            public Image TrailImage { get; set; }
         }
     }
 }
