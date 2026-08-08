@@ -14,9 +14,9 @@ namespace Cutrium.Presentation.Capture
     public sealed class CaptureBoardPresenter : MonoBehaviour
     {
         private static readonly Color CapturedColor =
-            new Color(0.2f, 0.72f, 0.68f, 0.7f);
+            new Color(0.85f, 0.72f, 0.42f, 0.16f);
         private static readonly Color CompletedBarrierColor =
-            new Color(0.96f, 0.89f, 0.48f, 1f);
+            new Color(0.95f, 0.82f, 0.5f, 0.55f);
 
         [SerializeField]
         private FirstPlayableController _controller;

@@ -14,6 +14,9 @@ namespace Cutrium.Unity.Layout
         private Canvas _canvas;
 
         [SerializeField]
+        private RectTransform _boardStage;
+
+        [SerializeField]
         private RectTransform _boardViewport;
 
         [SerializeField]
@@ -27,6 +30,19 @@ namespace Cutrium.Unity.Layout
 
         public Canvas Canvas => _canvas;
 
+        /// The stable, VerticalLayoutGroup-controlled slot that always
+        /// receives the full available board area for the current screen,
+        /// regardless of its own aspect ratio. Used only to read "how much
+        /// space is available" -- never resized to the fitted rect itself,
+        /// so it remains a correct reference across resolution/orientation
+        /// changes.
+        public RectTransform BoardStage => _boardStage;
+
+        /// The visual board shell: resized every Apply() to exactly the
+        /// 10:16 aspect-fitted rect within BoardStage. BoardFrame (and
+        /// therefore everything anchored to it -- board surface, landmark
+        /// artwork, veil layer, barriers, threats) is a plain full-stretch
+        /// child of this, so it always shares the exact same final rect.
         public RectTransform BoardViewport => _boardViewport;
 
         public RectTransform BoardFrame => _boardFrame;
@@ -42,11 +58,13 @@ namespace Cutrium.Unity.Layout
         public void Configure(
             Camera boardCamera,
             Canvas canvas,
+            RectTransform boardStage,
             RectTransform boardViewport,
             RectTransform boardFrame)
         {
             _boardCamera = boardCamera;
             _canvas = canvas;
+            _boardStage = boardStage;
             _boardViewport = boardViewport;
             _boardFrame = boardFrame;
             _hasAppliedLayout = false;
@@ -55,8 +73,8 @@ namespace Cutrium.Unity.Layout
         public bool Apply(Rect viewportScreenRect, Vector2 screenSize)
         {
             if (_boardCamera == null
+                || _boardStage == null
                 || _boardViewport == null
-                || _boardFrame == null
                 || screenSize.x <= 0f
                 || screenSize.y <= 0f
                 || viewportScreenRect.width <= 0f
@@ -75,7 +93,7 @@ namespace Cutrium.Unity.Layout
             Rect boardScreenRect =
                 BoardViewportLayout.CalculateAspectFitRect(viewportScreenRect);
             Rect localBoardRect =
-                BoardViewportLayout.CalculateAspectFitRect(_boardViewport.rect);
+                BoardViewportLayout.CalculateAspectFitRect(_boardStage.rect);
 
             _boardCamera.rect = new Rect(
                 viewportScreenRect.x / screenSize.x,
@@ -90,12 +108,18 @@ namespace Cutrium.Unity.Layout
                 BoardViewportLayout.LogicalHeight * 0.5f,
                 -10f);
 
-            _boardFrame.anchorMin = new Vector2(0.5f, 0.5f);
-            _boardFrame.anchorMax = new Vector2(0.5f, 0.5f);
-            _boardFrame.pivot = new Vector2(0.5f, 0.5f);
-            _boardFrame.anchoredPosition =
-                localBoardRect.center - _boardViewport.rect.center;
-            _boardFrame.sizeDelta = localBoardRect.size;
+            // BoardViewport becomes exactly the fitted rect within
+            // BoardStage -- there is no larger container left to
+            // letterbox inside. BoardFrame stays a plain full-stretch
+            // child of BoardViewport (configured once at scene-setup
+            // time), so it automatically shares this same final rect
+            // without needing its own per-frame sizing here anymore.
+            _boardViewport.anchorMin = new Vector2(0.5f, 0.5f);
+            _boardViewport.anchorMax = new Vector2(0.5f, 0.5f);
+            _boardViewport.pivot = new Vector2(0.5f, 0.5f);
+            _boardViewport.anchoredPosition =
+                localBoardRect.center - _boardStage.rect.center;
+            _boardViewport.sizeDelta = localBoardRect.size;
 
             ViewportScreenRect = viewportScreenRect;
             BoardScreenRect = boardScreenRect;
@@ -108,12 +132,12 @@ namespace Cutrium.Unity.Layout
 
         public bool RefreshNow()
         {
-            if (_boardViewport == null || Screen.width <= 0 || Screen.height <= 0)
+            if (_boardStage == null || Screen.width <= 0 || Screen.height <= 0)
             {
                 return false;
             }
 
-            _boardViewport.GetWorldCorners(_viewportCorners);
+            _boardStage.GetWorldCorners(_viewportCorners);
             Camera canvasCamera =
                 _canvas != null && _canvas.renderMode != RenderMode.ScreenSpaceOverlay
                     ? _canvas.worldCamera

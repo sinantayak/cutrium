@@ -93,7 +93,7 @@ namespace Cutrium.Editor.Setup
             Transform root = verticalSliceRoot.transform;
             Transform boardFrame = RequireChild(
                 root,
-                "Canvas/SafeAreaRoot/BoardViewport/BoardFrame");
+                "Canvas/SafeAreaRoot/BoardStage/BoardViewport/BoardFrame");
 
             GameObject gameplayRoot = GetOrCreateChild(root, "GameplayRoot");
             FirstPlayableController controller =
@@ -184,7 +184,7 @@ namespace Cutrium.Editor.Setup
             GameObject root = RequireRoot(scene, "VerticalSliceRoot");
             Transform boardFrame = RequireChild(
                 root.transform,
-                "Canvas/SafeAreaRoot/BoardViewport/BoardFrame");
+                "Canvas/SafeAreaRoot/BoardStage/BoardViewport/BoardFrame");
             SceneCompositionRoot composition = RequireChild(
                     root.transform,
                     "SceneCompositionRoot")
@@ -296,7 +296,7 @@ namespace Cutrium.Editor.Setup
                 "Canvas/SafeAreaRoot");
             RectTransform boardFrame = (RectTransform)RequireChild(
                 safeArea,
-                "BoardViewport/BoardFrame");
+                "BoardStage/BoardViewport/BoardFrame");
             Transform gameplayRoot = RequireChild(root.transform, "GameplayRoot");
             FirstPlayableController controller =
                 gameplayRoot.GetComponent<FirstPlayableController>();
@@ -520,18 +520,22 @@ namespace Cutrium.Editor.Setup
             progressArea.SetSiblingIndex(1);
             blocker.SetSiblingIndex(2);
 
-            RectTransform boardViewport = (RectTransform)RequireChild(
+            // BoardStage is the stable, flexible layout slot; BoardViewport
+            // (inside it) is resized every frame by BoardCameraFitter to
+            // exactly the fitted rect and stays ignoreLayout, so it no
+            // longer takes a preferred/flexible height of its own here.
+            RectTransform boardStage = (RectTransform)RequireChild(
                 safeArea,
-                "BoardViewport");
+                "BoardStage");
             LayoutElement boardLayout =
-                boardViewport.GetComponent<LayoutElement>();
+                boardStage.GetComponent<LayoutElement>();
             boardLayout.minHeight = 320f;
             boardLayout.preferredHeight = 0f;
             boardLayout.flexibleHeight = 1f;
             boardLayout.flexibleWidth = 1f;
             Text boardLabel = RequireChild(
-                boardViewport,
-                "BoardFrame/BoardLabel").GetComponent<Text>();
+                boardStage,
+                "BoardViewport/BoardFrame/BoardLabel").GetComponent<Text>();
             boardLabel.text = string.Empty;
             boardLabel.gameObject.SetActive(false);
 
@@ -648,7 +652,7 @@ namespace Cutrium.Editor.Setup
 
             Transform safeArea = hud.CompleteOverlay.transform.parent;
             Transform topHud = RequireChild(safeArea, "TopHUD");
-            Transform boardViewport = RequireChild(safeArea, "BoardViewport");
+            Transform boardStage = RequireChild(safeArea, "BoardStage");
             Transform bottomHud = RequireChild(safeArea, "BottomHUD");
             Transform progressArea = RequireChild(topHud, "ProgressArea");
             Transform blocker = RequireChild(topHud, "HudBlockerButton");
@@ -660,7 +664,7 @@ namespace Cutrium.Editor.Setup
                 bottomHud.GetComponent<VerticalLayoutGroup>();
             LayoutElement topLayout = topHud.GetComponent<LayoutElement>();
             LayoutElement boardLayout =
-                boardViewport.GetComponent<LayoutElement>();
+                boardStage.GetComponent<LayoutElement>();
             LayoutElement bottomLayout =
                 bottomHud.GetComponent<LayoutElement>();
             LayoutElement blockerLayout = blocker.GetComponent<LayoutElement>();
@@ -724,7 +728,7 @@ namespace Cutrium.Editor.Setup
                 topHud,
                 progressArea,
                 blocker,
-                boardViewport,
+                boardStage,
                 bottomHud,
             };
             for (int index = 0; index < fittedObjects.Length; index++)

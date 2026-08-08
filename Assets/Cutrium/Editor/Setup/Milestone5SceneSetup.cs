@@ -373,7 +373,8 @@ namespace Cutrium.Editor.Setup
             GameObject root = RequireRoot(scene, "VerticalSliceRoot");
             Transform canvas = RequireChild(root.transform, "Canvas");
             Transform safeArea = RequireChild(canvas, "SafeAreaRoot");
-            Transform boardViewport = RequireChild(safeArea, "BoardViewport");
+            Transform boardStage = RequireChild(safeArea, "BoardStage");
+            Transform boardViewport = RequireChild(boardStage, "BoardViewport");
             Transform boardFrame = RequireChild(boardViewport, "BoardFrame");
             Transform topHud = RequireChild(safeArea, "TopHUD");
             Transform bottomHud = RequireChild(safeArea, "BottomHUD");

@@ -608,3 +608,299 @@ loader (and can restore the gate catalog afterward by re-running Milestone 3's
 setup or discarding the change) before playing the five levels. This decision
 does not change any Milestone 3 level's tuning, board geometry, gesture, or
 solver rule.
+
+---
+
+## ADR-021 — Landmark Reveal Is a Presentation Layer Over Existing Room State
+
+**Status:** Accepted
+
+**Context:**
+Human review after Milestones 5-6 asked for a "landmark reveal" identity
+pivot: captured regions should reveal hidden artwork rather than show a flat
+capture color, and the board/barrier/threat/HUD/power visuals read as a
+prototype rather than a premium product. This must stay presentation-only:
+no change to board geometry, capture logic, threat/barrier/power rules, or
+gesture handling, and content must stay data-driven for a future country/
+sector progression without building that progression now.
+
+**Decision:**
+Add `LandmarkDefinition` (id, display title, short description, sector,
+artwork sprite) as a `Cutrium.Presentation` ScriptableObject, mirroring
+`ThemeDefinition`'s authoring pattern. Add `LandmarkRevealPresenter`, a new
+read-only listener (per ADR-002/017) that selects the current landmark from
+`FirstPlayableController.CurrentLevelIndex modulo` the configured landmark
+list, renders one full-board artwork image, and renders an obscuring "veil"
+rectangle over each of `Board.ActiveRooms` (the inverse of
+`CaptureBoardPresenter`'s captured-room rectangles) so unresolved area reads
+as hidden and captured area reads as revealed artwork. A veil fades out
+(never disappears instantly) when its room is captured or the level
+completes, using the same elapsed-time CanvasGroup-alpha technique already
+used for capture reveal. On `CaptureLevelStatus.Completed` every veil is
+forced hidden regardless of remaining active area, and a card inside the
+existing `LevelCompleteOverlay` shows the landmark's full artwork, title, and
+description. A new non-milestone-numbered
+`LandmarkRevealPresentationSetup.Apply()` layers on top of
+`Milestone6SceneSetup.Apply()`: it generates calmer placeholder art (softened
+frame/board/barrier/threat sprites, a neutral veil texture, three gradient
+landmark artworks) with the same idempotent procedural-PNG technique as
+Milestone 5, retunes the existing "cleanup-chamber-prototype" theme's colors
+in place, thins the barrier and adds a round origin-joint sprite so the two
+growth halves read as one line, and shrinks/restyles the Milestone 6 power
+buttons and HUD typography.
+
+**Reasoning:**
+Selecting the landmark from the existing `CurrentLevelIndex` and rendering
+veils from the existing `Board.ActiveRooms`/`CapturedRooms` needs no new
+gameplay field, event, or session method: `LandmarkRevealPresenter` only
+reads state every other presenter already reads. Keeping it a sibling
+presenter rather than folding it into `CaptureBoardPresenter` preserves each
+presenter's single responsibility and lets landmark reveal be disabled or
+replaced without touching capture rendering. A separate setup utility (not
+"Milestone 7") keeps this an explicit presentation pass distinct from the
+gameplay milestones it sits on top of.
+
+**Consequences:**
+Tests must cover landmark selection cycling with level index, veil coverage
+matching active rooms exactly, forced full reveal plus fade-to-zero on
+completion, and completion-card content. Country/sector progression, real
+artwork, and a landmark catalog/selection system beyond "index modulo count"
+remain explicitly out of scope. This decision changes no
+`Cutrium.Gameplay` file, board geometry, capture/threat/barrier/power rule,
+or gesture behavior.
+
+## ADR-022 — Completion Screen Becomes a Full-Screen Hero Reward, Power Row Joins BottomHUD
+
+**Status:** Accepted
+
+**Context:**
+Human review of the ADR-021 landmark pivot found the completion "card" and
+free-floating power buttons still read as prototype UI: the card only
+covered a corner of the overlay, and the power buttons were an
+anchor-fraction overlay ("PowerControls") detached from the rest of the HUD
+layout, closer to a debug block than a mobile-game control. The completion
+moment needed to read as a reward screen (full artwork background, layered
+overlay, staged reveal) and the power buttons needed to feel like a designed
+part of the HUD rather than free-floating.
+
+**Decision:**
+Rebuild `LandmarkRevealPresenter`'s completion wiring around five
+`CanvasGroup`s (scrim, content, stats, retry, next) driven by elapsed
+unscaled time through a new `LandmarkCompletionTiming` struct, staged as
+scrim fade → content/stats fade+slide-up → buttons fade (gated
+non-interactable until fully visible). `LandmarkRevealPresentationSetup`
+composes `LevelCompleteOverlay` as `HeroArtwork` (full-bleed landmark art) +
+`ScrimOverlay` (a generated vertical-gradient sprite, transparent top to dark
+bottom) + `CompletionContent` (title/sector/description) layered above it,
+with buttons anchored to the bottom band. The pre-existing `CompleteText`,
+`RetryButton`, and `NextButton` GameObjects are restyled and repositioned in
+place — never reparented — because
+`Milestone3CoreFunPlayModeTests.Completion_ShowsLevelAndNextLoadsLevelTwoInSameScene`
+locates `CompleteText` via the non-recursive `Transform.Find("CompleteText")`
+and would break if it moved under a new container; `CompleteText` is
+repurposed as the completion stats line. Power buttons move from the
+free-floating `PowerControls` overlay into a new `PowerRow`
+(`HorizontalLayoutGroup`, fixed 46px square `LayoutElement`s) that is a real
+`BottomHUD` layout child, which requires growing `BottomHUD`'s
+`LayoutElement` from 28/32px to 92/100px
+(`Milestone2CPlayModeTests.CompactLayout_GivesBoardViewportDominantSafeAreaShare`
+updated accordingly; `TopHUD`/`BoardViewport` heights are untouched to keep
+the board dominant). Because `Milestone6SceneSetup.Apply()` always
+recreates fresh Freeze/Instant buttons directly under `PowerControls` on
+every run, `RelocatePowerButtons` destroys any stale duplicate left behind
+in `PowerRow` from a prior run before reparenting the fresh pair in, keeping
+repeated `Apply()` calls idempotent instead of accumulating orphaned
+buttons. The first landmark slot becomes a real destination — "Galata
+Kulesi" / Türkiye — with `GetOrCreateLandmark` migrating the legacy
+`AlpineOverlook.asset` to `GalataKulesi.asset` via `AssetDatabase.MoveAsset`
+(preserving its GUID) and `LoadGalataArtworkIfPresent()` importing a
+user-supplied `Assets/Cutrium/Content/Landmarks/Artwork/GalataKulesi.{png,jpg,jpeg}`
+as the artwork if present, falling back to the existing generated gradient
+placeholder otherwise. (A real photo was already sitting in that exact
+folder from earlier in this pivot, so the first licensed run of this pass
+picked it up directly — see the Validation Record.)
+
+**Reasoning:**
+Keeping `CompleteText`/`RetryButton`/`NextButton` un-reparented avoids
+touching an already-committed, passing Milestone 3 test while still letting
+every visual property (rect, font, color, added `CanvasGroup`) change
+freely. Driving the reveal off `CanvasGroup.alpha`/`interactable` with the
+existing elapsed-unscaled-time idiom (already used for capture and veil
+reveals) needed no new animation system. Un-relocating stale `PowerRow`
+duplicates in-place, rather than editing `Milestone6SceneSetup.cs`, keeps
+the fix entirely inside the presentation-pass file the pivot already owns
+and avoids modifying a previously-validated milestone setup utility.
+
+**Consequences:**
+`LandmarkRevealPresenter.Configure(...)` grew from 12 to 18 parameters
+(uncommitted at the time of this pivot, so no backward-compatible overload
+was needed). Tests must cover the staged reveal ordering (scrim before
+content before interactable buttons) and the relocated power row's fixed
+pixel footprint instead of the old anchor-fraction footprint. This decision
+changes no `Cutrium.Gameplay` file, board geometry, or capture/threat/
+barrier/power rule.
+
+## ADR-023 — Stronger Veil, Hidden Debug Footer, Hero Progress HUD, Unified HUD Chrome
+
+**Status:** Accepted
+
+**Context:**
+A second human review round on ADR-022's redesign found four remaining
+"prototype energy" problems: (1) the veil was too transparent, reading as a
+faint tint rather than genuinely hiding the artwork; (2) `PointerStatus`/
+`MappingStatus` — live raw-pointer debug text on `BottomHUD` — was visible
+in the normal player-facing HUD; (3) `TopHUD` gave equal visual weight to
+several small texts instead of making captured percentage the dominant
+element; (4) `TopHUD`/`BottomHUD` each painted their own near-black panel
+`Image`, visually reading as separate black header/footer bands against the
+outer background. The review also asked for direct verification that the
+relocated power buttons are genuinely tap-reachable, not just that
+something blocks board input at that position.
+
+**Decision:**
+The veil texture generator now blends two noise octaves into a frosted
+0.16–0.32 grayscale range (up from a near-flat 0.82–0.88 range) rendered at
+64×64 instead of 32×32, tinted through a much darker, more opaque
+`VeilColor` (`0.035, 0.045, 0.065, 0.985` vs. the previous `0.09, 0.11,
+0.15, 0.94`). `HideDebugFooter` disables `DebugPointerStatusView` and
+deactivates the `PointerStatus`/`MappingStatus` `GameObject`s (kept in the
+hierarchy, inactive, so existing dev/test toggling by instance ID keeps
+working) rather than deleting them, per "hidden or non-intrusive, not
+gone." `RestyleHud` now hides the tutorial "LEARN THE CUT" purpose line
+(text content preserved for the locked assertion, just not shown), gives
+`ProgressArea` `flexibleWidth = 1` plus a new rounded-chip background
+(`chip_rounded`, a generated corner-radius alpha mask rendered
+`Image.Type.Sliced` so the radius stays crisp at any stretch) so the
+captured-percentage readout reads as the HUD's hero element, and shrinks
+the `HudBlockerButton` into a small, muted, unlabeled round icon slot
+(string content unchanged, label alpha set to 0) that keeps its required
+board-input-blocking function while visually suggesting a future
+settings/meta slot rather than showing "UI TEST" debug copy. The same
+`chip_rounded` sprite replaces the old soft-radial `power_button` sprite
+for the (now 50px, up from 46px) power buttons, and `BottomHUD` shrinks
+from 92/100px back down to 68/72px now that it only needs to fit the power
+row. `ConfigureCleanupTheme`'s `hudBackgroundColor` alpha drops to 0, so
+`TopHUD`/`BottomHUD`'s panel `Image`s (theme-driven via `ThemePresenter`'s
+`_hudBackgrounds` array) become fully transparent and show the same outer
+canvas background as everywhere else instead of a separate black band.
+Because `ThemePresenter.ApplyNow()` re-applies its serialized `_hudTexts`/
+`_hudAccents` arrays to one flat color on every call — including at real
+runtime via `OnEnable()` — and that array was frozen by
+`Milestone5SceneSetup` before this pass's per-element hero/secondary text
+colors existed, a new `FinalizeThemeTextSync` re-invokes
+`ThemePresenter.Configure(...)` with the same theme/background/board/frame/
+threat/barrier/capture/feedback references but empty `hudTexts`/
+`hudAccents` arrays, so this pass's deliberate color choices are what
+actually persists both in the saved scene and at runtime. A new
+`PowerButtons_AreGenuinelyClickableAtTheirScreenPosition` PlayMode test
+raycasts (via `EventSystem.RaycastAll`, not `Button.onClick.Invoke()`) at
+each power button's screen center and asserts the topmost hit is the
+button's own `GameObject`.
+
+**Reasoning:**
+`Image.Type.Sliced` with a generated corner-radius border was chosen over
+the earlier-abandoned "rounded" attempt (ADR-021 era) because this time the
+alpha mask is actually computed from a rounded-rect signed-distance-style
+formula and the border is written to the `TextureImporter`, so the corners
+genuinely stay crisp at arbitrary stretch — not a flat soft-radial blob
+mistaken for a rounded rect. Deactivating (not deleting) the debug rows
+preserves the existing test pattern of toggling
+`DebugPointerStatusView.enabled` on scene clones. Re-`Configure`-ing
+`ThemePresenter` with narrowed arrays, rather than editing the `ThemePresenter`
+class itself, keeps the fix entirely inside presentation-pass wiring and
+avoids changing a shared component's behavior for other, unrelated
+consumers. A raycast-based test was added specifically because
+`Button.onClick.Invoke()`-style tests (used elsewhere for power activation)
+cannot detect "something else is intercepting the tap" — only a real
+`EventSystem` raycast can.
+
+**Consequences:**
+`Milestone2CPlayModeTests`'s locked `bottomLayout.preferredHeight`
+assertion changed again (100f → 72f) to match the shrink. This decision
+changes no `Cutrium.Gameplay` file, board geometry, or capture/threat/
+barrier/power rule; `ThemePresenter`'s own class and every other consumer
+of its `hudBackgrounds`/`hudAccents`/`hudTexts` arrays elsewhere in the
+project are unaffected — only this scene's serialized `ThemePresenter`
+instance was re-wired.
+
+## ADR-024 — Power Buttons Removed for a Single Retry Chip; Stronger Veil; Centered Level/Percentage Hero
+
+**Status:** Accepted
+
+**Context:**
+A third human review round reported the bottom buttons as genuinely
+unpressable and the top HUD as unreadable, and asked for a much darker/
+more obscured veil, a centered "LEVEL N" over a growing capture percentage
+in the top HUD with both side slots left empty for future icons, and the
+bottom buttons replaced by (at most) a single working button. Root-causing
+the "unpressable" report found two distinct real bugs, not one: (1)
+`PowerHudPresenter.RefreshNow()` sets `Button.interactable` based on
+remaining Freeze Pulse/Instant Barrier charges, and the default (Milestone
+3) level catalog grants zero of either — the power buttons were genuinely,
+permanently dead in the shipped scene regardless of any layout work; (2) a
+newly added `QuickRetryButton`, positioned as a `bottomColumn`
+(`VerticalLayoutGroup`)-controlled child with a point anchor, first
+rendered at zero width (a freshly created `RectTransform`'s `sizeDelta`
+defaults to zero, and `childControlWidth` alone doesn't fix that without
+an initial size), then — after sizing was fixed — rendered at the correct
+size but vertically offset outside `BottomHUD`'s own bounds under
+`childAlignment = MiddleCenter` for a lone controlled child at the actual
+640×480 batchmode test resolution. Both were real, reproducible bugs, not
+speculation: a new raycast-based PlayMode test failed exactly as the human
+report predicted, on the first attempt, before either fix.
+
+**Decision:**
+Veil: two-octave noise darkened further (0.06–0.14 pre-tint, was
+0.16–0.32) under a near-fully-opaque near-black tint (`0.015, 0.02, 0.03,
+0.996`, was `0.035, 0.045, 0.065, 0.985`). `PowerControls` (Freeze Pulse/
+Instant Barrier) is now hidden (`SetActive(false)`) rather than relocated
+or restyled — `PowerHudPresenter` and its button references stay valid so
+`Milestone6ThreatsAndPowersPlayModeTests`' reference checks keep passing,
+but nothing dead-but-visible remains in the player-facing HUD.
+`BottomHUD` now hosts exactly one `QuickRetryButton`, wired through a new
+`QuickRetryPresenter` (`Cutrium.Presentation.HUD`, mirroring
+`PowerHudPresenter`/`CaptureHudPresenter`'s `OnEnable`-subscribes/
+`OnDisable`-unsubscribes `Button.onClick` pattern) that calls the already-
+public `FirstPlayableController.RetryLevel()` — no new gameplay method,
+pure additive UI wiring. The button is positioned with
+`LayoutElement.ignoreLayout = true` and an explicit centered anchor/
+`sizeDelta`/`anchoredPosition`, bypassing `bottomColumn` entirely, after
+the `VerticalLayoutGroup`-controlled approach proved unreliable (see
+Reasoning). Top HUD: `LevelNumber` is reparented from `TopHUD` directly
+into `ProgressArea` (with a stale-copy guard mirroring the one already
+used for `LandmarkRevealPresentationSetup`'s Freeze/Instant relocation
+pattern) and pinned via `ignoreLayout` to a strip above the percentage
+chip; a new invisible `LeadingSpacer` mirrors the (now fully transparent,
+including its label) `HudBlockerButton`'s footprint on the other side so
+the percentage chip sits dead-center regardless of screen width.
+
+**Reasoning:**
+The zero-width bug and the off-bounds bug together make the case for
+`ignoreLayout` + explicit anchoring over `VerticalLayoutGroup` control for
+a single, deliberately-sized element sharing a layout group with
+now-hidden siblings: `childControlWidth`/`childForceExpandWidth` default
+to `true`/`true` and are silently inherited from whatever the scene
+already had serialized (Milestone2SceneSetup never resets them, only the
+height axis), so a freshly added child can be stretched or mis-measured in
+ways that only show up once the group has exactly one active child map to
+alignment. This class of bug is invisible to a raycast test that trusts
+the RectTransform's on-disk anchors without checking rendered position
+against actual screen bounds — which is exactly why the new
+`PowerButtons_AreGenuinelyClickableAtTheirScreenPosition`-style real-click
+test from the prior pass didn't catch it (it tested the *old* power
+buttons, not this new element) and why this pass adds both a footprint
+assertion and a genuine `InputSystem`-simulated press+release (not
+`Button.onClick.Invoke()`) that exercises the live
+`EventSystem`/`InputSystemUIInputModule` pipeline end to end.
+
+**Consequences:**
+`Milestone6ThreatsAndPowersPlayModeTests.FreezePulseButton_BlocksBoardInputBeneathIt`
+was replaced with `PowerButtons_AreHiddenFromTheDefaultGameplayHud`
+(asserts `activeInHierarchy == false` on both buttons instead of asserting
+they block a raycast, since they no longer occupy the interactive
+surface). `LandmarkRevealPlayModeTests`' two power-button tests were
+replaced with `QuickRetryButton_ExistsAndIsInteractable` and
+`QuickRetryButton_RealMouseClickTriggersRetry`. This decision changes no
+`Cutrium.Gameplay` file, board geometry, or capture/threat/barrier rule;
+power charge/activation logic in `FirstPlayableController` is untouched —
+only its HUD entry points changed.

@@ -110,18 +110,21 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void FreezePulseButton_BlocksBoardInputBeneathIt()
+        public void PowerButtons_AreHiddenFromTheDefaultGameplayHud()
         {
-            _mouse = InputSystem.AddDevice<Mouse>();
-            InputSystem.EnableDevice(_mouse);
-            Vector2 buttonCenter = GetScreenCenter(
-                (RectTransform)_powerHud.FreezePulseButton.transform);
-
-            bool blocked = _composition.UiBlocker.IsPointerOverUi(
-                buttonCenter,
-                _mouse.deviceId);
-
-            Assert.That(blocked, Is.True);
+            // The landmark presentation pass hides PowerControls: the
+            // default (Milestone 3) level catalog grants zero Freeze
+            // Pulse/Instant Barrier charges, so these buttons would
+            // otherwise sit permanently non-interactable in real play.
+            // PowerHudPresenter's references stay valid (see
+            // Scene_HasOnePowerHudPresenterWithCompleteReferences) even
+            // though the controls themselves are not shown.
+            Assert.That(
+                _powerHud.FreezePulseButton.gameObject.activeInHierarchy,
+                Is.False);
+            Assert.That(
+                _powerHud.InstantBarrierButton.gameObject.activeInHierarchy,
+                Is.False);
         }
 
         [Test]

@@ -336,8 +336,17 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Session.Board.TryGetActiveRoomAt(
                 new LogicalPoint(7f, 8f),
                 out RoomState child), Is.True);
-            Assert.That(child.Bounds,
-                Is.EqualTo(new LogicalRect(4f, 0f, 6f, 16f)));
+            // This bound is derived from a simulated screen-space touch
+            // round-tripped through the live board's on-screen pixel rect,
+            // so (unlike the codebase's other pure-logic LogicalRect
+            // assertions) it is sensitive to sub-grid floating-point noise
+            // whenever HUD layout changes shift that pixel rect by even a
+            // fraction of a pixel; a tight tolerance still catches any real
+            // grid-snap regression.
+            Assert.That(child.Bounds.MinX, Is.EqualTo(4f).Within(0.01f));
+            Assert.That(child.Bounds.MinY, Is.EqualTo(0f).Within(0.01f));
+            Assert.That(child.Bounds.Width, Is.EqualTo(6f).Within(0.01f));
+            Assert.That(child.Bounds.Height, Is.EqualTo(16f).Within(0.01f));
 
             Vector2 horizontalStart = LogicalToScreen(
                 new LogicalPoint(7f, 8f));

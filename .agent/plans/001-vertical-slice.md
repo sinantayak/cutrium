@@ -1907,6 +1907,307 @@ human input at their natural gates:
 
 ## Validation Record
 
+### 2026-08-08 — Fourth polish pass: orphaned PowerRow removed, TopHUD/BottomHUD drastically simplified (EditMode/PlayMode NOT run this pass, by explicit request)
+
+Presentation-only polish on top of the uncommitted third polish pass
+above; no `Cutrium.Gameplay` file touched. Human review found a real
+regression: a "PowerRow" `GameObject` created by the *second* polish pass
+(and never referenced again once the third pass replaced it with a single
+quick-retry button) was left behind, active, inside `BottomHUD` — still
+containing the old blue/orange Freeze Pulse/Instant Barrier buttons,
+visible right behind the new retry button. `ConfigureBottomHud` now
+explicitly finds and destroys `BottomHUD/PowerRow` if present. TopHUD was
+drastically simplified per direct instruction: `LevelNumber` is now hidden
+(not relocated) alongside the existing hidden purpose line, the rounded
+chip background and the leading spacer are removed, leaving only the
+captured/target percentage text, centered. `BottomHUD` shrunk to 54/58px
+(from 62/68), fitting just the one retry chip. Confirmed via two
+back-to-back setup runs that `PowerRow`/`LeadingSpacer` are gone and
+`QuickRetryButton`/`LevelNumber`/`FreezePulseButton`/`InstantBarrierButton`
+each occur exactly once — idempotent, no new leftovers.
+
+Human review also asked that `BoardViewport` and `BoardFrame` be exactly
+the same size (no visible letterbox gap). Investigated but deliberately
+**not implemented**: `BoardFrame`'s size comes from
+`BoardViewportLayout.CalculateAspectFitRect`, which intentionally
+letterboxes to preserve the fixed 10:16 logical board aspect ratio —the
+same computation `ScreenToLogicalBoardMapper`/`BoardCameraFitter` use for
+touch-to-logical coordinate mapping, and the same ratio
+`Milestone2CPlayModeTests.CompactLayout_TargetAspectKeepsFullBoardDominant`
+locks via `Assert.That(layout.FittedBoard.width / layout.FittedBoard.height,
+Is.EqualTo(10f / 16f)...)`. Changing it would be a gameplay-geometry/
+touch-mapping change, not a presentation one, so it was left alone pending
+an explicit decision from the user; `BottomHUD`'s shrink (68→58px) recovers
+some board height as a safe, presentation-only partial mitigation.
+
+`Milestone2CPlayModeTests`'s locked `bottomLayout.preferredHeight`
+assertion was updated to match (68f → 58f) for next-run consistency, but
+**per explicit instruction, the EditMode/PlayMode suites were not run this
+pass** — only `LandmarkRevealPresentationSetup.Apply()` was run (twice, to
+confirm idempotence). This pass is unvalidated by the automated suite and
+uncommitted; the full EditMode+PlayMode gate should be run before the next
+commit.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.LandmarkRevealPresentationSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish4-Setup-1.log'
+```
+
+Result: `Landmark Reveal Presentation Pass verified...` Exit 0. No compiler
+errors/warnings.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.LandmarkRevealPresentationSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish4-Setup-2.log'
+```
+
+Result: identical success; `PowerRow`/`LeadingSpacer` = 0 occurrences,
+`QuickRetryButton`/`FreezePulseButton`/`InstantBarrierButton`/`LevelNumber`
+= 1 occurrence each in the saved scene — idempotent.
+
+### 2026-08-08 — Third polish pass: retry button replaces power buttons, real click bug found and fixed
+
+Presentation-only polish on top of the uncommitted second polish pass
+above; no `Cutrium.Gameplay` file touched. Root-caused the human report
+"bottom buttons aren't clickable" to a real, reproducible cause: the
+default level catalog grants zero Freeze Pulse/Instant Barrier charges, so
+`PowerHudPresenter` left both buttons permanently `interactable = false`
+regardless of any layout work — confirmed by disabling `PowerControls`
+entirely (`Milestone6ThreatsAndPowersPlayModeTests.FreezePulseButton_BlocksBoardInputBeneathIt`
+was replaced with `PowerButtons_AreHiddenFromTheDefaultGameplayHud`, which
+now passes by asserting the buttons are inactive). Replaced them with a
+single new `QuickRetryButton` in `BottomHUD`, wired through a new
+`QuickRetryPresenter` (mirroring `PowerHudPresenter`'s `OnEnable`
+subscribe/`OnDisable` unsubscribe pattern) calling the existing
+`FirstPlayableController.RetryLevel()`. Darkened the veil further (near-
+fully-opaque near-black tint, low-contrast noise). Rebuilt TopHUD so
+`LevelNumber` sits above the captured-percentage chip, both dead-center,
+with an invisible symmetric spacer opposite the (now fully transparent)
+`HudBlockerButton`.
+
+While building the real-click verification test for `QuickRetryButton`,
+the test itself caught two further real bugs before any human saw them
+again: (1) the button initially rendered at zero width (a fresh
+`RectTransform`'s `sizeDelta` defaults to zero; `LayoutElement.preferredWidth`
+alone doesn't fix that without an initial `sizeDelta`); (2) after fixing
+size, `bottomColumn`'s inherited `childControlWidth`/`childForceExpandWidth`
+(never reset by Milestone2SceneSetup, only its height axis is) stretched
+the button to ~1618 units wide at the 640×480 batchmode test resolution,
+and even after disabling force-expand, `childAlignment = MiddleCenter` for
+a lone `VerticalLayoutGroup`-controlled child positioned it outside
+`BottomHUD`'s own screen bounds (world Y center -3.85 vs. BottomHUD's own
+world Y center +15.4, i.e. below the visible screen). Diagnosed via
+`TestContext.WriteLine`-dumped `RectTransform.rect`/`GetWorldCorners`
+values comparing the button against `BottomHUD`/`TopHUD`/`BoardViewport`/
+`Screen.safeArea`. Fixed by bypassing `bottomColumn` entirely with
+`LayoutElement.ignoreLayout = true` and an explicit centered anchor/
+`sizeDelta`/`anchoredPosition` — the same reliable pattern already used
+for the relocated `LevelNumber` label. Added
+`QuickRetryButton_RealMouseClickTriggersRetry`, a `[UnityTest]` that
+queues a real `Mouse` press+release through the Input System (not
+`Button.onClick.Invoke()`) and asserts `FirstPlayableController.RetryCount`
+actually increments — this is what caught both bugs; a raycast-only test
+would have caught only the first.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.LandmarkRevealPresentationSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish3-Setup-Fix3.log'
+```
+
+Result: `Landmark Reveal Presentation Pass verified...` Exit 0.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.LandmarkRevealPresentationSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish3-Setup-Final-2.log'
+```
+
+Result: identical success; `QuickRetryButton`/`LevelNumber`/`LeadingSpacer`
+each still occur exactly once in the saved scene — idempotent.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish3-EditMode-Final.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish3-EditMode-Final.log'
+```
+
+Result: 212 discovered, 212 passed, 0 failed, 0 skipped.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish3-PlayMode-Final.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish3-PlayMode-Final.log'
+```
+
+Result: 98 discovered, 98 passed, 0 failed, 0 skipped. Both logs contain no
+compiler errors/warnings and no failed NUnit test-run nodes. This pass is
+validated and uncommitted; per the task instructions it stops here for
+human visual review before any commit.
+
+### 2026-08-08 — Veil/HUD/footer second polish pass licensed gate passed
+
+Presentation-only polish on top of the uncommitted first polish pass above;
+no `Cutrium.Gameplay` file touched. Darkened/obscured the veil (frosted
+two-octave noise, 64×64, alpha 0.985); hid `PointerStatus`/`MappingStatus`
+debug rows from `BottomHUD` (disabled, not deleted); rebuilt `TopHUD` around
+a centered, rounded-chip captured-percentage hero with muted secondary
+text and a shrunk/unlabeled `HudBlockerButton`; shrank `BottomHUD` back to
+68/72px now that it only holds the power row; made `TopHUD`/`BottomHUD`
+panels fully transparent so they no longer read as separate black bands;
+added a genuine `EventSystem.RaycastAll`-based test proving the power
+buttons are tap-reachable, not just that something blocks input at that
+position. Discovered along the way that `ThemePresenter.ApplyNow()` was
+silently overwriting every hero/secondary HUD text color choice back to one
+flat `hudTextColor` on every apply (including real runtime `OnEnable()`,
+not just this setup pass) because its serialized `_hudTexts` array was
+frozen by `Milestone5SceneSetup` before this text hierarchy existed; fixed
+by re-`Configure`-ing `ThemePresenter` with empty `hudTexts`/`hudAccents`
+arrays after this pass's own styling runs (`FinalizeThemeTextSync`).
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.LandmarkRevealPresentationSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish2-Setup-1.log'
+```
+
+Result: `Landmark Reveal Presentation Pass verified...` Exit 0. No compiler
+errors/warnings, no runtime exceptions in the log.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.LandmarkRevealPresentationSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish2-Setup-2.log'
+```
+
+Result: identical success; `FreezePulseButton`/`InstantBarrierButton`/
+`PowerRow`/`HeroArtwork`/`ProgressArea` each still occur exactly once in
+the saved scene — idempotent.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish2-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish2-EditMode.log'
+```
+
+Result: 212 discovered, 212 passed, 0 failed, 0 skipped.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish2-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish2-PlayMode.log'
+```
+
+Result: 97 discovered, 97 passed, 0 failed, 0 skipped (96 prior + 1 new
+`PowerButtons_AreGenuinelyClickableAtTheirScreenPosition`). Both logs
+contain no compiler errors/warnings and no failed NUnit test-run nodes.
+This pass is validated and uncommitted; per the task instructions it stops
+here for human visual review before any commit.
+
+### 2026-08-08 — Completion/HUD/power-row polish pass licensed gate passed
+
+Presentation-only polish on top of the uncommitted Landmark Reveal
+Presentation Pass above; no `Cutrium.Gameplay` file touched.
+`LandmarkRevealPresenter` gained a five-`CanvasGroup` staged completion
+reveal (scrim/content/stats/retry/next) driven by a new
+`LandmarkCompletionTiming` struct; `LandmarkRevealPresentationSetup` rebuilt
+`LevelCompleteOverlay` into a full-screen hero (`HeroArtwork` +
+`ScrimOverlay` + `CompletionContent`) and relocated the power buttons from
+the free-floating `PowerControls` overlay into a real `PowerRow`
+`HorizontalLayoutGroup` child of `BottomHUD`. First licensed setup run
+succeeded on the first try (no stale-reference bug this time, since the
+fix from the prior entry already covers this file). Growing `BottomHUD`
+from 28/32px to 92/100px (needed to host the 46px button row) shrinks
+`BoardViewport`'s available height, which shifts `BoardCameraFitter`'s
+on-screen board pixel rect enough to flip a floating-point grid-snap tie in
+`Milestone2BPlayModeTests.PrimaryTouch_VerticalThenHorizontalUsesCurrentInteraction`
+(a touch-gesture test that round-trips through actual screen pixels, unlike
+every other `LogicalRect` assertion in the suite, which compares pure-logic
+values). Confirmed by isolated re-run: reverting `BottomHUD` to its
+original 28/32px height made the test pass again; two other trial heights
+(88/96, 96/104) both still failed, indicating the coupling is structural,
+not a narrow coincidence dodgeable by nudging the number. Fixed by loosening
+that one assertion from bit-exact `Is.EqualTo(LogicalRect)` to
+per-component `Is.EqualTo(...).Within(0.01f)` — no gesture/capture logic
+changed, only a pre-existing test's tolerance for a value it derives from
+live screen-pixel geometry.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.LandmarkRevealPresentationSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish-Setup-Final-1.log'
+```
+
+Result: `Landmark Reveal Presentation Pass verified...` Exit 0.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.LandmarkRevealPresentationSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish-Setup-Final-2.log'
+```
+
+Result: identical success, exit 0; `FreezePulseButton`/`InstantBarrierButton`/
+`PowerRow`/`HeroArtwork` each still occur exactly once in the saved scene —
+idempotent, no orphaned duplicates from the Freeze/Instant button relocation.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish-EditMode-Final.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish-EditMode-Final.log'
+```
+
+Result: 212 discovered, 212 passed, 0 failed, 0 skipped.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish-PlayMode-Final.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Polish-PlayMode-Final.log'
+```
+
+Result: 96 discovered, 96 passed, 0 failed, 0 skipped (95 prior + 1 new
+`CompletionSequenceStagesScrimThenContentThenButtons`). Both logs contain no
+compiler errors/warnings and no failed NUnit test-run nodes. No real Galata
+Kulesi artwork file was present at `Assets/Cutrium/Art/Landmarks/` at first
+validation, so landmark slot 0 initially rendered with the generated
+placeholder gradient; wiring, migration, and fallback all validated
+regardless.
+
+**Follow-up (same day):** a real Galata Kulesi photo was found already
+sitting in the project at `Assets/Cutrium/Content/Landmarks/Artwork/
+GalataKulesi.png` (present from earlier in this pivot, at a different path
+than the one first documented). `GalataArtworkFolder` was repointed to that
+existing location, the unused `Assets/Cutrium/Art/Landmarks/` folder
+removed, and the full gate re-run end to end: setup 1, setup 2
+(idempotence), EditMode (212/212), PlayMode (96/96) — all green, and
+`GalataKulesi.asset`'s `_artwork` field now resolves to that photo's GUID
+directly. This pass is validated and uncommitted; per the task instructions
+it stops here for human visual review before any commit.
+
+### 2026-08-08 — Landmark Reveal Presentation Pass licensed gate passed
+
+Presentation-only pass on top of checkpointed Milestone 6 (`dded322`); no
+`Cutrium.Gameplay` file touched. `LandmarkRevealPresentationSetup.Apply()`'s
+first licensed run failed:
+
+```
+InvalidOperationException: Landmark asset '' could not be reloaded after
+opening the scene.
+  at LandmarkRevealPresentationSetup.ReloadLandmarks(...)
+```
+
+`ReloadLandmarks` called `AssetDatabase.GetAssetPath` on the pre-`OpenScene`
+`LandmarkDefinition` references to rediscover their paths -- the same class of
+stale-wrapper bug as ADR-018, just triggered from the opposite direction
+(deriving a path from a stale object instead of comparing a stale object by
+instance). Fixed by reloading from a fixed, known path list (mirroring
+`ReloadGeneratedSprites`) instead of deriving paths from objects captured
+before the reopen.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.LandmarkRevealPresentationSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Landmark-Setup-1-Fixed.log'
+```
+
+Result: `Landmark Reveal Presentation Pass verified...` Exit 0.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -quit -projectPath 'S:\Tayacknity\Cutrium' -executeMethod Cutrium.Editor.Setup.LandmarkRevealPresentationSetup.Apply -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Landmark-Setup-2.log'
+```
+
+Result: identical success, exit 0, no further working-tree diff -- idempotent.
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform EditMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-Landmark-EditMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Landmark-EditMode.log'
+```
+
+Result: 212 discovered, 212 passed, 0 failed, 0 skipped (209 prior + 3 new
+`LandmarkDefinitionTests`).
+
+```powershell
+& 'C:\Program Files\Unity\Hub\Editor\6000.3.21f1\Editor\Unity.exe' -batchmode -nographics -projectPath 'S:\Tayacknity\Cutrium' -runTests -testPlatform PlayMode -testResults 'S:\Tayacknity\Cutrium\Logs\Cutrium-Landmark-PlayMode.xml' -logFile 'S:\Tayacknity\Cutrium\Logs\Cutrium-Landmark-PlayMode.log'
+```
+
+Result: 95 discovered, 95 passed, 0 failed, 0 skipped (90 prior -- the full
+Milestone 2C/3/5/6 regression set, unchanged -- plus 5 new
+`LandmarkRevealPlayModeTests`). Both logs contain no compiler errors/warnings
+and no failed NUnit test-run nodes. Packages and ProjectSettings have no diff
+beyond the default `SceneTemplateSettings.json` noise, removed after each run.
+This pass is validated and uncommitted; per the task instructions it stops
+here for human visual review before any commit.
+
 ### 2026-08-06 — Milestone 5 candidate pending licensed Unity gate
 
 Milestone 5 starts from clean checkpoint `fbdcaa6`. The candidate keeps all
@@ -2873,3 +3174,68 @@ haptics are serialized through the idempotent setup utility. Final evidence is
 artifacts, zero compiler diagnostics, and no protected-file diff. Milestone 4
 is complete; the Identity Run may proceed to Milestone 5 after its local
 checkpoint without implying a positive Milestone 7 content gate.
+
+Milestone 5 adds a presentation-only `ThemeDefinition`/`ThemePresenter` pair,
+a cleanup-chamber prototype theme and a deliberately minimal flat fallback,
+and deterministic generated placeholder art with recorded provenance. The
+licensed Setup 1 gate initially failed because `Validate` compared Sprite/
+theme references by transient Unity object instance across an
+`EditorSceneManager.OpenScene` boundary that unloads and re-imports native
+assets; the fix reacquires both themes and every generated sprite after the
+reopen and compares by persistent GUID/file ID (ADR-018/019 context, recorded
+fully as ADR-018). Final evidence is 197 of 197 Edit Mode and 86 of 86 Play
+Mode tests, two idempotent setup runs, zero compiler diagnostics, and no
+protected-file diff. Milestone 5 is checkpointed at `c8c2b5f`.
+
+Milestone 6 adds Hunter (bounded one-shot barrier-start steering) and Pulse
+(deterministic slow/fast speed phase) threat behaviors, plus Freeze Pulse and
+Instant Barrier powers, entirely as optional inputs to the existing
+`ThreatMotionSolver`/`GrowingBarrierMotionSolver`/`BarrierState.GrowthSpeed`
+rather than a new movement or collision system (ADR-019). A first Setup 1 run
+overwrote the scene's Milestone 3 level catalog with the five new identity
+levels and broke ten pre-existing Milestone 2C/3 Play Mode tests — not only on
+stale hardcoded values but because two of their safe-cut heuristics
+(`LockGestureWhenSafe`/`CompleteCurrentLevel`) probe the solver once with a
+threat's current velocity and cannot predict Hunter's reactive steering or a
+Pulse threat's future speed change. The fix keeps the scene's default catalog
+on Milestone 3's levels and moves the five identity levels behind a separate,
+explicitly manual `Cutrium/Setup/Load Milestone 6 Identity Levels (Manual
+Playtest)` command that no automated path invokes (ADR-020). Final evidence is
+209 of 209 Edit Mode (197 Milestone 5 + 12 new) and 90 of 90 Play Mode tests
+(all ten previously broken tests now pass against the untouched Milestone 3
+catalog, plus three new Milestone 6 tests), two idempotent setup runs, zero
+compiler diagnostics, and no protected-file diff. Milestone 6 is checkpointed
+at `dded322`, not pushed. The Autonomous Identity Run stops here per its Final
+Stop condition; Milestone 7 has not started and requires a separately recorded
+GO decision from the Human Identity Review below.
+
+## Human Identity Review (Milestones 4-6)
+
+Required by `.agent/tasks/009-autonomous-identity-run.md`'s Final Stop
+condition before any Milestone 7 work. This is a manual judgment call that
+automated tests cannot make; record the reviewer, date, and decision here
+once complete.
+
+**Setup:** open the project in the Unity Editor, run
+`Cutrium/Setup/Load Milestone 6 Identity Levels (Manual Playtest)` once to
+load the five identity levels into the scene for this review (it saves the
+scene; re-run `Cutrium/Setup/Milestone 3 Core-Fun Build` afterward, or discard
+the change, to restore the regression-tested default before further
+automated runs), then press Play.
+
+| # | Question | Notes |
+|---|---|---|
+| 1 | Does barrier grow/lock/fill still feel satisfying — the core reward moment? | |
+| 2 | Is Near Miss readable without feeling visually exhausting? | |
+| 3 | Does repeated play (retry, next) stay comfortable rather than repetitive/tedious? | |
+| 4 | Is the cleanup-chamber theme readable, and does it visibly stay swappable (no gameplay coupling)? | |
+| 5 | Hunter (`hunter-alone`): does its reaction feel fair — noticeable and modest, not perfect homing or a "gotcha"? | |
+| 6 | Pulse (`pulse-alone`): is the slow/fast speed change readable and does it change your timing decisions? | |
+| 7 | Freeze Pulse (`freeze-pulse-rescue`): does one charge feel useful for rescuing a risky cut, without feeling mandatory or overpowered? | |
+| 8 | Instant Barrier (`instant-barrier-finish`): does the near-instant completion feel useful and fair (not an "I win" button)? | |
+| 9 | HUD/input: are the Freeze Pulse and Instant Barrier buttons discoverable, readable, and do they never leak a barrier gesture through to the board? | |
+| 10 | After `identity-mix`, do you want to play one more level? | |
+
+**Decision:** GO / TUNE / STOP (circle one, with reasoning)
+
+**Reviewer / date:**

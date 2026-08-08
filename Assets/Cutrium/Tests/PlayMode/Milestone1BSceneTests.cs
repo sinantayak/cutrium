@@ -95,14 +95,28 @@ namespace Cutrium.PlayModeTests
             Transform safeAreaRoot = root.Find("Canvas/SafeAreaRoot");
             Assert.That(safeAreaRoot, Is.Not.Null);
             Assert.That(safeAreaRoot.Find("TopHUD"), Is.Not.Null);
-            Assert.That(safeAreaRoot.Find("BoardViewport"), Is.Not.Null);
-            Assert.That(safeAreaRoot.Find("BoardViewport/BoardFrame"), Is.Not.Null);
+            Assert.That(safeAreaRoot.Find("BoardStage"), Is.Not.Null);
+            Assert.That(
+                safeAreaRoot.Find("BoardStage/BoardViewport"),
+                Is.Not.Null);
+            Assert.That(
+                safeAreaRoot.Find("BoardStage/BoardViewport/BoardFrame"),
+                Is.Not.Null);
             Assert.That(safeAreaRoot.Find("BottomHUD"), Is.Not.Null);
 
             Assert.That(_compositionRoot.BoardCamera, Is.Not.Null);
             Assert.That(_compositionRoot.Canvas, Is.Not.Null);
             Assert.That(_compositionRoot.SafeAreaFitter, Is.Not.Null);
             Assert.That(_compositionRoot.BoardCameraFitter, Is.Not.Null);
+            Assert.That(
+                _compositionRoot.BoardCameraFitter.BoardStage,
+                Is.Not.Null);
+            Assert.That(
+                _compositionRoot.BoardCameraFitter.BoardViewport,
+                Is.Not.Null);
+            Assert.That(
+                _compositionRoot.BoardCameraFitter.BoardFrame,
+                Is.Not.Null);
             Assert.That(_compositionRoot.BoardMapper, Is.Not.Null);
             Assert.That(_compositionRoot.EventSystem, Is.Not.Null);
             Assert.That(_compositionRoot.UiInputModule, Is.Not.Null);

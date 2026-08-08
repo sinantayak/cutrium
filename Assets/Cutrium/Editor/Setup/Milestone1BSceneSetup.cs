@@ -32,8 +32,6 @@ namespace Cutrium.Editor.Setup
             new Color(0.025f, 0.055f, 0.075f, 1f);
         private static readonly Color HudColor =
             new Color(0.08f, 0.15f, 0.19f, 0.98f);
-        private static readonly Color BoardViewportColor =
-            new Color(0.04f, 0.09f, 0.11f, 1f);
         private static readonly Color BoardColor =
             new Color(0.08f, 0.24f, 0.27f, 1f);
         private static readonly Color AccentColor =
@@ -329,7 +327,9 @@ namespace Cutrium.Editor.Setup
                 Scene existingScene = EditorSceneManager.OpenScene(
                     VerticalSliceScenePath,
                     OpenSceneMode.Single);
-                if (RepairExistingScene(existingScene, inputAsset))
+                bool needsSave = RepairExistingScene(existingScene, inputAsset);
+                needsSave |= RepairBoardHierarchy(existingScene);
+                if (needsSave)
                 {
                     if (!EditorSceneManager.SaveScene(
                             existingScene,
@@ -419,8 +419,9 @@ namespace Cutrium.Editor.Setup
             safeAreaLayout.childForceExpandHeight = false;
 
             CreateTopHud(safeAreaRoot);
-            RectTransform boardViewport = CreateBoardViewport(
+            RectTransform boardStage = CreateBoardStage(
                 safeAreaRoot,
+                out RectTransform boardViewport,
                 out RectTransform boardFrame);
             RectTransform bottomHud = CreateBottomHud(
                 safeAreaRoot,
@@ -439,6 +440,7 @@ namespace Cutrium.Editor.Setup
             boardCameraFitter.Configure(
                 boardCamera,
                 canvas,
+                boardStage,
                 boardViewport,
                 boardFrame);
             boardMapper.Configure(boardCameraFitter);
@@ -558,27 +560,38 @@ namespace Cutrium.Editor.Setup
             return topHud;
         }
 
-        private static RectTransform CreateBoardViewport(
+        private static RectTransform CreateBoardStage(
             RectTransform parent,
+            out RectTransform boardViewport,
             out RectTransform boardFrame)
         {
-            RectTransform boardViewport =
-                CreateUiObject("BoardViewport", parent);
-            Image viewportImage = boardViewport.gameObject.AddComponent<Image>();
-            viewportImage.color = BoardViewportColor;
-            viewportImage.raycastTarget = false;
-            LayoutElement layout =
+            // BoardStage is the stable, VerticalLayoutGroup-controlled slot
+            // that always receives the full available board area.
+            // BoardViewport (inside it) is resized every frame by
+            // BoardCameraFitter to exactly the 10:16 aspect-fitted rect, so
+            // it never has a leftover letterbox margin of its own; BoardFrame
+            // is a plain full-stretch child of BoardViewport.
+            RectTransform boardStage = CreateUiObject("BoardStage", parent);
+            LayoutElement stageLayout =
+                boardStage.gameObject.AddComponent<LayoutElement>();
+            stageLayout.minHeight = 240f;
+            stageLayout.flexibleHeight = 1f;
+            stageLayout.flexibleWidth = 1f;
+
+            boardViewport = CreateUiObject("BoardViewport", boardStage);
+            LayoutElement viewportLayout =
                 boardViewport.gameObject.AddComponent<LayoutElement>();
-            layout.minHeight = 240f;
-            layout.flexibleHeight = 1f;
-            layout.flexibleWidth = 1f;
+            viewportLayout.ignoreLayout = true;
+            Image viewportImage = boardViewport.gameObject.AddComponent<Image>();
+            viewportImage.color = new Color(0f, 0f, 0f, 0f);
+            viewportImage.raycastTarget = false;
 
             boardFrame = CreateUiObject("BoardFrame", boardViewport);
-            boardFrame.anchorMin = new Vector2(0.5f, 0.5f);
-            boardFrame.anchorMax = new Vector2(0.5f, 0.5f);
+            boardFrame.anchorMin = Vector2.zero;
+            boardFrame.anchorMax = Vector2.one;
             boardFrame.pivot = new Vector2(0.5f, 0.5f);
-            boardFrame.anchoredPosition = Vector2.zero;
-            boardFrame.sizeDelta = new Vector2(625f, 1000f);
+            boardFrame.offsetMin = Vector2.zero;
+            boardFrame.offsetMax = Vector2.zero;
             Image boardImage = boardFrame.gameObject.AddComponent<Image>();
             boardImage.color = BoardColor;
             boardImage.raycastTarget = false;
@@ -596,7 +609,7 @@ namespace Cutrium.Editor.Setup
                 TextAnchor.MiddleCenter,
                 PrimaryTextColor);
             Stretch(boardLabel.rectTransform, 36f);
-            return boardViewport;
+            return boardStage;
         }
 
         private static RectTransform CreateBottomHud(
@@ -744,6 +757,92 @@ namespace Cutrium.Editor.Setup
             return true;
         }
 
+        /// Migrates the old flat "BoardViewport (large, flexible) containing
+        /// a smaller aspect-fitted BoardFrame" shell into "BoardStage (the
+        /// stable, flexible layout slot) containing BoardViewport (resized
+        /// every frame to exactly the fitted rect) containing a plain
+        /// full-stretch BoardFrame" -- so BoardViewport itself has no
+        /// leftover letterbox area once BoardCameraFitter starts running.
+        /// A no-op once the scene already has this structure.
+        private static bool RepairBoardHierarchy(Scene scene)
+        {
+            GameObject root = scene.GetRootGameObjects()
+                .SingleOrDefault(candidate => candidate.name == "VerticalSliceRoot");
+            Transform safeArea = root == null
+                ? null
+                : root.transform.Find("Canvas/SafeAreaRoot");
+            Transform existingBoardViewport = safeArea == null
+                ? null
+                : safeArea.Find("BoardViewport");
+            if (existingBoardViewport == null)
+            {
+                return false;
+            }
+
+            int boardIndex = existingBoardViewport.GetSiblingIndex();
+            var boardStageObject = new GameObject("BoardStage", typeof(RectTransform));
+            var boardStage = (RectTransform)boardStageObject.transform;
+            boardStage.SetParent(safeArea, false);
+            boardStage.SetSiblingIndex(boardIndex);
+
+            LayoutElement oldBoardLayout =
+                existingBoardViewport.GetComponent<LayoutElement>();
+            LayoutElement stageLayout =
+                boardStageObject.AddComponent<LayoutElement>();
+            stageLayout.minHeight =
+                oldBoardLayout != null ? oldBoardLayout.minHeight : 240f;
+            stageLayout.flexibleHeight = 1f;
+            stageLayout.flexibleWidth = 1f;
+
+            existingBoardViewport.SetParent(boardStage, false);
+            var boardViewportRect = (RectTransform)existingBoardViewport;
+            LayoutElement boardViewportLayout =
+                existingBoardViewport.GetComponent<LayoutElement>();
+            if (boardViewportLayout == null)
+            {
+                boardViewportLayout =
+                    existingBoardViewport.gameObject.AddComponent<LayoutElement>();
+            }
+
+            boardViewportLayout.ignoreLayout = true;
+            boardViewportRect.anchorMin = new Vector2(0.5f, 0.5f);
+            boardViewportRect.anchorMax = new Vector2(0.5f, 0.5f);
+            boardViewportRect.pivot = new Vector2(0.5f, 0.5f);
+            // A temporary fallback size/position, immediately overwritten by
+            // BoardCameraFitter's own next Apply() -- just avoids a
+            // zero-size flash between this repair and that first refresh.
+            boardViewportRect.sizeDelta = boardStage.rect.size;
+            boardViewportRect.anchoredPosition = Vector2.zero;
+
+            Transform boardFrame = existingBoardViewport.Find("BoardFrame");
+            if (boardFrame != null)
+            {
+                var boardFrameRect = (RectTransform)boardFrame;
+                boardFrameRect.anchorMin = Vector2.zero;
+                boardFrameRect.anchorMax = Vector2.one;
+                boardFrameRect.pivot = new Vector2(0.5f, 0.5f);
+                boardFrameRect.offsetMin = Vector2.zero;
+                boardFrameRect.offsetMax = Vector2.zero;
+            }
+
+            BoardCameraFitter fitter = root.GetComponentInChildren<BoardCameraFitter>(true);
+            if (fitter != null)
+            {
+                fitter.Configure(
+                    fitter.BoardCamera,
+                    fitter.Canvas,
+                    boardStage,
+                    boardViewportRect,
+                    fitter.BoardFrame);
+                EditorUtility.SetDirty(fitter);
+            }
+
+            EditorUtility.SetDirty(boardStageObject);
+            EditorUtility.SetDirty(existingBoardViewport.gameObject);
+            EditorSceneManager.MarkSceneDirty(scene);
+            return true;
+        }
+
         private static InputActionReference GetActionReference(
             string mapName,
             string actionName)
@@ -794,8 +893,10 @@ namespace Cutrium.Editor.Setup
             Transform safeAreaTransform =
                 RequireChild(canvasTransform, "SafeAreaRoot");
             RequireChild(safeAreaTransform, "TopHUD");
+            Transform boardStageTransform =
+                RequireChild(safeAreaTransform, "BoardStage");
             Transform boardViewportTransform =
-                RequireChild(safeAreaTransform, "BoardViewport");
+                RequireChild(boardStageTransform, "BoardViewport");
             RequireChild(boardViewportTransform, "BoardFrame");
             RequireChild(safeAreaTransform, "BottomHUD");
 
@@ -817,7 +918,10 @@ namespace Cutrium.Editor.Setup
                 || compositionRoot.EventSystem == null
                 || compositionRoot.UiInputModule == null
                 || compositionRoot.UiBlocker == null
-                || compositionRoot.PointerInput == null)
+                || compositionRoot.PointerInput == null
+                || compositionRoot.BoardCameraFitter.BoardStage == null
+                || compositionRoot.BoardCameraFitter.BoardViewport == null
+                || compositionRoot.BoardCameraFitter.BoardFrame == null)
             {
                 throw new InvalidOperationException(
                     "SceneCompositionRoot has missing serialized references.");

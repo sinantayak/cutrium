@@ -15,15 +15,15 @@ namespace Cutrium.Presentation.Barriers
     public sealed class BarrierPresenter : MonoBehaviour
     {
         private static readonly Color HorizontalPreview =
-            new Color(0.3f, 0.85f, 1f, 0.45f);
+            new Color(0.55f, 0.82f, 0.92f, 0.32f);
         private static readonly Color VerticalPreview =
-            new Color(0.8f, 0.5f, 1f, 0.45f);
+            new Color(0.78f, 0.68f, 0.9f, 0.32f);
         private static readonly Color GrowingColor =
-            new Color(0.35f, 0.9f, 1f, 1f);
+            new Color(0.62f, 0.86f, 0.94f, 0.9f);
         private static readonly Color LockedColor =
-            new Color(0.35f, 1f, 0.55f, 1f);
+            new Color(0.95f, 0.78f, 0.35f, 1f);
         private static readonly Color FailedColor =
-            new Color(1f, 0.25f, 0.3f, 0.85f);
+            new Color(0.92f, 0.4f, 0.42f, 0.82f);
 
         [SerializeField]
         private FirstPlayableController _controller;
@@ -59,7 +59,7 @@ namespace Cutrium.Presentation.Barriers
         private Image _failureImage;
 
         [SerializeField]
-        private float _visualLogicalThickness = 0.22f;
+        private float _visualLogicalThickness = 0.13f;
 
         [SerializeField]
         private float _failureFeedbackSeconds = 0.16f;
@@ -72,6 +72,7 @@ namespace Cutrium.Presentation.Barriers
         private bool _hasThemeStyle;
         private Image _negativeCap;
         private Image _positiveCap;
+        private Image _originJoint;
 
         public FirstPlayableController Controller => _controller;
         public BarrierGestureAdapter Gesture => _gesture;
@@ -143,6 +144,9 @@ namespace Cutrium.Presentation.Barriers
             _positiveCap.sprite = style.CapSprite;
             _negativeCap.color = style.GrowingColor;
             _positiveCap.color = style.GrowingColor;
+            _originJoint = GetOrCreateCap(_boardFrame, "BarrierOriginJoint");
+            _originJoint.sprite = style.CapSprite;
+            _originJoint.color = style.GrowingColor;
         }
 
         public void SetVisualLogicalThickness(float value)
@@ -299,6 +303,11 @@ namespace Cutrium.Presentation.Barriers
             {
                 _negativeHalf.gameObject.SetActive(false);
                 _positiveHalf.gameObject.SetActive(false);
+                if (_originJoint != null)
+                {
+                    _originJoint.gameObject.SetActive(false);
+                }
+
                 return;
             }
 
@@ -326,6 +335,23 @@ namespace Cutrium.Presentation.Barriers
                 _positiveCap.color = stateColor;
                 PositionCap(_negativeCap, false, _negativeHalf.sizeDelta.y);
                 PositionCap(_positiveCap, true, _positiveHalf.sizeDelta.y);
+            }
+
+            // A dedicated round joint at the growth origin covers the seam
+            // where the negative/positive halves meet, so the barrier reads
+            // as one continuous elegant line rather than two blunt segments.
+            if (_originJoint != null)
+            {
+                _originJoint.gameObject.SetActive(true);
+                _originJoint.color = stateColor;
+                RectTransform jointRect = (RectTransform)_originJoint.transform;
+                jointRect.anchorMin = new Vector2(0.5f, 0.5f);
+                jointRect.anchorMax = new Vector2(0.5f, 0.5f);
+                jointRect.pivot = new Vector2(0.5f, 0.5f);
+                jointRect.anchoredPosition = LogicalToAnchored(barrier.Origin);
+                jointRect.localRotation = Quaternion.identity;
+                float size = _visualLogicalThickness * GetLogicalScale();
+                jointRect.sizeDelta = new Vector2(size, size);
             }
         }
 

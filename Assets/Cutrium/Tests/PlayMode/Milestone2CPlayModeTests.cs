@@ -201,8 +201,10 @@ namespace Cutrium.PlayModeTests
             Transform safeArea = _root.transform.Find("Canvas/SafeAreaRoot");
             RectTransform top = safeArea.Find("TopHUD")
                 .GetComponent<RectTransform>();
-            RectTransform board = safeArea.Find("BoardViewport")
+            RectTransform boardStage = safeArea.Find("BoardStage")
                 .GetComponent<RectTransform>();
+            RectTransform boardViewport = safeArea
+                .Find("BoardStage/BoardViewport").GetComponent<RectTransform>();
             RectTransform bottom = safeArea.Find("BottomHUD")
                 .GetComponent<RectTransform>();
             RectTransform progress = safeArea.Find("TopHUD/ProgressArea")
@@ -212,7 +214,7 @@ namespace Cutrium.PlayModeTests
             LayoutElement overlayLayout = _hudPresenter.CompleteOverlay
                 .GetComponent<LayoutElement>();
             LayoutElement topLayout = top.GetComponent<LayoutElement>();
-            LayoutElement boardLayout = board.GetComponent<LayoutElement>();
+            LayoutElement boardLayout = boardStage.GetComponent<LayoutElement>();
             LayoutElement bottomLayout = bottom.GetComponent<LayoutElement>();
             VerticalLayoutGroup safeLayout = safeArea
                 .GetComponent<VerticalLayoutGroup>();
@@ -222,12 +224,16 @@ namespace Cutrium.PlayModeTests
             Canvas.ForceUpdateCanvases();
             LayoutRebuilder.ForceRebuildLayoutImmediate(
                 (RectTransform)safeArea);
+            _root.GetComponentInChildren<BoardCameraFitter>(true).RefreshNow();
 
-            Assert.That(board.rect.height, Is.GreaterThan(top.rect.height));
-            Assert.That(board.rect.height, Is.GreaterThan(bottom.rect.height));
+            Assert.That(boardStage.rect.height, Is.GreaterThan(top.rect.height));
+            Assert.That(boardStage.rect.height, Is.GreaterThan(bottom.rect.height));
             Assert.That(topLayout.preferredHeight, Is.EqualTo(60f));
             Assert.That(topLayout.flexibleHeight, Is.Zero);
-            Assert.That(bottomLayout.preferredHeight, Is.EqualTo(32f));
+            // The landmark presentation pass replaces BottomHUD's debug
+            // status lines and power buttons (both hidden/removed) with a
+            // single compact quick-retry chip.
+            Assert.That(bottomLayout.preferredHeight, Is.EqualTo(58f));
             Assert.That(bottomLayout.flexibleHeight, Is.Zero);
             Assert.That(boardLayout.preferredHeight, Is.Zero);
             Assert.That(boardLayout.flexibleHeight, Is.EqualTo(1f));
@@ -252,8 +258,18 @@ namespace Cutrium.PlayModeTests
                 Is.EqualTo("LEARN THE CUT"));
             Assert.That(safeArea.Find("TopHUD/HudBlockerButton/Label")
                 .GetComponent<Text>().text, Is.EqualTo("UI TEST"));
-            Assert.That(safeArea.Find("BoardViewport/BoardFrame/BoardLabel")
+            Assert.That(safeArea.Find(
+                    "BoardStage/BoardViewport/BoardFrame/BoardLabel")
                 .gameObject.activeSelf, Is.False);
+
+            // BoardViewport must resolve to exactly the aspect-fitted rect
+            // within BoardStage -- no leftover letterbox margin of its own.
+            Rect expectedFit = BoardViewportLayout.CalculateAspectFitRect(
+                new Rect(Vector2.zero, boardStage.rect.size));
+            Assert.That(boardViewport.rect.width,
+                Is.EqualTo(expectedFit.width).Within(0.5f));
+            Assert.That(boardViewport.rect.height,
+                Is.EqualTo(expectedFit.height).Within(0.5f));
         }
 
         [TestCase(1080f, 1920f)]
@@ -293,6 +309,145 @@ namespace Cutrium.PlayModeTests
                 Is.EqualTo(layout.SafeSize.x).Within(0.01f));
             Assert.That(layout.OverlaySize.y,
                 Is.EqualTo(layout.SafeSize.y).Within(0.01f));
+        }
+
+        [TestCase(1080f, 1920f)]
+        [TestCase(1080f, 2400f)]
+        [TestCase(1536f, 2048f)]
+        public void BoardCameraFitter_ResizesBoardViewportWithNoLetterboxing(
+            float width,
+            float height)
+        {
+            // The available board area at this target aspect, exactly as
+            // CompactLayout_TargetAspectKeepsFullBoardDominant already
+            // verifies it via the real HUD layout.
+            ResolvedLayout layout = ResolveLayoutAt(width, height);
+
+            var stageObject = new GameObject(
+                "IsolatedBoardStage",
+                typeof(RectTransform));
+            var viewportObject = new GameObject(
+                "IsolatedBoardViewport",
+                typeof(RectTransform));
+            var frameObject = new GameObject(
+                "IsolatedBoardFrame",
+                typeof(RectTransform));
+            var cameraObject = new GameObject("IsolatedBoardCamera");
+            try
+            {
+                var stage = (RectTransform)stageObject.transform;
+                stage.sizeDelta = layout.BoardSize;
+
+                var viewport = (RectTransform)viewportObject.transform;
+                viewport.SetParent(stage, false);
+
+                var frame = (RectTransform)frameObject.transform;
+                frame.SetParent(viewport, false);
+
+                Camera camera = cameraObject.AddComponent<Camera>();
+                BoardCameraFitter fitter =
+                    stageObject.AddComponent<BoardCameraFitter>();
+                fitter.Configure(camera, null, stage, viewport, frame);
+
+                bool applied = fitter.Apply(
+                    new Rect(Vector2.zero, layout.BoardSize),
+                    layout.BoardSize);
+
+                Assert.That(applied, Is.True);
+
+                Rect expectedFit = BoardViewportLayout.CalculateAspectFitRect(
+                    new Rect(Vector2.zero, layout.BoardSize));
+
+                // Bit-level tight: BoardCameraFitter must set BoardViewport
+                // to exactly the fitted rect, with no leftover margin of
+                // its own -- the whole point of this pass.
+                Assert.That(viewport.sizeDelta.x,
+                    Is.EqualTo(expectedFit.width).Within(0.001f));
+                Assert.That(viewport.sizeDelta.y,
+                    Is.EqualTo(expectedFit.height).Within(0.001f));
+                Assert.That(viewport.sizeDelta.x,
+                    Is.LessThanOrEqualTo(layout.BoardSize.x + 0.001f));
+                Assert.That(viewport.sizeDelta.y,
+                    Is.LessThanOrEqualTo(layout.BoardSize.y + 0.001f));
+                Assert.That(viewport.sizeDelta.x / viewport.sizeDelta.y,
+                    Is.EqualTo(10f / 16f).Within(0.0001f));
+            }
+            finally
+            {
+                // viewportObject/frameObject are children of stageObject by
+                // this point, so destroying it cascades to both.
+                Object.DestroyImmediate(stageObject);
+                Object.DestroyImmediate(cameraObject);
+            }
+        }
+
+        [Test]
+        public void BoardMapping_RoundTripsAtAllFourEdgesAndRejectsOutsideBoard()
+        {
+            Canvas.ForceUpdateCanvases();
+            BoardCameraFitter fitter =
+                _root.GetComponentInChildren<BoardCameraFitter>(true);
+            ScreenToLogicalBoardMapper mapper =
+                _root.GetComponentInChildren<ScreenToLogicalBoardMapper>(true);
+            fitter.RefreshNow();
+            Rect board = fitter.BoardScreenRect;
+
+            // All four edges/corners remain playable and round-trip to the
+            // correct logical extreme (screen Y grows upward; logical Y=0
+            // is the board's bottom edge, matching LogicalRect's MinY).
+            AssertBoardEdgeRoundTrips(
+                mapper,
+                new Vector2(board.xMin + 1f, board.yMin + 1f),
+                new LogicalPoint(0f, 0f));
+            AssertBoardEdgeRoundTrips(
+                mapper,
+                new Vector2(board.xMax - 1f, board.yMin + 1f),
+                new LogicalPoint(10f, 0f));
+            AssertBoardEdgeRoundTrips(
+                mapper,
+                new Vector2(board.xMin + 1f, board.yMax - 1f),
+                new LogicalPoint(0f, 16f));
+            AssertBoardEdgeRoundTrips(
+                mapper,
+                new Vector2(board.xMax - 1f, board.yMax - 1f),
+                new LogicalPoint(10f, 16f));
+
+            // A point just outside the fitted board -- in what used to be
+            // visible BoardViewport letterbox space -- must not be treated
+            // as board input; it now belongs to the decorative background.
+            Assert.That(
+                mapper.TryMap(
+                    new Vector2(board.xMin - 5f, board.center.y),
+                    out _),
+                Is.False);
+            Assert.That(
+                mapper.TryMap(
+                    new Vector2(board.xMax + 5f, board.center.y),
+                    out _),
+                Is.False);
+            Assert.That(
+                mapper.TryMap(
+                    new Vector2(board.center.x, board.yMin - 5f),
+                    out _),
+                Is.False);
+            Assert.That(
+                mapper.TryMap(
+                    new Vector2(board.center.x, board.yMax + 5f),
+                    out _),
+                Is.False);
+        }
+
+        private static void AssertBoardEdgeRoundTrips(
+            ScreenToLogicalBoardMapper mapper,
+            Vector2 screenPoint,
+            LogicalPoint expected)
+        {
+            Assert.That(
+                mapper.TryMap(screenPoint, out LogicalPoint logical),
+                Is.True,
+                $"screen point {screenPoint} should map onto the board");
+            Assert.That(logical.X, Is.EqualTo(expected.X).Within(0.05f));
+            Assert.That(logical.Y, Is.EqualTo(expected.Y).Within(0.05f));
         }
 
         [Test]
@@ -583,7 +738,13 @@ namespace Cutrium.PlayModeTests
             Canvas.ForceUpdateCanvases();
 
             RectTransform top = (RectTransform)clone.Find("TopHUD");
-            RectTransform board = (RectTransform)clone.Find("BoardViewport");
+            // BoardStage -- not BoardViewport -- is the pure
+            // VerticalLayoutGroup-controlled slot that a static clone (no
+            // live BoardCameraFitter running) can correctly resolve; it
+            // represents the same "how much space is available for the
+            // board" role BoardViewport itself used to play before it
+            // became the fitted-and-shrunk shell.
+            RectTransform board = (RectTransform)clone.Find("BoardStage");
             RectTransform bottom = (RectTransform)clone.Find("BottomHUD");
             RectTransform button = (RectTransform)clone.Find(
                 "TopHUD/HudBlockerButton");

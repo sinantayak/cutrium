@@ -15,28 +15,28 @@ MonoBehaviour:
   _stableId: cleanup-chamber-prototype
   _backgroundSprite: {fileID: 21300000, guid: 16bc7a859cb9db84587f280b180a2958, type: 3}
   _backgroundColor: {r: 1, g: 1, b: 1, a: 1}
-  _boardSprite: {fileID: 21300000, guid: 8aa93beb5ac126a4fbbbc468e218f0ea, type: 3}
+  _boardSprite: {fileID: 21300000, guid: 731fad99b957a7948997d2bc35f1e240, type: 3}
   _boardColor: {r: 1, g: 1, b: 1, a: 1}
-  _frameSprite: {fileID: 21300000, guid: efda7f67ef6d8ac4c8c25727660f4e03, type: 3}
+  _frameSprite: {fileID: 21300000, guid: 99ab42d08a70d484db5132f5a1e578b2, type: 3}
   _frameColor: {r: 1, g: 1, b: 1, a: 1}
-  _threatSprite: {fileID: 21300000, guid: c439139e3f551c447820e36808207ffa, type: 3}
+  _threatSprite: {fileID: 21300000, guid: 59ec133a5ff8acf4cab419ebd0ad4257, type: 3}
   _threatColor: {r: 1, g: 1, b: 1, a: 1}
   _threatScale: {x: 1, y: 1}
   _threatOffset: {x: 0, y: 0}
   _threatShadowSprite: {fileID: 21300000, guid: f4316c81bf61bfc41bc2370676586b4f, type: 3}
-  _threatShadowColor: {r: 0, g: 0, b: 0, a: 0.32}
+  _threatShadowColor: {r: 0, g: 0, b: 0, a: 0.26}
   _threatTrailSprite: {fileID: 21300000, guid: 81982fe4838f19447831bd1c4af4de78, type: 3}
-  _threatTrailColor: {r: 1, g: 0.42, b: 0.44, a: 0.38}
-  _barrierBodySprite: {fileID: 21300000, guid: 630fb76243d40334ba26623ac4065f5e, type: 3}
+  _threatTrailColor: {r: 0.92, g: 0.62, b: 0.5, a: 0.2}
+  _barrierBodySprite: {fileID: 21300000, guid: 845fb07dcdf1f17478145971418bd684, type: 3}
   _barrierCapSprite: {fileID: 21300000, guid: 9bd38f5d3d448ea468d823f79635d0f3, type: 3}
-  _barrierPreviewSprite: {fileID: 21300000, guid: 630fb76243d40334ba26623ac4065f5e, type: 3}
-  _barrierPreviewColor: {r: 0.3, g: 0.92, b: 1, a: 0.48}
-  _barrierGrowingColor: {r: 0.35, g: 1, b: 0.92, a: 1}
-  _barrierLockedColor: {r: 0.72, g: 1, b: 0.72, a: 1}
-  _barrierBreakColor: {r: 1, g: 0.3, b: 0.38, a: 0.92}
+  _barrierPreviewSprite: {fileID: 21300000, guid: 845fb07dcdf1f17478145971418bd684, type: 3}
+  _barrierPreviewColor: {r: 0.62, g: 0.85, b: 0.95, a: 0.3}
+  _barrierGrowingColor: {r: 0.65, g: 0.88, b: 0.95, a: 0.92}
+  _barrierLockedColor: {r: 0.95, g: 0.8, b: 0.4, a: 1}
+  _barrierBreakColor: {r: 0.9, g: 0.42, b: 0.44, a: 0.85}
   _captureSprite: {fileID: 21300000, guid: 2fb7676a6d3f61148b51df8ecf829995, type: 3}
   _captureMaterial: {fileID: 0}
-  _captureColor: {r: 1, g: 1, b: 1, a: 1}
-  _hudBackgroundColor: {r: 0.025, g: 0.075, b: 0.09, a: 0.97}
-  _hudAccentColor: {r: 0.28, g: 1, b: 0.82, a: 1}
-  _hudTextColor: {r: 0.9, g: 1, b: 0.98, a: 1}
+  _captureColor: {r: 0.85, g: 0.72, b: 0.42, a: 0.16}
+  _hudBackgroundColor: {r: 0.03, g: 0.045, b: 0.06, a: 0}
+  _hudAccentColor: {r: 0.85, g: 0.78, b: 0.62, a: 1}
+  _hudTextColor: {r: 0.96, g: 0.95, b: 0.92, a: 1}
