@@ -69,7 +69,10 @@ namespace Cutrium.PlayModeTests
             Assert.That(_hud.LevelText.text, Is.EqualTo("LEVEL 1"));
             Assert.That(_hud.PurposeText.text, Is.EqualTo("LEARN THE CUT"));
             Assert.That(_hud.PercentageText.text, Is.EqualTo("Captured 0%"));
-            Assert.That(_hud.TargetText.text, Is.EqualTo("Target 83%"));
+            // TargetText now mirrors the current captured fraction (the
+            // target moved onto the bar itself as a tick mark), so at level
+            // start with nothing captured yet it reads "0%".
+            Assert.That(_hud.TargetText.text, Is.EqualTo("0%"));
         }
 
         [Test]
@@ -133,7 +136,7 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Session.CapturedFraction, Is.Zero);
             Assert.That(_hud.LevelText.text, Is.EqualTo("LEVEL 2"));
             Assert.That(_hud.PurposeText.text, Is.EqualTo("WATCH THE THREAT"));
-            Assert.That(_hud.TargetText.text, Is.EqualTo("Target 85%"));
+            Assert.That(_hud.TargetText.text, Is.EqualTo("0%"));
             Assert.That(_hud.CompletionCanvasGroup.alpha, Is.Zero);
             Assert.That(_controller.Metrics.SequenceRuns.Count, Is.EqualTo(1));
             Assert.That(_controller.Metrics.SequenceRuns[0].NextPressed, Is.True);

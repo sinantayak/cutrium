@@ -228,12 +228,17 @@ namespace Cutrium.PlayModeTests
 
             Assert.That(boardStage.rect.height, Is.GreaterThan(top.rect.height));
             Assert.That(boardStage.rect.height, Is.GreaterThan(bottom.rect.height));
-            Assert.That(topLayout.preferredHeight, Is.EqualTo(60f));
+            // TopHUD is widened past Milestone2's single-text-row baseline
+            // so its progress-bar row reads as centered in the gap between
+            // the screen top and the board, not hugging a barely-tall strip.
+            Assert.That(topLayout.preferredHeight, Is.EqualTo(106f));
             Assert.That(topLayout.flexibleHeight, Is.Zero);
             // The landmark presentation pass replaces BottomHUD's debug
             // status lines and power buttons (both hidden/removed) with a
-            // single compact quick-retry chip.
-            Assert.That(bottomLayout.preferredHeight, Is.EqualTo(58f));
+            // single compact quick-retry chip, in a band sized to keep the
+            // button centered in the gap between the board and the phone's
+            // bottom edge rather than flush against it.
+            Assert.That(bottomLayout.preferredHeight, Is.EqualTo(114f));
             Assert.That(bottomLayout.flexibleHeight, Is.Zero);
             Assert.That(boardLayout.preferredHeight, Is.Zero);
             Assert.That(boardLayout.flexibleHeight, Is.EqualTo(1f));

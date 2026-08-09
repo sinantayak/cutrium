@@ -24,6 +24,18 @@ namespace Cutrium.Presentation.HUD
         private Text _targetText;
 
         [SerializeField]
+        private Image _progressBarFillImage;
+
+        [SerializeField]
+        private RectTransform _progressBarTrackRect;
+
+        [SerializeField]
+        private RectTransform _targetTickRect;
+
+        [SerializeField]
+        private Text _targetTickLabel;
+
+        [SerializeField]
         private GameObject _completeOverlay;
 
         [SerializeField]
@@ -62,6 +74,14 @@ namespace Cutrium.Presentation.HUD
         public Text PurposeText => _purposeText;
 
         public Text TargetText => _targetText;
+
+        public Image ProgressBarFillImage => _progressBarFillImage;
+
+        public RectTransform ProgressBarTrackRect => _progressBarTrackRect;
+
+        public RectTransform TargetTickRect => _targetTickRect;
+
+        public Text TargetTickLabel => _targetTickLabel;
 
         public GameObject CompleteOverlay => _completeOverlay;
 
@@ -153,6 +173,19 @@ namespace Cutrium.Presentation.HUD
             RefreshPresentation(false, elapsedTime);
         }
 
+        public void ConfigureProgressBar(
+            Image progressBarFillImage,
+            RectTransform progressBarTrackRect,
+            RectTransform targetTickRect,
+            Text targetTickLabel)
+        {
+            _progressBarFillImage = progressBarFillImage;
+            _progressBarTrackRect = progressBarTrackRect;
+            _targetTickRect = targetTickRect;
+            _targetTickLabel = targetTickLabel;
+            RefreshNow();
+        }
+
         public void ConfigureFeedbackAnimationForSetup(float duration)
         {
             if (float.IsNaN(duration)
@@ -198,11 +231,22 @@ namespace Cutrium.Presentation.HUD
                     $"Captured {RoundedPercent(_displayedCapturedFraction)}%";
             }
 
+            // This slot used to show the target; the target is now marked
+            // directly on the bar (see UpdateTargetTick) so this reads the
+            // current captured fraction instead, in sync with the fill --
+            // the sole percentage readout, shown after the bar's right edge.
             if (_targetText != null)
             {
-                _targetText.text =
-                    $"Target {RoundedPercent(target)}%";
+                _targetText.text = $"{RoundedPercent(_displayedCapturedFraction)}%";
             }
+
+            if (_progressBarFillImage != null)
+            {
+                _progressBarFillImage.fillAmount =
+                    Mathf.Clamp01(_displayedCapturedFraction);
+            }
+
+            UpdateTargetTick(target);
 
             bool completed = _controller.Session.LevelStatus
                 == CaptureLevelStatus.Completed;
@@ -293,6 +337,26 @@ namespace Cutrium.Presentation.HUD
             if (progress >= 1f)
             {
                 _displayedCapturedFraction = _percentageAnimationTarget;
+            }
+        }
+
+        private void UpdateTargetTick(float target)
+        {
+            if (_targetTickRect == null || _progressBarTrackRect == null)
+            {
+                return;
+            }
+
+            float trackWidth = _progressBarTrackRect.rect.width;
+            float x = Mathf.Clamp01(target) * trackWidth;
+            _targetTickRect.anchoredPosition =
+                new Vector2(x, _targetTickRect.anchoredPosition.y);
+
+            if (_targetTickLabel != null)
+            {
+                RectTransform labelRect = _targetTickLabel.rectTransform;
+                labelRect.anchoredPosition =
+                    new Vector2(x, labelRect.anchoredPosition.y);
             }
         }
 

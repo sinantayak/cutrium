@@ -220,11 +220,15 @@ namespace Cutrium.Presentation.Landmark
 
         private void ApplyArtwork()
         {
-            ApplyImage(_artworkImage);
-            ApplyImage(_heroArtworkImage);
+            // The board layer stretches to fill the 10x16 frame it reveals
+            // (no native aspect ratio to preserve there), but the
+            // completion-screen hero photo sits in its own fixed frame and
+            // must never be stretched away from its native aspect ratio.
+            ApplyImage(_artworkImage, preserveAspect: false);
+            ApplyImage(_heroArtworkImage, preserveAspect: true);
         }
 
-        private void ApplyImage(Image image)
+        private void ApplyImage(Image image, bool preserveAspect)
         {
             if (image == null)
             {
@@ -234,7 +238,7 @@ namespace Cutrium.Presentation.Landmark
             image.sprite = CurrentLandmark != null ? CurrentLandmark.Artwork : null;
             image.color = Color.white;
             image.type = Image.Type.Simple;
-            image.preserveAspect = false;
+            image.preserveAspect = preserveAspect;
         }
 
         private void RefreshCompletionText()

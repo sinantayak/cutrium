@@ -21,10 +21,11 @@ namespace Cutrium.Editor.Setup
 {
     /// Presentation-only pass that prepares Cutrium for a landmark-reveal
     /// identity: calmer board/barrier/threat visuals, a compact power row
-    /// integrated into the bottom HUD, a full-screen hero completion
-    /// reward screen, and a data-driven LandmarkRevealPresenter that
-    /// obscures active area and reveals landmark artwork as it is
-    /// captured. This is not Milestone 7 and does not change gameplay.
+    /// integrated into the bottom HUD, a full-screen opaque completion
+    /// reward screen with a fixed-aspect framed hero photo, and a
+    /// data-driven LandmarkRevealPresenter that obscures active area and
+    /// reveals landmark artwork as it is captured. This is not Milestone 7
+    /// and does not change gameplay.
     public static class LandmarkRevealPresentationSetup
     {
         public const string GeneratedFolder =
@@ -79,9 +80,10 @@ namespace Cutrium.Editor.Setup
             AssetDatabase.SaveAssets();
             Debug.Log(
                 "Landmark Reveal Presentation Pass verified. A compact " +
-                "integrated power row, a full-screen hero completion " +
-                "reward screen, and a three-landmark reveal pipeline " +
-                "(led by Galata Kulesi) are ready.");
+                "integrated power row, a full-screen opaque completion " +
+                "reward screen with a fixed-aspect framed hero photo, and " +
+                "a three-landmark reveal pipeline (led by Galata Kulesi) " +
+                "are ready.");
         }
 
         private static void VerifyBaseline()
@@ -693,7 +695,7 @@ namespace Cutrium.Editor.Setup
 
             Transform topHud = RequireChild(safeArea, "TopHUD");
             Transform bottomHud = RequireChild(safeArea, "BottomHUD");
-            RestyleHud(hud, topHud);
+            RestyleHud(hud, topHud, sprites);
             ConfigureBottomHud(root, safeArea, controller, sprites);
             HideDebugFooter(bottomHud);
             FinalizeThemeTextSync(themePresenter, topHud, bottomHud);
@@ -748,41 +750,76 @@ namespace Cutrium.Editor.Setup
             artworkRect.SetSiblingIndex(boardSurface.GetSiblingIndex() + 1);
             veilRoot.SetSiblingIndex(artworkRect.GetSiblingIndex() + 1);
 
-            // Discard a legacy card-style completion layout from an earlier
-            // presentation pass so re-running setup converges cleanly on the
-            // new full-screen hero design.
+            // Discard legacy completion layouts from earlier presentation
+            // passes (card-style, and the full-screen stretched hero photo)
+            // so re-running setup converges cleanly on the new framed-photo
+            // design instead of leaving stale siblings behind.
             Transform legacyCard = completionOverlay.Find("LandmarkCard");
             if (legacyCard != null)
             {
                 UnityEngine.Object.DestroyImmediate(legacyCard.gameObject);
             }
 
-            RectTransform heroRect = GetOrCreateUiChild(
+            Transform legacyHero = completionOverlay.Find("HeroArtwork");
+            if (legacyHero != null)
+            {
+                UnityEngine.Object.DestroyImmediate(legacyHero.gameObject);
+            }
+
+            Transform legacyScrim = completionOverlay.Find("ScrimOverlay");
+            if (legacyScrim != null)
+            {
+                UnityEngine.Object.DestroyImmediate(legacyScrim.gameObject);
+            }
+
+            // The overlay itself is a single opaque color that fully hides
+            // the board/HUD behind it -- never a partial alpha that lets
+            // buttons or HUD text show through.
+            Image overlayBackground =
+                GetOrAddComponent<Image>(completionOverlay.gameObject);
+            overlayBackground.sprite = null;
+            overlayBackground.type = Image.Type.Simple;
+            overlayBackground.color = new Color(0.04f, 0.07f, 0.12f, 1f);
+            overlayBackground.raycastTarget = true;
+
+            // The hero photo lives in a fixed square frame instead of
+            // stretching to fill the screen, so its aspect ratio is never
+            // distorted. HeroFrameBounds is the available square slot
+            // (positioned above the text/button content); HeroArtwork fits
+            // itself into a centered square within it (AspectRatioFitter),
+            // then the photo itself letterboxes inside that square if it
+            // isn't natively square (Image.preserveAspect). A real frame
+            // sprite (e.g. "hung on a wall") can be layered on this later
+            // without changing the layout.
+            RectTransform heroBoundsRect = GetOrCreateUiChild(
                 completionOverlay,
+                "HeroFrameBounds");
+            heroBoundsRect.anchorMin = new Vector2(0.04f, 0.30f);
+            heroBoundsRect.anchorMax = new Vector2(0.96f, 0.86f);
+            heroBoundsRect.pivot = new Vector2(0.5f, 0.5f);
+            heroBoundsRect.offsetMin = Vector2.zero;
+            heroBoundsRect.offsetMax = Vector2.zero;
+            CanvasGroup scrimGroup =
+                GetOrAddComponent<CanvasGroup>(heroBoundsRect.gameObject);
+            heroBoundsRect.SetSiblingIndex(0);
+
+            RectTransform heroRect = GetOrCreateUiChild(
+                heroBoundsRect,
                 "HeroArtwork");
             StretchToParent(heroRect);
+            AspectRatioFitter heroFitter =
+                GetOrAddComponent<AspectRatioFitter>(heroRect.gameObject);
+            heroFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            heroFitter.aspectRatio = 1f;
             Image heroImage = GetOrAddComponent<Image>(heroRect.gameObject);
             heroImage.raycastTarget = false;
-            heroRect.SetSiblingIndex(0);
-
-            RectTransform scrimRect = GetOrCreateUiChild(
-                completionOverlay,
-                "ScrimOverlay");
-            StretchToParent(scrimRect);
-            Image scrimImage = GetOrAddComponent<Image>(scrimRect.gameObject);
-            scrimImage.sprite = sprites["completion_scrim"];
-            scrimImage.type = Image.Type.Simple;
-            scrimImage.color = Color.white;
-            scrimImage.raycastTarget = false;
-            CanvasGroup scrimGroup =
-                GetOrAddComponent<CanvasGroup>(scrimRect.gameObject);
-            scrimRect.SetSiblingIndex(1);
+            heroImage.preserveAspect = true;
 
             RectTransform contentRect = GetOrCreateUiChild(
                 completionOverlay,
                 "CompletionContent");
-            contentRect.anchorMin = new Vector2(0.08f, 0.34f);
-            contentRect.anchorMax = new Vector2(0.92f, 0.6f);
+            contentRect.anchorMin = new Vector2(0.06f, 0.12f);
+            contentRect.anchorMax = new Vector2(0.94f, 0.27f);
             contentRect.pivot = new Vector2(0.5f, 0.5f);
             contentRect.offsetMin = Vector2.zero;
             contentRect.offsetMax = Vector2.zero;
@@ -793,7 +830,7 @@ namespace Cutrium.Editor.Setup
             VerticalLayoutGroup contentColumn =
                 GetOrAddComponent<VerticalLayoutGroup>(contentRect.gameObject);
             contentColumn.padding = new RectOffset(0, 0, 0, 0);
-            contentColumn.spacing = 6f;
+            contentColumn.spacing = 8f;
             contentColumn.childAlignment = TextAnchor.UpperCenter;
             contentColumn.childControlWidth = true;
             contentColumn.childControlHeight = true;
@@ -807,14 +844,14 @@ namespace Cutrium.Editor.Setup
             Text titleText = ConfigureText(
                 titleRect,
                 "Landmark",
-                27,
+                52,
                 TextAnchor.LowerCenter,
                 new Color(0.99f, 0.96f, 0.9f, 1f));
             titleText.fontStyle = FontStyle.Bold;
             LayoutElement titleLayout =
                 GetOrAddComponent<LayoutElement>(titleRect.gameObject);
-            titleLayout.minHeight = 34f;
-            titleLayout.preferredHeight = 34f;
+            titleLayout.minHeight = 66f;
+            titleLayout.preferredHeight = 66f;
             titleLayout.flexibleHeight = 0f;
 
             RectTransform sectorRect = GetOrCreateUiChild(contentRect, "Sector");
@@ -824,13 +861,13 @@ namespace Cutrium.Editor.Setup
             Text sectorText = ConfigureText(
                 sectorRect,
                 "Sector",
-                13,
+                26,
                 TextAnchor.UpperCenter,
                 new Color(0.85f, 0.78f, 0.62f, 0.92f));
             LayoutElement sectorLayout =
                 GetOrAddComponent<LayoutElement>(sectorRect.gameObject);
-            sectorLayout.minHeight = 18f;
-            sectorLayout.preferredHeight = 18f;
+            sectorLayout.minHeight = 36f;
+            sectorLayout.preferredHeight = 36f;
             sectorLayout.flexibleHeight = 0f;
 
             RectTransform descriptionRect = GetOrCreateUiChild(
@@ -842,32 +879,34 @@ namespace Cutrium.Editor.Setup
             Text descriptionText = ConfigureText(
                 descriptionRect,
                 "Description",
-                13,
+                26,
                 TextAnchor.UpperCenter,
                 new Color(0.9f, 0.89f, 0.86f, 0.9f));
             descriptionText.horizontalOverflow = HorizontalWrapMode.Wrap;
             descriptionText.verticalOverflow = VerticalWrapMode.Truncate;
             LayoutElement descriptionLayout =
                 GetOrAddComponent<LayoutElement>(descriptionRect.gameObject);
-            descriptionLayout.minHeight = 40f;
-            descriptionLayout.preferredHeight = 46f;
+            descriptionLayout.minHeight = 76f;
+            descriptionLayout.preferredHeight = 92f;
             descriptionLayout.flexibleHeight = 0f;
 
             // The stats line reuses the existing CompleteText element rather
             // than reparenting it: Milestone3CoreFunPlayModeTests looks it up
             // with the non-recursive Transform.Find("CompleteText") and would
             // break if it stopped being a direct LevelCompleteOverlay child.
+            // It sits centered in the leftover space above the photo frame,
+            // not below the content column.
             Transform completeTextTransform = RequireChild(
                 completionOverlay,
                 "CompleteText");
             var statsRect = (RectTransform)completeTextTransform;
-            statsRect.anchorMin = new Vector2(0.1f, 0.21f);
-            statsRect.anchorMax = new Vector2(0.9f, 0.31f);
+            statsRect.anchorMin = new Vector2(0.06f, 0.88f);
+            statsRect.anchorMax = new Vector2(0.94f, 0.98f);
             statsRect.pivot = new Vector2(0.5f, 0.5f);
             statsRect.offsetMin = Vector2.zero;
             statsRect.offsetMax = Vector2.zero;
             Text statsText = completeTextTransform.GetComponent<Text>();
-            statsText.fontSize = 13;
+            statsText.fontSize = 26;
             statsText.fontStyle = FontStyle.Normal;
             statsText.alignment = TextAnchor.MiddleCenter;
             statsText.color = new Color(0.82f, 0.86f, 0.88f, 0.85f);
@@ -881,8 +920,8 @@ namespace Cutrium.Editor.Setup
                 completionOverlay,
                 "RetryButton");
             var retryRect = (RectTransform)retryTransform;
-            retryRect.anchorMin = new Vector2(0.12f, 0.055f);
-            retryRect.anchorMax = new Vector2(0.46f, 0.155f);
+            retryRect.anchorMin = new Vector2(0.16f, 0.02f);
+            retryRect.anchorMax = new Vector2(0.44f, 0.095f);
             retryRect.pivot = new Vector2(0.5f, 0.5f);
             retryRect.offsetMin = Vector2.zero;
             retryRect.offsetMax = Vector2.zero;
@@ -891,8 +930,8 @@ namespace Cutrium.Editor.Setup
 
             Transform nextTransform = RequireChild(completionOverlay, "NextButton");
             var nextRect = (RectTransform)nextTransform;
-            nextRect.anchorMin = new Vector2(0.54f, 0.055f);
-            nextRect.anchorMax = new Vector2(0.88f, 0.155f);
+            nextRect.anchorMin = new Vector2(0.56f, 0.02f);
+            nextRect.anchorMax = new Vector2(0.84f, 0.095f);
             nextRect.pivot = new Vector2(0.5f, 0.5f);
             nextRect.offsetMin = Vector2.zero;
             nextRect.offsetMax = Vector2.zero;
@@ -926,7 +965,7 @@ namespace Cutrium.Editor.Setup
 
             EditorUtility.SetDirty(artworkImage);
             EditorUtility.SetDirty(heroImage);
-            EditorUtility.SetDirty(scrimImage);
+            EditorUtility.SetDirty(overlayBackground);
             EditorUtility.SetDirty(titleText);
             EditorUtility.SetDirty(sectorText);
             EditorUtility.SetDirty(descriptionText);
@@ -996,8 +1035,23 @@ namespace Cutrium.Editor.Setup
 
         private static void RestyleHud(
             CaptureHudPresenter hud,
-            Transform topHud)
+            Transform topHud,
+            IReadOnlyDictionary<string, Sprite> sprites)
         {
+            // TopHUD's own band is widened here (Milestone2's 52/60 baseline
+            // only needed room for a single text row) so its content --
+            // now a progress bar row -- reads as centered in the gap
+            // between the screen's top edge and the board, not hugging one
+            // side of a barely-tall-enough strip.
+            LayoutElement topLayout = topHud.GetComponent<LayoutElement>();
+            if (topLayout != null)
+            {
+                topLayout.minHeight = 96f;
+                topLayout.preferredHeight = 106f;
+                topLayout.flexibleHeight = 0f;
+                EditorUtility.SetDirty(topLayout);
+            }
+
             // The tutorial "LEARN THE CUT" purpose line and the level
             // number are both secondary copy that only cluttered the top
             // HUD; their text content stays untouched (Milestone2CPlayModeTests
@@ -1023,14 +1077,18 @@ namespace Cutrium.Editor.Setup
                 EditorUtility.SetDirty(topRow);
             }
 
-            // The captured/target percentage readout is the only thing
-            // left in TopHUD: no background chip, no level label, no
-            // spacer decoration -- just the two numbers, centered.
+            // The progress bar is the only thing left in TopHUD: no
+            // background chip, no level label, no spacer decoration.
+            // ProgressArea stretches to fill topRow (blocker is
+            // ignoreLayout, see below, so it's the only competing child),
+            // and topRow's MiddleCenter alignment keeps it centered.
             Transform progressArea = RequireChild(topHud, "ProgressArea");
             LayoutElement progressLayout =
                 progressArea.GetComponent<LayoutElement>();
             if (progressLayout != null)
             {
+                progressLayout.minWidth = 0f;
+                progressLayout.preferredWidth = 0f;
                 progressLayout.flexibleWidth = 1f;
                 EditorUtility.SetDirty(progressLayout);
             }
@@ -1065,36 +1123,139 @@ namespace Cutrium.Editor.Setup
                 EditorUtility.SetDirty(progressRow);
             }
 
+            // This slot used to read "Captured X%" to the left of the bar;
+            // that's now redundant with the sole current-percentage readout
+            // at the bar's right edge (see TargetText below), so it's
+            // hidden rather than shown twice. It stays wired -- Milestone2C/
+            // 3 assert it's non-null, parented under ProgressArea, and its
+            // text still updates while inactive, same pattern already used
+            // for PurposeText/LevelText.
             if (hud.PercentageText != null)
             {
-                hud.PercentageText.fontSize = 26;
-                hud.PercentageText.fontStyle = FontStyle.Bold;
-                hud.PercentageText.color = Color.white;
-                EditorUtility.SetDirty(hud.PercentageText);
+                hud.PercentageText.gameObject.SetActive(false);
+                EditorUtility.SetDirty(hud.PercentageText.gameObject);
             }
 
+            // A wide fill bar makes progress readable at a glance. It
+            // spans nearly all of ProgressArea's row, filling left-to-right
+            // as CapturedFraction rises, with the current percentage
+            // reading immediately after its right edge (TargetText, below).
+            RectTransform barTrackRect = GetOrCreateUiChild(
+                progressArea,
+                "ProgressBarTrack");
+            barTrackRect.SetSiblingIndex(1);
+            LayoutElement barTrackLayout =
+                GetOrAddComponent<LayoutElement>(barTrackRect.gameObject);
+            barTrackLayout.minWidth = 40f;
+            barTrackLayout.preferredWidth = 40f;
+            barTrackLayout.flexibleWidth = 1f;
+            barTrackLayout.minHeight = 18f;
+            barTrackLayout.preferredHeight = 18f;
+            barTrackLayout.flexibleHeight = 0f;
+            Image barTrackImage = GetOrAddComponent<Image>(barTrackRect.gameObject);
+            barTrackImage.sprite = sprites["chip_rounded"];
+            barTrackImage.type = Image.Type.Sliced;
+            barTrackImage.color = new Color(1f, 1f, 1f, 0.18f);
+            barTrackImage.raycastTarget = false;
+
+            RectTransform barFillRect = GetOrCreateUiChild(
+                barTrackRect,
+                "ProgressBarFill");
+            StretchToParent(barFillRect);
+            Image barFillImage = GetOrAddComponent<Image>(barFillRect.gameObject);
+            barFillImage.sprite = sprites["chip_rounded"];
+            barFillImage.type = Image.Type.Filled;
+            barFillImage.fillMethod = Image.FillMethod.Horizontal;
+            barFillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
+            barFillImage.color = new Color(0.32f, 0.78f, 0.62f, 1f);
+            barFillImage.raycastTarget = false;
+
+            // The target is marked directly on the bar -- a tick at the
+            // target fraction's position plus a small label above it --
+            // instead of as a separate number, so it reads as "cross this
+            // line to win" rather than an abstract stat. CaptureHudPresenter
+            // repositions both every frame from the live target fraction
+            // and the track's actual width.
+            RectTransform tickRect = GetOrCreateUiChild(
+                barTrackRect,
+                "TargetTick");
+            tickRect.anchorMin = new Vector2(0f, 0f);
+            tickRect.anchorMax = new Vector2(0f, 1f);
+            tickRect.pivot = new Vector2(0.5f, 0.5f);
+            tickRect.sizeDelta = new Vector2(3f, 10f);
+            tickRect.anchoredPosition = Vector2.zero;
+            Image tickImage = GetOrAddComponent<Image>(tickRect.gameObject);
+            tickImage.color = new Color(1f, 0.87f, 0.35f, 0.95f);
+            tickImage.raycastTarget = false;
+
+            RectTransform tickLabelRect = GetOrCreateUiChild(
+                barTrackRect,
+                "TargetTickLabel");
+            tickLabelRect.anchorMin = new Vector2(0f, 1f);
+            tickLabelRect.anchorMax = new Vector2(0f, 1f);
+            tickLabelRect.pivot = new Vector2(0.5f, 0f);
+            tickLabelRect.sizeDelta = new Vector2(64f, 14f);
+            tickLabelRect.anchoredPosition = new Vector2(0f, 4f);
+            Text tickLabelText = ConfigureText(
+                tickLabelRect,
+                "TARGET",
+                10,
+                TextAnchor.LowerCenter,
+                new Color(1f, 0.87f, 0.35f, 0.95f));
+            tickLabelText.fontStyle = FontStyle.Bold;
+            tickLabelText.raycastTarget = false;
+
+            hud.ConfigureProgressBar(
+                barFillImage,
+                barTrackRect,
+                tickRect,
+                tickLabelText);
+            EditorUtility.SetDirty(barTrackImage);
+            EditorUtility.SetDirty(barFillImage);
+            EditorUtility.SetDirty(tickImage);
+            EditorUtility.SetDirty(tickLabelText);
+            EditorUtility.SetDirty(hud);
+
+            // The sole percentage readout: the current captured fraction,
+            // shown right after the bar's right edge (e.g. "13%"). The
+            // target is marked on the bar itself (tick + label above), not
+            // as a separate number.
             if (hud.TargetText != null)
             {
-                hud.TargetText.fontSize = 14;
-                hud.TargetText.fontStyle = FontStyle.Normal;
-                hud.TargetText.color = new Color(0.8f, 0.87f, 0.9f, 0.92f);
+                hud.TargetText.gameObject.SetActive(true);
+                hud.TargetText.fontSize = 24;
+                hud.TargetText.fontStyle = FontStyle.Bold;
+                hud.TargetText.color = Color.white;
                 EditorUtility.SetDirty(hud.TargetText);
             }
 
             // The blocker keeps its required function and label string (see
             // Milestone2CPlayModeTests) but is fully invisible now -- an
             // empty, reserved slot for a future settings/meta action.
+            // ignoreLayout so this invisible slot doesn't consume row space
+            // from topRow's HorizontalLayoutGroup -- otherwise ProgressArea
+            // (the only other row child) would be skewed left of true
+            // center by however much width this reserves on the right,
+            // which is exactly why the progress row looked off-center.
             Transform blocker = RequireChild(topHud, "HudBlockerButton");
             blocker.SetAsLastSibling();
+            var blockerRect = (RectTransform)blocker;
             LayoutElement blockerLayout = blocker.GetComponent<LayoutElement>();
             if (blockerLayout != null)
             {
+                blockerLayout.ignoreLayout = true;
                 blockerLayout.preferredWidth = 72f;
                 blockerLayout.minWidth = 72f;
                 blockerLayout.preferredHeight = 34f;
                 blockerLayout.flexibleWidth = 0f;
                 EditorUtility.SetDirty(blockerLayout);
             }
+
+            blockerRect.anchorMin = new Vector2(1f, 0.5f);
+            blockerRect.anchorMax = new Vector2(1f, 0.5f);
+            blockerRect.pivot = new Vector2(1f, 0.5f);
+            blockerRect.sizeDelta = new Vector2(72f, 34f);
+            blockerRect.anchoredPosition = new Vector2(-14f, 0f);
 
             Image blockerImage = blocker.GetComponent<Image>();
             if (blockerImage != null)
@@ -1140,9 +1301,12 @@ namespace Cutrium.Editor.Setup
                 bottomHud.GetComponent<LayoutElement>();
             // Debug status rows are hidden now (HideDebugFooter) and the
             // power buttons are gone (see below), so BottomHUD only needs
-            // to fit one small retry chip.
-            bottomLayout.minHeight = 54f;
-            bottomLayout.preferredHeight = 58f;
+            // to fit one small retry chip -- but its band is still sized
+            // generously (not just chip-tight) so the button reads as
+            // centered in the gap between the board and the bottom of the
+            // phone, not stuck flush against the edge.
+            bottomLayout.minHeight = 104f;
+            bottomLayout.preferredHeight = 114f;
             bottomLayout.flexibleHeight = 0f;
             EditorUtility.SetDirty(bottomLayout);
 
@@ -1303,8 +1467,35 @@ namespace Cutrium.Editor.Setup
                     "Completion overlay must remain the final safe-area sibling.");
             }
 
-            RequireChild(completion, "HeroArtwork");
-            RequireChild(completion, "ScrimOverlay");
+            Transform heroBounds = RequireChild(completion, "HeroFrameBounds");
+            var heroArtworkRect =
+                (RectTransform)RequireChild(heroBounds, "HeroArtwork");
+            if (heroArtworkRect.GetComponent<AspectRatioFitter>() == null)
+            {
+                throw new InvalidOperationException(
+                    "HeroArtwork must fit a square frame via " +
+                    "AspectRatioFitter instead of stretching to fill the " +
+                    "screen.");
+            }
+
+            Image heroArtworkImage = heroArtworkRect.GetComponent<Image>();
+            if (heroArtworkImage == null || !heroArtworkImage.preserveAspect)
+            {
+                throw new InvalidOperationException(
+                    "HeroArtwork must preserve its native aspect ratio " +
+                    "instead of stretching.");
+            }
+
+            Image overlayBackgroundImage =
+                completion.GetComponent<Image>();
+            if (overlayBackgroundImage == null
+                || overlayBackgroundImage.color.a < 0.999f)
+            {
+                throw new InvalidOperationException(
+                    "LevelCompleteOverlay's background must be fully " +
+                    "opaque so gameplay/HUD never shows through it.");
+            }
+
             RequireChild(completion, "CompletionContent/Title");
             RequireChild(completion, "CompletionContent/Sector");
             RequireChild(completion, "CompletionContent/Description");

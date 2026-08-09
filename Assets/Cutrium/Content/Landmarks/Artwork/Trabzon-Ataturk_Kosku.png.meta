@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 8f2967bcc77ad8846ababff2519adb49
+guid: 928704d043c0ecf47afe681921f4a4b2
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 6274674908906517241
-    second: GalataKulesi_0
+      213: -4758387857945551406
+    second: Trabzon-Ataturk_Kosku_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -55,7 +55,7 @@ TextureImporter:
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
-  alphaIsTransparency: 0
+  alphaIsTransparency: 1
   spriteTessellationDetail: -1
   textureType: 8
   textureShape: 1
@@ -126,7 +126,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: GalataKulesi_0
+      name: Trabzon-Ataturk_Kosku_0
       rect:
         serializedVersion: 2
         x: 0
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 9f2fd62c59f141750800000000000000
-      internalID: 6274674908906517241
+      spriteID: 2dd9f97447fc6fdb0800000000000000
+      internalID: -4758387857945551406
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      GalataKulesi_0: 6274674908906517241
+      Trabzon-Ataturk_Kosku_0: -4758387857945551406
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
