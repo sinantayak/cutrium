@@ -904,3 +904,358 @@ replaced with `QuickRetryButton_ExistsAndIsInteractable` and
 `Cutrium.Gameplay` file, board geometry, or capture/threat/barrier rule;
 power charge/activation logic in `FirstPlayableController` is untouched —
 only its HUD entry points changed.
+
+## ADR-025 — Wet-Glass Landmark Reveal: Pre-Baked Blur + Shared Procedural Fog/Droplets + RectTransform/UV Wipe
+
+**Status:** Superseded by ADR-026
+
+This direction was fully implemented and validated (231/231 EditMode,
+112/112 PlayMode, two idempotent setup runs) but never committed. The
+human reviewer abandoned it before visual review in favor of the
+sand/bowl direction in ADR-026, and the implementation (blur pipeline,
+fog/droplet generator, and the fog/wipe composite logic in
+`LandmarkRevealPresenter`) was removed rather than left unused. Kept
+below for historical record.
+
+**Context:**
+Human review asked for a "fogged, wet glass" pivot of the landmark reveal
+(ADR-021/022/023/024): the hidden landmark should read as strongly
+blurred behind visible condensation and restrained droplets/streaks
+(barely recognizable), and capturing a region should play a short
+(0.25-0.5s) directional wipe to sharp artwork with a subtle wet edge —
+replacing the flat near-opaque "veil" `Image` and its instant
+`CanvasGroup`-alpha fade. The request explicitly ruled out an externally
+sourced overlay PNG (none suitable was available), a literal squeegee
+sprite, and any expensive per-frame full-screen blur shader, while
+requiring every generated asset to stay swappable for real artist-provided
+art later without rewriting the reveal system.
+
+**Decision:**
+Add `Cutrium.Editor.Setup.LandmarkArtworkBlurPipeline`, a pure-C# (no
+`Graphics.Blit`/`RenderTexture`, so it behaves identically under
+`-nographics` batchmode) separable box blur that decodes each landmark's
+sharp `Artwork` sprite from its own asset file bytes into a scratch,
+memory-only `Texture2D` (never touching the source asset or its import
+settings), downsamples large sources, and writes a deterministic blurred
+PNG to `Assets/Cutrium/Art/Generated/LandmarkBlur/` via
+`LandmarkDefinition.ConfigureBlurredArtworkForSetup`. Add
+`Cutrium.Editor.Setup.WetGlassTextureGenerator`, which extends the
+existing formula-based deterministic sprite technique (`GeneratedPattern`
+in `LandmarkRevealPresentationSetup`) with two new shared, board-wide
+textures: a multi-octave low-frequency `fog_condensation` field and a
+fixed, hand-placed `wet_glass_droplets` overlay (sparse small/medium
+beads, a few larger ones, soft vertical runoff streaks, transparent
+background). `ThemeDefinition` gains optional `FogTexture`/`DropletTexture`
+fields (`ConfigureWetGlassForSetup`) resolved through a new
+`ThemeResolver.ResolveWetGlass` following the existing selected-theme →
+fallback-theme → generated-default order (ADR-018), so a future
+artist-provided `FogTexture.png`/`WetGlassDroplets.png` needs no reveal-
+system code change.
+
+`LandmarkRevealPresenter` replaces its single-`Image` `VeilView`/
+`RenderVeils` with two pooled composites sharing one `_veilRoot`: an
+active-room "fog" composite (three `RawImage`s — blurred artwork, fog,
+droplets — each `uvRect`-cropped into the shared board-wide textures using
+the room's logical bounds normalized against the 10x16 board, plus a
+restrained flat tint) that always shows full coverage while a room stays
+uncaptured; and a transient "wipe" composite spawned once per newly
+appeared entry in the append-only `Board.CapturedRooms` list (tracked by
+an integer index, not a `RoomId` `HashSet`, because `RoomId` values are
+reused across Retry/Next sessions) that shrinks its own `RectTransform`
+width and all three `uvRect`s by the same fraction over 0.25-0.5s
+(`revealFadeSeconds`), with a thin edge-anchored highlight child visible
+only mid-wipe, then is pooled — no shader, no per-frame screen blur, only
+RectTransform/UV math on already-pooled objects. Because a level can
+complete on the same tick a room is captured (the capturing cut is
+usually what reaches the target), and a split can also leave a still-
+active sibling that is never individually captured, completion
+additionally spawns a wipe for every room still in the *live*
+`Board.ActiveRooms` at that instant (not a stale cached parent rect from
+before the split) — so multiple simultaneous wipes, each at its own exact
+rectangle, are normal and expected, not a bug. A cached
+`ThreatMotionSession` reference comparison resets all fog/wipe pooling and
+the captured-rooms index whenever Retry/Next replaces the session.
+
+**Reasoning:**
+Reading pixels from decoded file bytes into a throwaway texture (rather
+than flipping the source's `TextureImporter.isReadable` or using
+`Graphics.Blit`) is the only technique that is simultaneously
+non-destructive to the source asset and reliable in `-nographics`
+batchmode, which every setup/test run in this repository already depends
+on. Sampling one shared full-board texture per effect (rather than a
+unique texture per room) gives visual continuity across split boundaries
+for free and needs only three textures total regardless of board
+complexity. Scoping each wipe to the *exact* captured (or, at completion,
+still-active) room rectangle — rather than the vanished parent's larger
+pre-split rect — was chosen after an early implementation wiped into a
+still-fogged sibling room's territory; an index into the append-only
+`CapturedRooms` list sidesteps both that hazard and `RoomId` reuse across
+sessions.
+
+**Consequences:**
+`LandmarkRevealPresenter.Configure(...)` replaces its `veilSprite`/
+`veilColor` parameters with `fogTexture`/`dropletTexture` (uncommitted at
+the time of this pivot, so no backward-compatible overload was needed);
+`LandmarkRevealPlayModeTests.IsolatedRig` and
+`LandmarkRevealPresentationSetup.ConfigureLandmarkLayer` were updated to
+match. The now-unused `veil_texture` `GeneratedPattern` and its
+`VeilColor` constant were removed. `AllVeilsFullyRevealed` now means "no
+wipe is in flight" (active-room fog composites never animate on their
+own) and `VisibleVeilCount` keeps its exact prior meaning
+(`ActiveRooms.Count` for the frame, 0 once completed). Tests must cover
+blur/fog/droplet determinism and idempotency, that the source artwork
+asset is never touched, active-vs-captured obscuring state, exact
+wipe-rectangle geometry, multiple simultaneous captures/wipes, Retry/Next
+resetting fog state, presentation-disabled gameplay parity, and
+board-frame-size independence of the underlying logical geometry. This
+decision changes no `Cutrium.Gameplay` file, board geometry, or
+capture/threat/barrier/power rule; it is presentation-only, layered on
+top of the same `Board.ActiveRooms`/`CapturedRooms` state every other
+presenter already reads.
+
+## ADR-026 — Sand & Bowl Landmark Reveal: Opaque Sand Recede + Cosmetic Grain Flight to an Independent Bowl Fill
+
+**Status:** Accepted
+
+**Context:**
+Before visual review, the human reviewer abandoned ADR-025's wet-glass
+direction for a different metaphor: the board should look covered in
+sand when uncaptured; cutting a region should drain the sand from that
+exact rectangle (revealing the sharp landmark underneath) while a burst
+of sand grains visually flies from that board location down into a bowl
+elsewhere in the HUD; the bowl's fill level should rise to track capture
+progress, with the target percentage printed beside it. Three scope
+decisions were confirmed with the reviewer before implementation: (1) a
+procedural placeholder bowl now, replaceable later -- no blocking on a
+real asset; (2) the bowl and target text live in `BottomHUD` (sand pours
+top-down from the board into a bottom-anchored bowl), not replacing the
+TopHUD progress bar; (3) sand grains visually travel the full on-screen
+distance from the captured board region to the bowl, not just a local
+board effect.
+
+**Decision:**
+Add `Cutrium.Editor.Setup.SandTextureGenerator` (a warm tan opaque
+surface: two low-frequency sine bands for dune ripples plus clustered
+fine-grain variation) and `Cutrium.Editor.Setup.BowlSpriteGenerator`
+(`bowl_outline`, a decorative rim, and `bowl_interior_mask`, an alpha
+mask driving a `UnityEngine.UI.Mask`, both derived from one shared bowl
+cross-section formula), following the same deterministic write-only-if-
+changed procedural-PNG technique already used throughout this project's
+setup utilities. `ThemeDefinition` gains optional `SandTexture`/
+`BowlOutlineSprite`/`BowlInteriorMaskSprite` fields
+(`ConfigureSandBowlForSetup`) resolved through a new
+`ThemeResolver.ResolveSandBowl` following ADR-018's selected → fallback →
+generated-default order.
+
+`LandmarkRevealPresenter` keeps ADR-025's pooling skeleton (fog-style
+active-room composite; a captured-room reconciliation driven by an index
+into the append-only `Board.CapturedRooms` list, immune to `RoomId` reuse
+across Retry/Next sessions; a cached `ThreatMotionSession` reference to
+detect session resets) but replaces the composite's blur/fog/droplet
+`RawImage`s with a single sand `RawImage`, and changes the recede
+direction from a horizontal squeegee wipe to a **vertical, top-to-bottom**
+shrink (the sand's visible height and its `uvRect` height shrink
+together, bottom edge anchored, over the same 0.25-0.5s window) so
+uncovering reads as sand draining downward and out. Each newly captured
+room additionally spawns a small fixed-size burst of pooled `Image`
+"grain" views, parented to a dedicated full-safe-area `GrainFlightRoot`
+(needed because grains must cross from board space into `BottomHUD`
+space), animated via `RectTransform.TransformPoint`/
+`InverseTransformPoint` (no screen/camera conversion needed -- both board
+and bowl live under the same `SafeAreaRoot` Canvas hierarchy) from the
+captured room's position to a `bowlFillTarget` reference point, with a
+simple sine-arc toss for visual interest, then pooled back. This burst is
+**purely cosmetic**: it never reads or writes `CapturedFraction`.
+
+A new `SandBowlPresenter` (`Cutrium.Presentation.HUD`, mirroring
+`CaptureHudPresenter`'s `Configure`/`RefreshNow`/`LateUpdate` shape) owns
+the bowl's actual fill level independently: each frame it resizes a
+bottom-anchored `sandFillRect`'s `anchorMax.y` directly from
+`Session.CapturedFraction` (clipped to the bowl's silhouette by the
+`Mask` above it) and updates a target-percentage `Text` from
+`Session.TargetCapturedFraction`. `LandmarkRevealPresentationSetup`
+builds the bowl (left-anchored in `BottomHUD`) and re-anchors
+`QuickRetryButton` to the row's right edge (previously dead-centered) so
+the two elements share the row without collision, then wires both
+presenters together by passing `SandBowlPresenter`'s fill-target
+`RectTransform` into `LandmarkRevealPresenter.Configure(...)` as the
+grain burst's aim point.
+
+**Reasoning:**
+Driving the bowl's fill level directly from `CapturedFraction` -- never
+from counting arrived grain particles -- was chosen specifically so the
+readout can never desync from real gameplay state regardless of
+animation timing, frame drops, or how many grains are still mid-flight;
+this mirrors the same reasoning ADR-017/021 already established for
+other reward presentation (logical state is authoritative, animation is
+decorative). Using `RectTransform.TransformPoint`/`InverseTransformPoint`
+rather than `RectTransformUtility.WorldToScreenPoint` avoids any
+render-camera dependency, keeping the grain-flight geometry exactly as
+deterministic and Play-Mode-testable as the rest of this project's
+UI-space presentation math. Keeping ADR-025's pooling/session-reset
+skeleton (rather than rewriting it from scratch) reused already-proven,
+already-tested mechanics and confined this pivot's actual changes to the
+composite's visual content and the recede axis.
+
+**Consequences:**
+`LandmarkRevealPresenter.Configure(...)`'s `fogTexture`/`dropletTexture`
+parameters became `sandTexture`/`grainFlightRoot`/`bowlFillTarget`
+(uncommitted at the time of this pivot, so no backward-compatible
+overload was needed); `LandmarkRevealPlayModeTests.IsolatedRig` and
+`LandmarkRevealPresentationSetup.ConfigureLandmarkLayer`/
+`ConfigureBottomHud` were updated to match. `LandmarkDefinition.
+BlurredArtwork` and the whole blur pipeline were removed -- sand fully
+covers uncaptured area (no blurred-but-visible artwork state exists in
+this direction). Tests must cover sand/bowl-sprite determinism and
+idempotency, active-vs-captured obscuring state, exact recede-rectangle
+geometry, multiple simultaneous captures, grain-burst spawn/pool-return
+behavior, the bowl's exact fill-fraction tracking, Retry/Next resetting
+both sand and bowl state, presentation-disabled gameplay parity, and
+board-frame-size independence of the underlying logical geometry. This
+decision changes no `Cutrium.Gameplay` file, board geometry, or
+capture/threat/barrier/power rule; it is presentation-only, layered on
+the same `Board.ActiveRooms`/`CapturedRooms`/`CapturedFraction` state
+every other presenter already reads.
+
+## ADR-027 — Minimal In-Level HUD with Sand-Arrival-Gated Target Progress
+
+**Status:** Accepted; layout alignment amended by ADR-028
+
+**Context:**
+Normal gameplay had two progress presentations (a TopHUD capture bar and a
+BottomHUD bowl), plus a normal-gameplay Retry button. The desired product
+composition is now deliberately minimal: the board and one progress bar below
+it. That bar must use the imported `Progress_Frame`, `Progress_Background`, and
+`Progress_Fill` art, measure completion toward the level target rather than
+toward 100% board capture, and visually wait for the existing sand stream. The
+authoritative capture/completion state must remain immediate.
+
+**Decision:**
+Keep the legacy TopHUD, quick-Retry, bowl, power, and debug objects/references
+inactive rather than deleting them; keep the existing completion overlay and
+its Retry/Next flow unchanged. Add a `SandProgressPresenter` to a new
+`BottomHUD/ProgressBar` hierarchy. The full-width Fill image remains fixed
+behind a `RectMask2D`; only the mask width changes. Display fill is
+`Clamp01(displayedCapturedFraction / targetCapturedFraction)` and text is the
+same presentation value plus the live target (`Current% / Target%`).
+
+`SandProgressPresenter` polls the live session and owns a separate monotonic
+display value. Logical increases become pending immediately but do not start
+the interpolation. `LandmarkRevealPresenter` tags one leading pooled grain per
+captured-room stream with the captured fraction at release; when it reaches a
+`FillStartTarget` anchored to the actual mask's left edge, it releases that
+value into a smooth time-based interpolation. Later arrivals retarget from the
+current display, stale/lower arrivals are ignored, and a bounded fallback
+releases the latest authoritative value if sand presentation is absent. A new
+session or logical decrease snaps presentation to the new authoritative
+baseline, preventing Retry/Next carryover or floating-point accumulation.
+
+The grain stream remains the existing pooled UI-image system, tuned to 28-72
+grains per capture with varied size, color, duration, arc, lateral drift, and
+rotation. Both view and flight records are pooled, with a hard 144-view cap.
+Completion-only grains from still-active rooms do not release progress because
+they do not represent logical capture.
+
+To keep the bar directly below the actual board on tall phones,
+`BoardViewportLayout`/`BoardCameraFitter` support a normalized vertical
+alignment and this presentation selects bottom alignment inside the existing
+flexible `BoardStage`. Both the placed viewport and `BoardScreenRect` use the
+same alignment. The logical board remains exactly 10x16; solver, gesture, and
+input mapping rules are unchanged. Bar width is derived from the live board
+RectTransform rather than a screen coordinate.
+
+**Reasoning:**
+Arrival-gating only the display value makes the reward sequence legible without
+allowing particles or frame timing to become gameplay state. A fixed Fill plus
+mask avoids dynamically distorting the authored gradient. Inactive legacy
+objects preserve serialized/locked-test seams while satisfying the clean
+player-facing screen. Bottom alignment absorbs tall-phone surplus above the
+board and avoids a large visual gap between board and progress without adding
+device-specific placement values.
+
+**Consequences:**
+Normal play shows only board plus the new progress bar; Level Complete remains
+authoritative and may cover a progress animation that is still catching up.
+The three progress sprites are required setup inputs at their discovered paths
+under `Assets/Cutrium/Content/Gui/`. Focused tests must cover asset wiring,
+hidden legacy HUD, target-relative fill, exact settlement, arrival/fallback
+retargeting, pool bounds/destination tracking, Retry/Next reset, UI input
+blocking, and 1080x1920/1080x2400/1536x2048 layouts. This decision changes no
+`Cutrium.Gameplay` source file or content definition.
+
+## ADR-028 — Reserved HUD Bands with a Centered Board Fit
+
+**Status:** Accepted; supersedes only ADR-027's collapsed-TopHUD and
+bottom-alignment layout choices.
+
+**Context:**
+The minimal-HUD pass deactivated TopHUD, set its layout height to zero, and
+bottom-aligned the 10x16 board inside the flexible board region. Unity excludes
+inactive children from `VerticalLayoutGroup`, so TopHUD stopped being a real
+reserved region. On tall screens the asymmetric fit then accumulated all
+unavoidable aspect-ratio surplus above the board, producing an unbalanced
+composition and making the BottomHUD progress appear stuck to the screen edge.
+TopHUD and BottomHUD are durable screen regions intended to receive future UI,
+even when their present content is visually minimal.
+
+**Decision:**
+Keep `SafeAreaRoot` layout-driven with three active bands: an active 52/60-unit
+minimum/preferred TopHUD with hidden placeholder children, the existing
+`BoardStage` flexible-height region containing the fitted `BoardViewport`, and
+an active 94/98-unit minimum/preferred BottomHUD containing the centered
+progress bar. Restore `BoardCameraFitter` vertical alignment to 0.5 so the
+unchanged 10x16 `BoardViewport` is centered within the available flexible
+region. Safe-area padding remains 12 horizontal/6 vertical with 4-unit spacing.
+
+`BoardStage` remains the compatibility/layout wrapper established by the scene
+setup chain; semantically it is the board-viewport region. `BoardViewport` and
+its full-stretch `BoardFrame` remain the exact fitted input/visual rect. No
+anchored device-specific Y positions are introduced.
+
+**Reasoning:**
+Fixed compact HUD bands plus one flexible middle band preserve the intended
+screen hierarchy and make later HUD additions local changes. Centered aspect
+fit distributes unavoidable tall-phone presentation space equally above and
+below the board, while a 4:3 tablet naturally uses horizontal margins. Using
+the same fitted rect for camera, visuals, and input preserves mapping semantics.
+
+**Consequences:**
+TopHUD is structurally present but visually empty; BottomHUD contains only the
+new sand-fed progress bar. The board remains dominant, centered within its
+available region, and exactly 10x16. Responsive tests report physical-pixel
+rects at 1080x1920, 1080x2400, and 1536x2048 and assert compact bands,
+balanced board-region surplus, progress containment, and separation from the
+gameplay input rect. Gameplay, capture, solver, gesture, threat, reveal, and
+progress logic are unchanged.
+
+## ADR-029 — Brown Surround, Transparent Capture Overlay, and Owner Sand Art
+
+**Status:** Accepted.
+
+**Context:**
+The normal gameplay surround still read as dark green-blue, while captured
+room overlays painted an additional theme sprite over the landmark artwork.
+The project owner also replaced the established generated-path sand PNG with
+their own artwork, so an idempotent setup must no longer regenerate that file.
+The first three catalog landmarks are intended for levels one through three.
+
+**Decision:**
+Use a solid dark-brown selected-theme background (`0.12, 0.07, 0.045, 1`) and
+a dark-brown flat fallback (`0.09, 0.05, 0.035, 1`). Keep each pooled
+`CapturedRegion*` object as the existing geometry/test seam, but clear its
+sprite, material, and color so captured space reveals the landmark directly.
+Keep the existing ordered catalog mapping of Galata Kulesi, Coastal Lagoon,
+and Desert Dunes to level indices zero, one, and two.
+
+Treat the current `Assets/Cutrium/Art/Generated/Sand/sand_surface.png` bytes as
+owner-authored. `SandTextureGenerator` may generate its procedural fallback
+only if that path is absent; when the PNG exists it may configure its importer
+but must never replace the file contents.
+
+**Consequences:**
+No gameplay, capture percentage, completion, board, input, threat, or reveal
+rule changes. Captured regions still exist and track logical room geometry but
+are visually transparent. Re-running the presentation setup applies the brown
+theme and preserves the exact current sand image. Focused tests lock the first
+three landmark order, transparent capture styling, brown theme values, and
+byte-for-byte sand preservation.

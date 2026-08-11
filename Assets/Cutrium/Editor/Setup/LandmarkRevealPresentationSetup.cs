@@ -23,9 +23,11 @@ namespace Cutrium.Editor.Setup
     /// identity: calmer board/barrier/threat visuals, a compact power row
     /// integrated into the bottom HUD, a full-screen opaque completion
     /// reward screen with a fixed-aspect framed hero photo, and a
-    /// data-driven LandmarkRevealPresenter that obscures active area and
-    /// reveals landmark artwork as it is captured. This is not Milestone 7
-    /// and does not change gameplay.
+    /// data-driven LandmarkRevealPresenter that covers active area with
+    /// sand and reveals landmark artwork as it is captured, sending a
+    /// cosmetic sand stream to the target-progress bar in BottomHUD. The
+    /// progress value is presentation-only and does not change gameplay.
+    /// See ADR-026 and ADR-027.
     public static class LandmarkRevealPresentationSetup
     {
         public const string GeneratedFolder =
@@ -36,14 +38,19 @@ namespace Cutrium.Editor.Setup
             LandmarkContentFolder + "/Artwork";
         public const string CleanupThemePath =
             Milestone5SceneSetup.CleanupThemePath;
+        public const string ProgressFramePath =
+            "Assets/Cutrium/Content/Gui/Progress_Frame.png";
+        public const string ProgressBackgroundPath =
+            "Assets/Cutrium/Content/Gui/Progress_Background.png";
+        public const string ProgressFillPath =
+            "Assets/Cutrium/Content/Gui/Progress_Fill.png";
+        public const string ThreatVisualPath =
+            "Assets/Cutrium/Content/Gui/Threat_Visual.png";
 
         private const float BarrierVisualLogicalThickness = 0.13f;
         private const float RevealFadeSeconds = 0.35f;
-
-        // Near-opaque, near-black: unrevealed area should read as solidly
-        // hidden -- almost nothing of the artwork should be visible.
-        private static readonly Color VeilColor =
-            new Color(0.015f, 0.02f, 0.03f, 0.996f);
+        private static readonly Color DarkBrownBackground =
+            new Color(0.12f, 0.07f, 0.045f, 1f);
 
         [MenuItem("Cutrium/Setup/Landmark Reveal Presentation Pass")]
         public static void Apply()
@@ -56,6 +63,19 @@ namespace Cutrium.Editor.Setup
             ThemeDefinition cleanup = LoadTheme(CleanupThemePath);
             ConfigureCleanupTheme(cleanup, sprites);
             LandmarkDefinition[] landmarks = ConfigureLandmarks(sprites);
+
+            // Sand/bowl reveal (ADR-026): EnsureSandTexture only generates
+            // when the PNG is missing. An existing file is user-authored and
+            // must be imported as-is; setup never rewrites its bytes.
+            Sprite sandSprite = SandTextureGenerator.EnsureSandTexture();
+            Sprite bowlOutlineSprite = BowlSpriteGenerator.EnsureBowlOutline();
+            Sprite bowlInteriorMaskSprite =
+                BowlSpriteGenerator.EnsureBowlInteriorMask();
+            cleanup.ConfigureSandBowlForSetup(
+                sandSprite,
+                bowlOutlineSprite,
+                bowlInteriorMaskSprite);
+            EditorUtility.SetDirty(cleanup);
             AssetDatabase.SaveAssets();
 
             Scene scene = EditorSceneManager.OpenScene(
@@ -67,7 +87,8 @@ namespace Cutrium.Editor.Setup
             sprites = ReloadGeneratedSprites(sprites.Keys);
             cleanup = LoadTheme(CleanupThemePath);
             landmarks = ReloadLandmarks();
-            Configure(scene, sprites, cleanup, landmarks);
+            ProgressSprites progressSprites = LoadProgressSprites();
+            Configure(scene, sprites, cleanup, landmarks, progressSprites);
             Validate(scene, landmarks);
             if (!EditorSceneManager.SaveScene(
                     scene,
@@ -79,11 +100,10 @@ namespace Cutrium.Editor.Setup
 
             AssetDatabase.SaveAssets();
             Debug.Log(
-                "Landmark Reveal Presentation Pass verified. A compact " +
-                "integrated power row, a full-screen opaque completion " +
-                "reward screen with a fixed-aspect framed hero photo, and " +
-                "a three-landmark reveal pipeline (led by Galata Kulesi) " +
-                "are ready.");
+                "Landmark Reveal Presentation Pass verified. Normal play " +
+                "shows only the 10x16 board and the sand-fed target-progress " +
+                "bar; the full-screen landmark completion flow remains " +
+                "wired and ready.");
         }
 
         private static void VerifyBaseline()
@@ -138,7 +158,6 @@ namespace Cutrium.Editor.Setup
                 { "barrier_body_soft", GeneratedPattern.BarrierBody },
                 { "threat_gem", GeneratedPattern.ThreatGem },
                 { "power_button", GeneratedPattern.PowerButton },
-                { "veil_texture", GeneratedPattern.Veil },
                 { "chip_rounded", GeneratedPattern.ChipRounded },
                 { "landmark_alpine", GeneratedPattern.LandmarkAlpine },
                 { "landmark_coastal", GeneratedPattern.LandmarkCoastal },
@@ -151,9 +170,7 @@ namespace Cutrium.Editor.Setup
                 bool isLandmark = pair.Value == GeneratedPattern.LandmarkAlpine
                     || pair.Value == GeneratedPattern.LandmarkCoastal
                     || pair.Value == GeneratedPattern.LandmarkDesert;
-                int size = isLandmark ? 48
-                    : pair.Value == GeneratedPattern.Veil ? 64
-                    : 32;
+                int size = isLandmark ? 48 : 32;
                 string path = $"{GeneratedFolder}/{pair.Key}.png";
                 EnsureGeneratedPng(path, pair.Value, size);
                 Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
@@ -301,21 +318,6 @@ namespace Cutrium.Editor.Setup
                 {
                     float shade = Mathf.Clamp01(1f - radius * 1.3f);
                     return new Color(1f, 1f, 1f, 0.22f + shade * 0.18f);
-                }
-
-                case GeneratedPattern.Veil:
-                {
-                    // Two-octave noise approximates a soft frosted/blurred
-                    // obscuring surface (rather than a flat semi-transparent
-                    // tile). Kept low-contrast and dark so, combined with
-                    // VeilColor's near-opaque near-black tint, almost
-                    // nothing of the hidden artwork reads through.
-                    float macro = 0.5f + 0.5f
-                        * Mathf.Sin(u * 5.1f + 1.7f)
-                        * Mathf.Cos(v * 4.3f + 0.9f);
-                    float micro = (x * 13 + y * 7) % 17 / 17f;
-                    float shade = Mathf.Lerp(0.06f, 0.14f, macro * 0.7f + micro * 0.3f);
-                    return new Color(shade, shade, shade, 1f);
                 }
 
                 case GeneratedPattern.LandmarkAlpine:
@@ -503,13 +505,13 @@ namespace Cutrium.Editor.Setup
         {
             theme.ConfigureForSetup(
                 "cleanup-chamber-prototype",
-                theme.BackgroundSprite,
-                Color.white,
+                null,
+                DarkBrownBackground,
                 sprites["board_calm"],
                 Color.white,
                 sprites["frame_soft"],
                 Color.white,
-                sprites["threat_gem"],
+                LoadSingleSprite(ThreatVisualPath),
                 Color.white,
                 Vector2.one,
                 Vector2.zero,
@@ -524,9 +526,9 @@ namespace Cutrium.Editor.Setup
                 new Color(0.65f, 0.88f, 0.95f, 0.92f),
                 new Color(0.95f, 0.8f, 0.4f, 1f),
                 new Color(0.9f, 0.42f, 0.44f, 0.85f),
-                theme.CaptureSprite,
                 null,
-                new Color(0.85f, 0.72f, 0.42f, 0.16f),
+                null,
+                Color.clear,
                 // Fully transparent: TopHUD/BottomHUD no longer paint their
                 // own panel behind their content, so they show through to
                 // the same outer canvas background as everything else
@@ -648,6 +650,28 @@ namespace Cutrium.Editor.Setup
             return reloaded;
         }
 
+        private static ProgressSprites LoadProgressSprites()
+        {
+            return new ProgressSprites(
+                LoadSingleSprite(ProgressFramePath),
+                LoadSingleSprite(ProgressBackgroundPath),
+                LoadSingleSprite(ProgressFillPath));
+        }
+
+        private static Sprite LoadSingleSprite(string path)
+        {
+            UnityEngine.Object[] imported = AssetDatabase.LoadAllAssetsAtPath(path);
+            Sprite[] sprites = imported.OfType<Sprite>().ToArray();
+            if (sprites.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Progress UI asset '{path}' must contain exactly one " +
+                    $"Sprite subasset, found {sprites.Length}.");
+            }
+
+            return sprites[0];
+        }
+
         // ------------------------------------------------------------
         // Scene composition
         // ------------------------------------------------------------
@@ -656,7 +680,8 @@ namespace Cutrium.Editor.Setup
             Scene scene,
             IReadOnlyDictionary<string, Sprite> sprites,
             ThemeDefinition cleanup,
-            LandmarkDefinition[] landmarks)
+            LandmarkDefinition[] landmarks,
+            ProgressSprites progressSprites)
         {
             GameObject root = RequireRoot(scene, "VerticalSliceRoot");
             Transform safeArea = RequireChild(root.transform, "Canvas/SafeAreaRoot");
@@ -684,21 +709,39 @@ namespace Cutrium.Editor.Setup
             barrierPresenter.SetVisualLogicalThickness(
                 BarrierVisualLogicalThickness);
 
+            Transform topHud = RequireChild(safeArea, "TopHUD");
+            Transform bottomHud = RequireChild(safeArea, "BottomHUD");
+
+            ConfigureMinimalTopHud(topHud);
+            ConfigureMinimalBottomHud(
+                root,
+                safeArea,
+                controller,
+                boardFrame,
+                progressSprites,
+                out SandProgressPresenter sandProgressPresenter,
+                out RectTransform progressFillStartTarget);
+            RectTransform grainFlightRoot = ConfigureGrainFlightRoot(safeArea);
+
             ConfigureLandmarkLayer(
                 root,
                 boardFrame,
-                sprites,
                 controller,
                 RequireChild(safeArea, "LevelCompleteOverlay"),
                 landmarks,
+                cleanup,
+                grainFlightRoot,
+                progressFillStartTarget,
+                sandProgressPresenter,
                 out LandmarkRevealPresenter landmarkPresenter);
 
-            Transform topHud = RequireChild(safeArea, "TopHUD");
-            Transform bottomHud = RequireChild(safeArea, "BottomHUD");
-            RestyleHud(hud, topHud, sprites);
-            ConfigureBottomHud(root, safeArea, controller, sprites);
             HideDebugFooter(bottomHud);
             FinalizeThemeTextSync(themePresenter, topHud, bottomHud);
+            // TopHUD and BottomHUD are fixed reserved bands; BoardStage owns
+            // the flexible remainder. Center the unchanged 10:16 fit inside
+            // that remainder so any unavoidable tall-screen surplus is
+            // balanced above and below the board.
+            boardCameraFitter.ConfigureVerticalAlignmentForSetup(0.5f);
 
             // Resolve BoardViewport to the real aspect-fitted rect before
             // saving, so the scene doesn't sit at a stale/fallback size --
@@ -712,23 +755,67 @@ namespace Cutrium.Editor.Setup
             threatPresenter.RefreshNow();
             capturePresenter.RefreshNow();
             landmarkPresenter.RefreshNow();
+            sandProgressPresenter.RefreshNow();
 
             EditorUtility.SetDirty(controller);
             EditorUtility.SetDirty(barrierPresenter);
             EditorUtility.SetDirty(landmarkPresenter);
+            EditorUtility.SetDirty(sandProgressPresenter);
             EditorUtility.SetDirty(hud);
             EditorUtility.SetDirty(powerHud);
             EditorUtility.SetDirty(boardCameraFitter);
             EditorUtility.SetDirty(boardViewport.gameObject);
         }
 
+        // A dedicated full-safe-area overlay that sand-grain particles
+        // (spawned by LandmarkRevealPresenter) fly across, from the
+        // captured board region to the progress bar in BottomHUD -- outside
+        // _boardFrame's own hierarchy, since grains must cross into
+        // BottomHUD space. Kept just before LevelCompleteOverlay in
+        // sibling order (not last) so completion still visually covers
+        // any leftover grain.
+        private static RectTransform ConfigureGrainFlightRoot(Transform safeArea)
+        {
+            RectTransform grainFlightRoot = GetOrCreateUiChild(
+                safeArea,
+                "GrainFlightRoot");
+            StretchToParent(grainFlightRoot);
+            // ignoreLayout so safeArea's VerticalLayoutGroup never treats
+            // this as a normal flow band (it would otherwise consume
+            // vertical space and push TopHUD/BoardStage/BottomHUD down) --
+            // the same pattern LevelCompleteOverlay already uses.
+            LayoutElement grainFlightLayout = GetOrAddComponent<LayoutElement>(
+                grainFlightRoot.gameObject);
+            grainFlightLayout.ignoreLayout = true;
+            EditorUtility.SetDirty(grainFlightLayout);
+
+            grainFlightRoot.SetAsLastSibling();
+
+            // Re-assert LevelCompleteOverlay as the final sibling
+            // explicitly, rather than reading its current index and
+            // moving grainFlightRoot there -- on a repeat run
+            // grainFlightRoot may already sit before it, and moving to a
+            // *stale* captured index would push the overlay out of last
+            // place instead of keeping it there.
+            Transform completionOverlay = safeArea.Find("LevelCompleteOverlay");
+            if (completionOverlay != null)
+            {
+                completionOverlay.SetAsLastSibling();
+            }
+
+            return grainFlightRoot;
+        }
+
         private static void ConfigureLandmarkLayer(
             GameObject root,
             RectTransform boardFrame,
-            IReadOnlyDictionary<string, Sprite> sprites,
             FirstPlayableController controller,
             Transform completionOverlay,
             LandmarkDefinition[] landmarks,
+            ThemeDefinition sandBowlTheme,
+            RectTransform grainFlightRoot,
+            RectTransform progressFillStartTarget,
+            SandProgressPresenter sandProgressPresenter,
             out LandmarkRevealPresenter landmarkPresenter)
         {
             RectTransform boardSurface =
@@ -938,6 +1025,13 @@ namespace Cutrium.Editor.Setup
             CanvasGroup nextGroup =
                 GetOrAddComponent<CanvasGroup>(nextTransform.gameObject);
 
+            SandBowlVisualStyle sandBowl = ThemeResolver.ResolveSandBowl(
+                sandBowlTheme,
+                null);
+            Texture2D sandTexture = sandBowl.SandTexture != null
+                ? sandBowl.SandTexture.texture
+                : null;
+
             GameObject services = GetOrCreateChild(
                 root.transform,
                 "LandmarkServices");
@@ -948,8 +1042,10 @@ namespace Cutrium.Editor.Setup
                 boardFrame,
                 artworkImage,
                 veilRoot,
-                sprites["veil_texture"],
-                VeilColor,
+                sandTexture,
+                grainFlightRoot,
+                progressFillStartTarget,
+                sandProgressPresenter,
                 RevealFadeSeconds,
                 heroImage,
                 scrimGroup,
@@ -1031,6 +1127,202 @@ namespace Cutrium.Editor.Setup
                 row.gameObject.SetActive(false);
                 EditorUtility.SetDirty(row.gameObject);
             }
+        }
+
+        private static void ConfigureMinimalTopHud(Transform topHud)
+        {
+            topHud.gameObject.SetActive(true);
+
+            LayoutElement layout = topHud.GetComponent<LayoutElement>();
+            if (layout != null)
+            {
+                layout.minHeight = 52f;
+                layout.preferredHeight = 60f;
+                layout.flexibleHeight = 0f;
+                EditorUtility.SetDirty(layout);
+            }
+
+            // Keep the band itself active so Unity's VerticalLayoutGroup
+            // reserves it. Only today's legacy/placeholder children are
+            // hidden; future TopHUD content can be added without rebuilding
+            // the screen hierarchy.
+            for (int index = 0; index < topHud.childCount; index++)
+            {
+                GameObject child = topHud.GetChild(index).gameObject;
+                child.SetActive(false);
+                EditorUtility.SetDirty(child);
+            }
+
+            EditorUtility.SetDirty(topHud.gameObject);
+        }
+
+        private static void ConfigureMinimalBottomHud(
+            GameObject root,
+            Transform safeArea,
+            FirstPlayableController controller,
+            RectTransform boardFrame,
+            ProgressSprites sprites,
+            out SandProgressPresenter presenter,
+            out RectTransform fillStartTarget)
+        {
+            Transform bottomHud = RequireChild(safeArea, "BottomHUD");
+            bottomHud.gameObject.SetActive(true);
+
+            LayoutElement bottomLayout = bottomHud.GetComponent<LayoutElement>();
+            bottomLayout.minHeight = 94f;
+            bottomLayout.preferredHeight = 98f;
+            bottomLayout.flexibleHeight = 0f;
+            EditorUtility.SetDirty(bottomLayout);
+
+            VerticalLayoutGroup bottomColumn =
+                bottomHud.GetComponent<VerticalLayoutGroup>();
+            if (bottomColumn != null)
+            {
+                bottomColumn.padding = new RectOffset(4, 4, 4, 4);
+                bottomColumn.spacing = 0f;
+                bottomColumn.childAlignment = TextAnchor.MiddleCenter;
+                EditorUtility.SetDirty(bottomColumn);
+            }
+
+            Transform powerControls = RequireChild(safeArea, "PowerControls");
+            powerControls.gameObject.SetActive(false);
+            EditorUtility.SetDirty(powerControls.gameObject);
+
+            HideLegacyGameplayElement(bottomHud, "PowerRow");
+            HideLegacyGameplayElement(bottomHud, "SandBowl");
+            HideLegacyGameplayElement(bottomHud, "BowlTargetText");
+            HideLegacyGameplayElement(bottomHud, "QuickRetryButton");
+            HideRow(bottomHud, "PointerStatus");
+            HideRow(bottomHud, "MappingStatus");
+
+            RectTransform progressRect = GetOrCreateUiChild(
+                bottomHud,
+                "ProgressBar");
+            progressRect.gameObject.SetActive(true);
+            progressRect.SetAsFirstSibling();
+            progressRect.anchorMin = new Vector2(0.5f, 0.5f);
+            progressRect.anchorMax = new Vector2(0.5f, 0.5f);
+            progressRect.pivot = new Vector2(0.5f, 0.5f);
+            progressRect.anchoredPosition = Vector2.zero;
+            progressRect.sizeDelta = new Vector2(720f, 76f);
+
+            LayoutElement progressLayout = GetOrAddComponent<LayoutElement>(
+                progressRect.gameObject);
+            progressLayout.ignoreLayout = true;
+            progressLayout.minWidth = 280f;
+            progressLayout.preferredWidth = 720f;
+            progressLayout.minHeight = 72f;
+            progressLayout.preferredHeight = 88f;
+            progressLayout.flexibleWidth = 0f;
+            progressLayout.flexibleHeight = 0f;
+            EditorUtility.SetDirty(progressLayout);
+
+            // A transparent Graphic makes the whole bar/text footprint a UI
+            // raycast target. This protects the gesture layer even though the
+            // visible child art itself does not consume raycasts.
+            Image inputBlocker = GetOrAddComponent<Image>(progressRect.gameObject);
+            inputBlocker.sprite = null;
+            inputBlocker.color = new Color(0f, 0f, 0f, 0f);
+            inputBlocker.raycastTarget = true;
+            EditorUtility.SetDirty(inputBlocker);
+
+            RectTransform backgroundRect = GetOrCreateUiChild(
+                progressRect,
+                "Background");
+            Image backgroundImage = GetOrAddComponent<Image>(
+                backgroundRect.gameObject);
+            backgroundImage.sprite = sprites.Background;
+            backgroundImage.type = Image.Type.Simple;
+            backgroundImage.color = Color.white;
+            backgroundImage.raycastTarget = false;
+            backgroundRect.SetSiblingIndex(0);
+
+            RectTransform fillMaskRect = GetOrCreateUiChild(
+                progressRect,
+                "FillMask");
+            RectMask2D fillMask = GetOrAddComponent<RectMask2D>(
+                fillMaskRect.gameObject);
+            fillMask.padding = Vector4.zero;
+            fillMask.softness = Vector2Int.zero;
+            fillMaskRect.SetSiblingIndex(1);
+
+            RectTransform fillRect = GetOrCreateUiChild(fillMaskRect, "Fill");
+            Image fillImage = GetOrAddComponent<Image>(fillRect.gameObject);
+            fillImage.sprite = sprites.Fill;
+            fillImage.type = Image.Type.Simple;
+            fillImage.color = Color.white;
+            fillImage.raycastTarget = false;
+            fillRect.SetSiblingIndex(0);
+
+            fillStartTarget = GetOrCreateUiChild(
+                fillMaskRect,
+                "FillStartTarget");
+            fillStartTarget.anchorMin = new Vector2(0f, 0.5f);
+            fillStartTarget.anchorMax = new Vector2(0f, 0.5f);
+            fillStartTarget.pivot = new Vector2(0.5f, 0.5f);
+            fillStartTarget.anchoredPosition = Vector2.zero;
+            fillStartTarget.sizeDelta = Vector2.zero;
+
+            RectTransform frameRect = GetOrCreateUiChild(
+                progressRect,
+                "Frame");
+            Image frameImage = GetOrAddComponent<Image>(frameRect.gameObject);
+            frameImage.sprite = sprites.Frame;
+            frameImage.type = Image.Type.Simple;
+            frameImage.color = Color.white;
+            frameImage.raycastTarget = false;
+            frameRect.SetSiblingIndex(2);
+
+            RectTransform textRect = GetOrCreateUiChild(
+                progressRect,
+                "ProgressText");
+            Text progressText = ConfigureText(
+                textRect,
+                "0% / 0%",
+                20,
+                TextAnchor.MiddleCenter,
+                new Color(0.98f, 0.94f, 0.84f, 1f));
+            progressText.fontStyle = FontStyle.Bold;
+            progressText.raycastTarget = false;
+            textRect.SetAsLastSibling();
+
+            presenter = GetOrAddComponent<SandProgressPresenter>(
+                progressRect.gameObject);
+            presenter.Configure(
+                controller,
+                boardFrame,
+                progressRect,
+                backgroundImage,
+                fillMaskRect,
+                fillImage,
+                frameImage,
+                progressText,
+                fillStartTarget);
+            presenter.ConfigureAnimationForSetup(
+                animationSeconds: 0.48f,
+                arrivalFallbackSeconds: 0.85f,
+                boardWidthFraction: 0.86f);
+
+            EditorUtility.SetDirty(backgroundImage);
+            EditorUtility.SetDirty(fillMask);
+            EditorUtility.SetDirty(fillImage);
+            EditorUtility.SetDirty(frameImage);
+            EditorUtility.SetDirty(progressText);
+            EditorUtility.SetDirty(presenter);
+        }
+
+        private static void HideLegacyGameplayElement(
+            Transform parent,
+            string childName)
+        {
+            Transform child = parent.Find(childName);
+            if (child == null)
+            {
+                return;
+            }
+
+            child.gameObject.SetActive(false);
+            EditorUtility.SetDirty(child.gameObject);
         }
 
         private static void RestyleHud(
@@ -1280,7 +1572,9 @@ namespace Cutrium.Editor.Setup
             GameObject root,
             Transform safeArea,
             FirstPlayableController controller,
-            IReadOnlyDictionary<string, Sprite> sprites)
+            IReadOnlyDictionary<string, Sprite> sprites,
+            ThemeDefinition sandBowlTheme,
+            out RectTransform bowlFillTargetRect)
         {
             Transform bottomHud = RequireChild(safeArea, "BottomHUD");
 
@@ -1334,20 +1628,26 @@ namespace Cutrium.Editor.Setup
                 EditorUtility.SetDirty(powerControls.gameObject);
             }
 
-            // bottomColumn (BottomHUD's VerticalLayoutGroup) is shared with
-            // the (now hidden) debug rows and produced inconsistent
-            // Middle/Center alignment math for a lone LayoutGroup-controlled
-            // child. Bypass it entirely with ignoreLayout=true and an
-            // explicit centered anchor/sizeDelta -- the same reliable
-            // pattern already used for the level label above -- so the
-            // button's real screen position always matches exactly where
-            // it is configured, with nothing left to LayoutGroup timing.
+            // The sand bowl (+ target text) now shares this row with the
+            // retry button, so both are edge-anchored -- bowl+target on
+            // the left, retry on the right -- with ignoreLayout=true and
+            // explicit anchors, the same reliable pattern already used
+            // for the level label above, instead of relying on
+            // bottomColumn's shared VerticalLayoutGroup (which produced
+            // inconsistent Middle/Center alignment math for a lone
+            // controlled child).
+            bowlFillTargetRect = ConfigureSandBowl(
+                root,
+                bottomHud,
+                controller,
+                sandBowlTheme);
+
             RectTransform retryRect = GetOrCreateUiChild(bottomHud, "QuickRetryButton");
-            retryRect.anchorMin = new Vector2(0.5f, 0.5f);
-            retryRect.anchorMax = new Vector2(0.5f, 0.5f);
-            retryRect.pivot = new Vector2(0.5f, 0.5f);
+            retryRect.anchorMin = new Vector2(1f, 0.5f);
+            retryRect.anchorMax = new Vector2(1f, 0.5f);
+            retryRect.pivot = new Vector2(1f, 0.5f);
             retryRect.sizeDelta = new Vector2(128f, 40f);
-            retryRect.anchoredPosition = Vector2.zero;
+            retryRect.anchoredPosition = new Vector2(-24f, 0f);
             LayoutElement retryLayout =
                 GetOrAddComponent<LayoutElement>(retryRect.gameObject);
             retryLayout.ignoreLayout = true;
@@ -1391,6 +1691,135 @@ namespace Cutrium.Editor.Setup
             EditorUtility.SetDirty(retryPresenter);
         }
 
+        // Builds the BottomHUD sand bowl: a decorative outline, a
+        // bowl-shaped Mask that clips a rising sand-fill Image to the
+        // bowl's silhouette (see BowlSpriteGenerator), and the target
+        // percentage text next to it. Returns the RectTransform
+        // LandmarkRevealPresenter's grain-flight burst aims at.
+        private static RectTransform ConfigureSandBowl(
+            GameObject root,
+            Transform bottomHud,
+            FirstPlayableController controller,
+            ThemeDefinition sandBowlTheme)
+        {
+            SandBowlVisualStyle sandBowl = ThemeResolver.ResolveSandBowl(
+                sandBowlTheme,
+                null);
+
+            const float bowlSize = 72f;
+            RectTransform bowlRect = GetOrCreateUiChild(bottomHud, "SandBowl");
+            bowlRect.anchorMin = new Vector2(0f, 0.5f);
+            bowlRect.anchorMax = new Vector2(0f, 0.5f);
+            bowlRect.pivot = new Vector2(0f, 0.5f);
+            bowlRect.sizeDelta = new Vector2(bowlSize, bowlSize);
+            bowlRect.anchoredPosition = new Vector2(20f, 0f);
+            // BottomHUD's own layout validation (Milestone2SceneSetup)
+            // requires every direct child to carry an explicit
+            // non-flexible LayoutElement, the same pattern QuickRetryButton
+            // already uses below -- ignoreLayout=true means bottomColumn's
+            // VerticalLayoutGroup never actually sizes this rect, but the
+            // component itself must still be present and non-flexible.
+            LayoutElement bowlLayout = GetOrAddComponent<LayoutElement>(
+                bowlRect.gameObject);
+            bowlLayout.ignoreLayout = true;
+            bowlLayout.minWidth = bowlSize;
+            bowlLayout.preferredWidth = bowlSize;
+            bowlLayout.minHeight = bowlSize;
+            bowlLayout.preferredHeight = bowlSize;
+            bowlLayout.flexibleWidth = 0f;
+            bowlLayout.flexibleHeight = 0f;
+            EditorUtility.SetDirty(bowlLayout);
+
+            RectTransform maskAreaRect = GetOrCreateUiChild(bowlRect, "FillMaskArea");
+            StretchToParent(maskAreaRect);
+            Image maskAreaImage = GetOrAddComponent<Image>(maskAreaRect.gameObject);
+            maskAreaImage.sprite = sandBowl.BowlInteriorMaskSprite;
+            maskAreaImage.type = Image.Type.Simple;
+            maskAreaImage.raycastTarget = false;
+            Mask bowlMask = GetOrAddComponent<Mask>(maskAreaRect.gameObject);
+            bowlMask.showMaskGraphic = false;
+            EditorUtility.SetDirty(maskAreaImage);
+
+            // Bottom-anchored; RefreshNow() raises anchorMax.y toward 1 as
+            // CapturedFraction rises. The Mask above ensures only the
+            // portion inside the bowl's actual silhouette ever shows,
+            // regardless of this rect's own (rectangular) bounds.
+            RectTransform sandFillRect = GetOrCreateUiChild(
+                maskAreaRect,
+                "SandFill");
+            sandFillRect.anchorMin = new Vector2(0f, 0f);
+            sandFillRect.anchorMax = new Vector2(1f, 0f);
+            sandFillRect.pivot = new Vector2(0.5f, 0f);
+            sandFillRect.offsetMin = Vector2.zero;
+            sandFillRect.offsetMax = Vector2.zero;
+            Image sandFillImage = GetOrAddComponent<Image>(sandFillRect.gameObject);
+            sandFillImage.sprite = null;
+            sandFillImage.color = new Color(0.82f, 0.66f, 0.42f, 1f);
+            sandFillImage.raycastTarget = false;
+            EditorUtility.SetDirty(sandFillImage);
+
+            // The decorative rim, drawn on top of the fill so the bowl's
+            // edge always reads clearly regardless of current fill level.
+            RectTransform outlineRect = GetOrCreateUiChild(bowlRect, "BowlOutline");
+            StretchToParent(outlineRect);
+            outlineRect.SetAsLastSibling();
+            Image outlineImage = GetOrAddComponent<Image>(outlineRect.gameObject);
+            outlineImage.sprite = sandBowl.BowlOutlineSprite;
+            outlineImage.type = Image.Type.Simple;
+            outlineImage.raycastTarget = false;
+            EditorUtility.SetDirty(outlineImage);
+
+            // A small, non-visual reference point (no Graphic) at the
+            // bowl's center -- purely the position LandmarkRevealPresenter
+            // aims its cosmetic sand-grain burst at.
+            RectTransform fillTargetRect = GetOrCreateUiChild(bowlRect, "FillTarget");
+            fillTargetRect.anchorMin = new Vector2(0.5f, 0.5f);
+            fillTargetRect.anchorMax = new Vector2(0.5f, 0.5f);
+            fillTargetRect.pivot = new Vector2(0.5f, 0.5f);
+            fillTargetRect.sizeDelta = Vector2.zero;
+            fillTargetRect.anchoredPosition = Vector2.zero;
+
+            RectTransform targetTextRect = GetOrCreateUiChild(
+                bottomHud,
+                "BowlTargetText");
+            targetTextRect.anchorMin = new Vector2(0f, 0.5f);
+            targetTextRect.anchorMax = new Vector2(0f, 0.5f);
+            targetTextRect.pivot = new Vector2(0f, 0.5f);
+            targetTextRect.sizeDelta = new Vector2(130f, 32f);
+            targetTextRect.anchoredPosition = new Vector2(20f + bowlSize + 10f, 0f);
+            Text targetText = ConfigureText(
+                targetTextRect,
+                "Target 0%",
+                18,
+                TextAnchor.MiddleLeft,
+                new Color(0.95f, 0.9f, 0.8f, 1f));
+            targetText.fontStyle = FontStyle.Bold;
+            LayoutElement targetTextLayout = GetOrAddComponent<LayoutElement>(
+                targetTextRect.gameObject);
+            targetTextLayout.ignoreLayout = true;
+            targetTextLayout.minWidth = 130f;
+            targetTextLayout.preferredWidth = 130f;
+            targetTextLayout.minHeight = 32f;
+            targetTextLayout.preferredHeight = 32f;
+            targetTextLayout.flexibleWidth = 0f;
+            targetTextLayout.flexibleHeight = 0f;
+            EditorUtility.SetDirty(targetTextLayout);
+
+            GameObject sandBowlServices = GetOrCreateChild(
+                root.transform,
+                "SandBowlServices");
+            SandBowlPresenter sandBowlPresenter =
+                GetOrAddComponent<SandBowlPresenter>(sandBowlServices);
+            sandBowlPresenter.Configure(
+                controller,
+                sandFillRect,
+                targetText,
+                fillTargetRect);
+            EditorUtility.SetDirty(sandBowlPresenter);
+
+            return fillTargetRect;
+        }
+
         // ------------------------------------------------------------
         // Validation
         // ------------------------------------------------------------
@@ -1400,6 +1829,8 @@ namespace Cutrium.Editor.Setup
             GameObject root = RequireRoot(scene, "VerticalSliceRoot");
             BarrierPresenter barrierPresenter = root
                 .GetComponentInChildren<BarrierPresenter>(true);
+            ThemePresenter themePresenter = root
+                .GetComponentInChildren<ThemePresenter>(true);
             LandmarkRevealPresenter[] landmarkPresenters = root
                 .GetComponentsInChildren<LandmarkRevealPresenter>(true);
             if (landmarkPresenters.Length != 1)
@@ -1411,6 +1842,20 @@ namespace Cutrium.Editor.Setup
 
             LandmarkRevealPresenter landmarkPresenter = landmarkPresenters[0];
             ValidateBoardHierarchy(root);
+            if (themePresenter == null
+                || themePresenter.Current.BackgroundSprite != null
+                || themePresenter.Current.BackgroundColor != DarkBrownBackground
+                || AssetDatabase.GetAssetPath(
+                    themePresenter.Current.Threat.Sprite) != ThreatVisualPath
+                || themePresenter.Current.Capture.Sprite != null
+                || themePresenter.Current.Capture.Material != null
+                || themePresenter.Current.Capture.Color != Color.clear)
+            {
+                throw new InvalidOperationException(
+                    "The final theme must use the imported threat visual, " +
+                    "the solid dark-brown background, and a fully " +
+                    "transparent, sprite-free captured-region presentation.");
+            }
             if (!Mathf.Approximately(
                     barrierPresenter.VisualLogicalThickness,
                     BarrierVisualLogicalThickness))
@@ -1422,6 +1867,10 @@ namespace Cutrium.Editor.Setup
 
             if (landmarkPresenter.ArtworkImage == null
                 || landmarkPresenter.VeilRoot == null
+                || landmarkPresenter.SandTexture == null
+                || landmarkPresenter.GrainFlightRoot == null
+                || landmarkPresenter.SandDestination == null
+                || landmarkPresenter.SandProgressPresenter == null
                 || landmarkPresenter.CompletionArtworkImage == null
                 || landmarkPresenter.ScrimCanvasGroup == null
                 || landmarkPresenter.ContentCanvasGroup == null
@@ -1447,6 +1896,42 @@ namespace Cutrium.Editor.Setup
                         "LandmarkRevealPresenter landmark order does not " +
                         "match the configured catalog.");
                 }
+            }
+
+            SandProgressPresenter[] progressPresenters = root
+                .GetComponentsInChildren<SandProgressPresenter>(true);
+            if (progressPresenters.Length != 1
+                || progressPresenters[0].ProgressBarRect == null
+                || progressPresenters[0].BackgroundImage == null
+                || progressPresenters[0].FillMaskRect == null
+                || progressPresenters[0].FillImage == null
+                || progressPresenters[0].FrameImage == null
+                || progressPresenters[0].ProgressText == null
+                || progressPresenters[0].FillStartTarget == null
+                || !ReferenceEquals(
+                    progressPresenters[0],
+                    landmarkPresenter.SandProgressPresenter)
+                || !ReferenceEquals(
+                    progressPresenters[0].FillStartTarget,
+                    landmarkPresenter.SandDestination))
+            {
+                throw new InvalidOperationException(
+                    "The presentation pass requires exactly one fully " +
+                    "wired SandProgressPresenter whose fill-start target " +
+                    "matches the sand-flight destination.");
+            }
+
+            if (AssetDatabase.GetAssetPath(
+                    progressPresenters[0].FrameImage.sprite) != ProgressFramePath
+                || AssetDatabase.GetAssetPath(
+                    progressPresenters[0].BackgroundImage.sprite)
+                    != ProgressBackgroundPath
+                || AssetDatabase.GetAssetPath(
+                    progressPresenters[0].FillImage.sprite) != ProgressFillPath)
+            {
+                throw new InvalidOperationException(
+                    "The target-progress bar is not wired to all three " +
+                    "imported progress UI assets.");
             }
 
             if (landmarkPresenter.Landmarks[0].LandmarkId != "galata-kulesi")
@@ -1504,13 +1989,64 @@ namespace Cutrium.Editor.Setup
             RequireChild(completion, "NextButton");
 
             Transform bottomHud = RequireChild(safeArea, "BottomHUD");
+            Transform topHud = RequireChild(safeArea, "TopHUD");
+            LayoutElement topLayout = topHud.GetComponent<LayoutElement>();
+            if (!topHud.gameObject.activeSelf
+                || topLayout == null
+                || !Mathf.Approximately(topLayout.minHeight, 52f)
+                || !Mathf.Approximately(topLayout.preferredHeight, 60f)
+                || !Mathf.Approximately(topLayout.flexibleHeight, 0f))
+            {
+                throw new InvalidOperationException(
+                    "TopHUD must remain an active, compact reserved layout " +
+                    "region during normal gameplay.");
+            }
+
+            for (int index = 0; index < topHud.childCount; index++)
+            {
+                if (topHud.GetChild(index).gameObject.activeSelf)
+                {
+                    throw new InvalidOperationException(
+                        "Current TopHUD placeholder content must remain " +
+                        "visually hidden without collapsing TopHUD itself.");
+                }
+            }
+
+            Transform progressBar = RequireChild(bottomHud, "ProgressBar");
+            if (!progressBar.gameObject.activeSelf
+                || progressBar.GetComponent<Image>() == null
+                || !progressBar.GetComponent<Image>().raycastTarget)
+            {
+                throw new InvalidOperationException(
+                    "BottomHUD/ProgressBar must be active and block pointer " +
+                    "starts over its full footprint.");
+            }
+
+            RequireChild(progressBar, "Background");
+            RequireChild(progressBar, "FillMask/Fill");
+            RequireChild(progressBar, "FillMask/FillStartTarget");
+            RequireChild(progressBar, "Frame");
+            RequireChild(progressBar, "ProgressText");
+
             Transform retryButtonTransform = RequireChild(
                 bottomHud,
                 "QuickRetryButton");
-            if (retryButtonTransform.GetComponent<Button>() == null)
+            if (retryButtonTransform.gameObject.activeSelf
+                || retryButtonTransform.GetComponent<Button>() == null)
             {
                 throw new InvalidOperationException(
-                    "BottomHUD's quick-retry element must have a Button.");
+                    "BottomHUD's legacy quick-retry element must stay wired " +
+                    "but inactive during normal gameplay.");
+            }
+
+            Transform legacyBowl = bottomHud.Find("SandBowl");
+            Transform legacyBowlText = bottomHud.Find("BowlTargetText");
+            if ((legacyBowl != null && legacyBowl.gameObject.activeSelf)
+                || (legacyBowlText != null
+                    && legacyBowlText.gameObject.activeSelf))
+            {
+                throw new InvalidOperationException(
+                    "The legacy bowl presentation must remain hidden.");
             }
 
             QuickRetryPresenter[] retryPresenters = root
@@ -1538,9 +2074,36 @@ namespace Cutrium.Editor.Setup
             Transform safeArea = RequireChild(
                 root.transform,
                 "Canvas/SafeAreaRoot");
+            Transform topHud = RequireChild(safeArea, "TopHUD");
             Transform boardStage = RequireChild(safeArea, "BoardStage");
             Transform boardViewport = RequireChild(boardStage, "BoardViewport");
             Transform boardFrame = RequireChild(boardViewport, "BoardFrame");
+            Transform bottomHud = RequireChild(safeArea, "BottomHUD");
+
+            VerticalLayoutGroup safeLayout =
+                safeArea.GetComponent<VerticalLayoutGroup>();
+            LayoutElement topLayout = topHud.GetComponent<LayoutElement>();
+            LayoutElement stageLayout = boardStage.GetComponent<LayoutElement>();
+            LayoutElement bottomLayout = bottomHud.GetComponent<LayoutElement>();
+            if (safeLayout == null
+                || !safeLayout.childControlHeight
+                || safeLayout.childForceExpandHeight
+                || topLayout == null
+                || !Mathf.Approximately(topLayout.preferredHeight, 60f)
+                || !Mathf.Approximately(topLayout.flexibleHeight, 0f)
+                || stageLayout == null
+                || !Mathf.Approximately(stageLayout.preferredHeight, 0f)
+                || !Mathf.Approximately(stageLayout.flexibleHeight, 1f)
+                || bottomLayout == null
+                || !Mathf.Approximately(bottomLayout.preferredHeight, 98f)
+                || !Mathf.Approximately(bottomLayout.flexibleHeight, 0f)
+                || topHud.GetSiblingIndex() >= boardStage.GetSiblingIndex()
+                || boardStage.GetSiblingIndex() >= bottomHud.GetSiblingIndex())
+            {
+                throw new InvalidOperationException(
+                    "SafeAreaRoot must keep compact fixed TopHUD/BottomHUD " +
+                    "bands around one flexible BoardStage region.");
+            }
 
             LayoutElement viewportLayout =
                 boardViewport.GetComponent<LayoutElement>();
@@ -1569,7 +2132,8 @@ namespace Cutrium.Editor.Setup
             if (fitter == null
                 || fitter.BoardStage != boardStage
                 || fitter.BoardViewport != boardViewportRect
-                || fitter.BoardFrame != boardFrameRect)
+                || fitter.BoardFrame != boardFrameRect
+                || !Mathf.Approximately(fitter.VerticalAlignment, 0.5f))
             {
                 throw new InvalidOperationException(
                     "BoardCameraFitter must be wired to BoardStage/" +
@@ -1601,6 +2165,13 @@ namespace Cutrium.Editor.Setup
                 throw new InvalidOperationException(
                     "BoardViewport must not be larger than BoardStage's " +
                     "available area.");
+            }
+
+            if (boardViewportRect.anchoredPosition.sqrMagnitude > 0.01f)
+            {
+                throw new InvalidOperationException(
+                    "The fitted BoardViewport must remain centered inside " +
+                    "the flexible BoardStage region.");
             }
         }
 
@@ -1709,6 +2280,23 @@ namespace Cutrium.Editor.Setup
             return component != null ? component : gameObject.AddComponent<T>();
         }
 
+        private readonly struct ProgressSprites
+        {
+            public ProgressSprites(
+                Sprite frame,
+                Sprite background,
+                Sprite fill)
+            {
+                Frame = frame;
+                Background = background;
+                Fill = fill;
+            }
+
+            public Sprite Frame { get; }
+            public Sprite Background { get; }
+            public Sprite Fill { get; }
+        }
+
         private enum GeneratedPattern
         {
             Frame,
@@ -1716,7 +2304,6 @@ namespace Cutrium.Editor.Setup
             BarrierBody,
             ThreatGem,
             PowerButton,
-            Veil,
             LandmarkAlpine,
             LandmarkCoastal,
             LandmarkDesert,

@@ -12,7 +12,24 @@ namespace Cutrium.Unity.Layout
 
         public static Rect CalculateAspectFitRect(Rect viewportRect)
         {
+            return CalculateAspectFitRect(viewportRect, 0.5f);
+        }
+
+        public static Rect CalculateAspectFitRect(
+            Rect viewportRect,
+            float verticalAlignment)
+        {
             ValidateRect(viewportRect, nameof(viewportRect));
+            if (!IsFinite(verticalAlignment)
+                || verticalAlignment < 0f
+                || verticalAlignment > 1f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(verticalAlignment),
+                    verticalAlignment,
+                    "Vertical alignment must be between zero (bottom) " +
+                    "and one (top).");
+            }
 
             float boardAspect = LogicalWidth / LogicalHeight;
             float viewportAspect = viewportRect.width / viewportRect.height;
@@ -32,7 +49,10 @@ namespace Cutrium.Unity.Layout
 
             return new Rect(
                 viewportRect.center.x - (width * 0.5f),
-                viewportRect.center.y - (height * 0.5f),
+                Mathf.Lerp(
+                    viewportRect.yMin,
+                    viewportRect.yMax - height,
+                    verticalAlignment),
                 width,
                 height);
         }

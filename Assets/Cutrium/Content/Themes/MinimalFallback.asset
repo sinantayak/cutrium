@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Theme.ThemeDefinition
   _stableId: minimal-flat-fallback
   _backgroundSprite: {fileID: 0}
-  _backgroundColor: {r: 0.025, g: 0.04, b: 0.05, a: 1}
+  _backgroundColor: {r: 0.09, g: 0.05, b: 0.035, a: 1}
   _boardSprite: {fileID: 0}
   _boardColor: {r: 0.06, g: 0.13, b: 0.14, a: 1}
   _frameSprite: {fileID: 0}
@@ -40,3 +40,6 @@ MonoBehaviour:
   _hudBackgroundColor: {r: 0.03, g: 0.07, b: 0.08, a: 0.98}
   _hudAccentColor: {r: 0.25, g: 0.82, b: 0.76, a: 1}
   _hudTextColor: {r: 1, g: 1, b: 1, a: 1}
+  _sandTexture: {fileID: 0}
+  _bowlOutlineSprite: {fileID: 0}
+  _bowlInteriorMaskSprite: {fileID: 0}

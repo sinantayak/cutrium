@@ -5,6 +5,7 @@
     "Cutrium.Gameplay",
     "Cutrium.Unity",
     "Cutrium.Presentation",
+    "Cutrium.Editor",
     "Unity.InputSystem"
   ],
   "includePlatforms": [

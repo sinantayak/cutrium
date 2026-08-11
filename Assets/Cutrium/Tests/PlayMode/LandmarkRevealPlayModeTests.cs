@@ -2,16 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Cutrium.Gameplay.Barriers;
+using Cutrium.Gameplay.Board;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
 using Cutrium.Presentation.Barriers;
+using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
 using Cutrium.Unity.Bootstrap;
 using Cutrium.Unity.Simulation;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -93,85 +94,69 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void QuickRetryButton_ExistsAndIsInteractable()
+        public void NormalGameplayHud_ReservesBandsAndShowsOnlyProgressContent()
         {
             Transform safeArea = _root.transform.Find("Canvas/SafeAreaRoot");
             Transform bottomHud = safeArea.Find("BottomHUD");
+            Transform topHud = safeArea.Find("TopHUD");
             Transform retryTransform = bottomHud.Find("QuickRetryButton");
+            Transform bowl = bottomHud.Find("SandBowl");
+            Transform bowlText = bottomHud.Find("BowlTargetText");
+            Transform progress = bottomHud.Find("ProgressBar");
+
+            Assert.That(topHud, Is.Not.Null);
+            Assert.That(topHud.gameObject.activeSelf, Is.True);
+            LayoutElement topLayout = topHud.GetComponent<LayoutElement>();
+            Assert.That(topLayout, Is.Not.Null);
+            Assert.That(topLayout.preferredHeight, Is.EqualTo(60f));
+            Assert.That(topLayout.flexibleHeight, Is.Zero);
+            for (int index = 0; index < topHud.childCount; index++)
+            {
+                Assert.That(topHud.GetChild(index).gameObject.activeSelf,
+                    Is.False,
+                    topHud.GetChild(index).name);
+            }
             Assert.That(retryTransform, Is.Not.Null);
+            Assert.That(retryTransform.gameObject.activeSelf, Is.False);
+            Assert.That(bowl, Is.Not.Null);
+            Assert.That(bowl.gameObject.activeSelf, Is.False);
+            Assert.That(bowlText, Is.Not.Null);
+            Assert.That(bowlText.gameObject.activeSelf, Is.False);
+            Assert.That(progress, Is.Not.Null);
+            Assert.That(progress.gameObject.activeSelf, Is.True);
 
             Button retryButton = retryTransform.GetComponent<Button>();
             Assert.That(retryButton, Is.Not.Null);
             Assert.That(retryButton.interactable, Is.True);
+            QuickRetryPresenter quickRetry = _root
+                .GetComponentInChildren<QuickRetryPresenter>(true);
+            Assert.That(quickRetry, Is.Not.Null);
+            Assert.That(quickRetry.RetryButton, Is.SameAs(retryButton));
 
-            // Guard against the button being stretched to fill the whole
-            // row (the bug this test originally caught): it must keep a
-            // small, deliberate footprint.
-            var retryRect = (RectTransform)retryTransform;
-            Assert.That(retryRect.rect.width, Is.LessThanOrEqualTo(160f));
+            SandProgressPresenter progressPresenter = progress
+                .GetComponent<SandProgressPresenter>();
+            Assert.That(progressPresenter, Is.Not.Null);
+            Assert.That(progressPresenter.FrameImage.sprite.name,
+                Is.EqualTo("Progress_Frame_0"));
+            Assert.That(progressPresenter.BackgroundImage.sprite.name,
+                Is.EqualTo("Progress_Background_0"));
+            Assert.That(progressPresenter.FillImage.sprite.name,
+                Is.EqualTo("Progress_Fill_0"));
+            Assert.That(progressPresenter.FillMaskRect
+                .GetComponent<RectMask2D>(), Is.Not.Null);
+            Assert.That(progressPresenter.FillStartTarget, Is.Not.Null);
+            Assert.That(progressPresenter.FillStartTarget.parent,
+                Is.SameAs(progressPresenter.FillMaskRect));
+            Assert.That(progressPresenter.FillStartTarget.anchorMin.x,
+                Is.Zero);
+            Assert.That(_landmarkPresenter.SandDestination,
+                Is.SameAs(progressPresenter.FillStartTarget));
+            Assert.That(_landmarkPresenter.SandProgressPresenter,
+                Is.SameAs(progressPresenter));
 
-            GameObject[] hits = RaycastAtCenter(retryRect);
+            GameObject[] hits = RaycastAtCenter((RectTransform)progress);
             Assert.That(hits, Is.Not.Empty);
-            Assert.That(hits[0], Is.SameAs(retryButton.gameObject));
-        }
-
-        [UnityTest]
-        public IEnumerator QuickRetryButton_RealMouseClickTriggersRetry()
-        {
-            InputSettings.BackgroundBehavior originalBackground =
-                InputSystem.settings.backgroundBehavior;
-            InputSettings.EditorInputBehaviorInPlayMode originalEditorBehavior =
-                InputSystem.settings.editorInputBehaviorInPlayMode;
-            InputSystem.settings.backgroundBehavior =
-                InputSettings.BackgroundBehavior.IgnoreFocus;
-            InputSystem.settings.editorInputBehaviorInPlayMode =
-                InputSettings.EditorInputBehaviorInPlayMode
-                    .AllDeviceInputAlwaysGoesToGameView;
-            Mouse mouse = InputSystem.AddDevice<Mouse>();
-            InputSystem.EnableDevice(mouse);
-            try
-            {
-                FirstPlayableController controller = _root
-                    .GetComponentInChildren<FirstPlayableController>(true);
-                Transform safeArea = _root.transform.Find("Canvas/SafeAreaRoot");
-                LayoutRebuilder.ForceRebuildLayoutImmediate(
-                    (RectTransform)safeArea);
-                Transform retryTransform = safeArea.Find(
-                    "BottomHUD/QuickRetryButton");
-                Vector2 center = GetScreenCenter((RectTransform)retryTransform);
-                int before = controller.RetryCount;
-
-                // A real press+release through the Input System, exactly as
-                // a player would tap it -- not Button.onClick.Invoke() --
-                // is the only way to prove the click genuinely reaches the
-                // button through the live EventSystem/InputSystemUIInputModule
-                // pipeline.
-                InputSystem.QueueDeltaStateEvent(mouse.position, center);
-                yield return null;
-                InputSystem.QueueDeltaStateEvent(mouse.press, true);
-                yield return null;
-                InputSystem.QueueDeltaStateEvent(mouse.press, false);
-                yield return null;
-                yield return null;
-
-                Assert.That(controller.RetryCount, Is.EqualTo(before + 1));
-            }
-            finally
-            {
-                InputSystem.RemoveDevice(mouse);
-                InputSystem.settings.backgroundBehavior = originalBackground;
-                InputSystem.settings.editorInputBehaviorInPlayMode =
-                    originalEditorBehavior;
-            }
-        }
-
-        private static Vector2 GetScreenCenter(RectTransform rect)
-        {
-            Vector3[] corners = new Vector3[4];
-            rect.GetWorldCorners(corners);
-            return RectTransformUtility.WorldToScreenPoint(
-                null,
-                (corners[0] + corners[2]) * 0.5f);
+            Assert.That(hits[0], Is.SameAs(progress.gameObject));
         }
 
         private GameObject[] RaycastAtCenter(RectTransform rect)
@@ -192,24 +177,31 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void ArtworkSelection_CyclesWithLevelIndex()
+        public void FirstThreeLevelsUseFirstThreeLandmarksInCatalogOrder()
         {
-            var rig = new IsolatedRig(2);
+            var rig = new IsolatedRig(3);
             try
             {
                 rig.Controller.AdvanceSimulation(0f);
                 rig.Presenter.RefreshNow();
-                Sprite firstArtwork = rig.Presenter.ArtworkImage.sprite;
-                Assert.That(firstArtwork,
+                Assert.That(rig.Presenter.CurrentLandmark,
+                    Is.SameAs(rig.Landmarks[0]));
+                Assert.That(rig.Presenter.ArtworkImage.sprite,
                     Is.SameAs(rig.Landmarks[0].Artwork));
 
                 Assert.That(rig.CompleteAndAdvance(), Is.True);
                 rig.Presenter.RefreshNow();
-
+                Assert.That(rig.Presenter.CurrentLandmark,
+                    Is.SameAs(rig.Landmarks[1]));
                 Assert.That(rig.Presenter.ArtworkImage.sprite,
                     Is.SameAs(rig.Landmarks[1].Artwork));
+
+                Assert.That(rig.CompleteAndAdvance(), Is.True);
+                rig.Presenter.RefreshNow();
+                Assert.That(rig.Presenter.CurrentLandmark,
+                    Is.SameAs(rig.Landmarks[2]));
                 Assert.That(rig.Presenter.ArtworkImage.sprite,
-                    Is.Not.SameAs(firstArtwork));
+                    Is.SameAs(rig.Landmarks[2].Artwork));
             }
             finally
             {
@@ -249,6 +241,390 @@ namespace Cutrium.PlayModeTests
                 rig.Dispose();
             }
         }
+
+        [Test]
+        public void ActiveRoomsStayFullyObscuredUntilCaptured()
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                rig.Presenter.RefreshNow();
+
+                RoomState activeRoom =
+                    rig.Controller.Session.Board.ActiveRooms[0];
+                Assert.That(
+                    rig.Presenter.ObscuredRoomBounds,
+                    Has.Some.EqualTo(activeRoom.Bounds));
+                Assert.That(rig.Presenter.WipingRoomBounds, Is.Empty);
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator CapturedRoomsShowSharpArtworkOnceWipeCompletes()
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                rig.Presenter.RefreshNow();
+
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+
+                LogicalRect capturedBounds =
+                    rig.Controller.Session.Board.CapturedRooms[0].Bounds;
+
+                float waited = 0f;
+                while (!rig.Presenter.AllVeilsFullyRevealed && waited < 2f)
+                {
+                    yield return null;
+                    rig.Presenter.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                // Once its wipe finishes, a captured room must show only
+                // the sharp artwork -- no lingering sand/wipe composite at
+                // its exact rectangle.
+                Assert.That(
+                    rig.Presenter.ObscuredRoomBounds,
+                    Has.None.EqualTo(capturedBounds));
+                Assert.That(
+                    rig.Presenter.WipingRoomBounds,
+                    Has.None.EqualTo(capturedBounds));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [Test]
+        public void WipeCompletionExactlyMatchesLogicalCapturedRectangle()
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                rig.Presenter.RefreshNow();
+
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+
+                LogicalRect capturedBounds =
+                    rig.Controller.Session.Board.CapturedRooms[0].Bounds;
+
+                // Immediately on capture (no real time has passed yet), the
+                // wipe rectangle must be exactly the logical captured
+                // rectangle -- not the old parent room, not an
+                // approximation.
+                Assert.That(
+                    rig.Presenter.WipingRoomBounds,
+                    Has.Exactly(1).EqualTo(capturedBounds));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator SandGrainBurstSpawnsOnCaptureAndEventuallyReturnsToPool()
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                rig.Presenter.RefreshNow();
+                Assert.That(rig.Presenter.ActiveGrainCount, Is.Zero);
+
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+
+                // A cosmetic grain burst launches the instant a room is
+                // captured -- purely decorative, never gating or reading
+                // from gameplay state.
+                Assert.That(rig.Presenter.ActiveGrainCount, Is.GreaterThan(0));
+                Assert.That(rig.Presenter.ActiveGrainCount,
+                    Is.GreaterThanOrEqualTo(
+                        rig.Presenter.MinimumGrainsPerCapture));
+                Assert.That(rig.Presenter.CreatedGrainViewCount,
+                    Is.LessThanOrEqualTo(
+                        rig.Presenter.MaximumGrainViewCount));
+
+                float waited = 0f;
+                while (rig.Presenter.ActiveGrainCount > 0 && waited < 3f)
+                {
+                    yield return null;
+                    rig.Presenter.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                Assert.That(rig.Presenter.ActiveGrainCount, Is.Zero);
+                Assert.That(rig.Presenter.CreatedGrainViewCount,
+                    Is.LessThanOrEqualTo(
+                        rig.Presenter.MaximumGrainViewCount));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator SandDestinationFollowsMovedProgressStartTarget()
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                rig.Presenter.RefreshNow();
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+                Assert.That(rig.Presenter.ActiveGrainCount, Is.GreaterThan(0));
+
+                rig.SandDestination.anchoredPosition +=
+                    new Vector2(180f, 75f);
+                Vector3 expectedWorld =
+                    rig.SandDestination.TransformPoint(Vector3.zero);
+                float waited = 0f;
+                while (rig.Presenter.ActiveGrainCount > 0 && waited < 3f)
+                {
+                    yield return null;
+                    rig.Presenter.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                Assert.That(rig.Presenter.ActiveGrainCount, Is.Zero);
+                Assert.That(
+                    Vector3.Distance(
+                        rig.Presenter.LastGrainArrivalTargetWorldPosition,
+                        expectedWorld),
+                    Is.LessThan(0.01f));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator MultipleCapturesEachGetTheirOwnIndependentWipe()
+        {
+            var rig = new IsolatedRig(
+                1,
+                explicitLevels: new[] { CreateTwoCutLevel() });
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                rig.Presenter.RefreshNow();
+
+                BarrierStartResult first = rig.Controller.SubmitBarrierIntent(
+                    new BarrierIntent(
+                        new LogicalPoint(2f, 8f),
+                        BarrierOrientation.Vertical));
+                Assert.That(first.Accepted, Is.True);
+                Assert.That(rig.RunUntilBarrierResolves(), Is.True);
+                rig.Presenter.RefreshNow();
+
+                Assert.That(
+                    rig.Controller.Session.LevelStatus,
+                    Is.Not.EqualTo(CaptureLevelStatus.Completed));
+                Assert.That(rig.Presenter.WipingRoomBounds.Count, Is.EqualTo(1));
+                LogicalRect firstCaptured = rig.Presenter.WipingRoomBounds[0];
+                Assert.That(firstCaptured.Width, Is.EqualTo(2f).Within(0.01f));
+
+                BarrierStartResult second = rig.Controller.SubmitBarrierIntent(
+                    new BarrierIntent(
+                        new LogicalPoint(8f, 8f),
+                        BarrierOrientation.Vertical));
+                Assert.That(second.Accepted, Is.True);
+                Assert.That(rig.RunUntilBarrierResolves(), Is.True);
+                rig.Presenter.RefreshNow();
+
+                Assert.That(
+                    rig.Controller.Session.LevelStatus,
+                    Is.EqualTo(CaptureLevelStatus.Completed));
+                // Three rectangles are wiped independently: the two
+                // precisely-captured pieces from each cut, plus the
+                // leftover still-active middle room (containing the
+                // threat) that completion force-reveals even though it
+                // was never individually captured (ADR-021). The first
+                // captured piece is neither lost nor restarted when the
+                // second capture happens.
+                Assert.That(rig.Presenter.WipingRoomBounds.Count, Is.EqualTo(3));
+                Assert.That(
+                    rig.Presenter.WipingRoomBounds,
+                    Has.Exactly(1).EqualTo(firstCaptured));
+
+                float waited = 0f;
+                while (!rig.Presenter.AllVeilsFullyRevealed && waited < 3f)
+                {
+                    yield return null;
+                    rig.Presenter.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                Assert.That(rig.Presenter.AllVeilsFullyRevealed, Is.True);
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [Test]
+        public void RetryRestoresFullSandCoverageAndClearsStaleWipeState()
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                rig.Presenter.RefreshNow();
+
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+                // A wipe is now in flight (not yet finished, since no real
+                // time has passed).
+                Assert.That(rig.Presenter.WipingRoomBounds, Is.Not.Empty);
+
+                rig.Controller.RetryLevel();
+                rig.Presenter.RefreshNow();
+
+                // Retry must not carry over the previous session's
+                // in-flight wipe (reused low RoomId values would otherwise
+                // let stale bookkeeping leak into the new session) and the
+                // fresh initial room must read as fully sand-covered again.
+                Assert.That(rig.Presenter.WipingRoomBounds, Is.Empty);
+                Assert.That(rig.Presenter.VisibleVeilCount, Is.EqualTo(1));
+                RoomState freshRoom = rig.Controller.Session.Board.ActiveRooms[0];
+                Assert.That(
+                    rig.Presenter.ObscuredRoomBounds,
+                    Has.Some.EqualTo(freshRoom.Bounds));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [Test]
+        public void NextLevelRestoresFullSandCoverageAndClearsStaleWipeState()
+        {
+            var rig = new IsolatedRig(2);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                rig.Presenter.RefreshNow();
+
+                Assert.That(rig.CompleteAndAdvance(), Is.True);
+                rig.Presenter.RefreshNow();
+
+                Assert.That(rig.Presenter.WipingRoomBounds, Is.Empty);
+                Assert.That(rig.Presenter.VisibleVeilCount, Is.EqualTo(1));
+                RoomState freshRoom = rig.Controller.Session.Board.ActiveRooms[0];
+                Assert.That(
+                    rig.Presenter.ObscuredRoomBounds,
+                    Has.Some.EqualTo(freshRoom.Bounds));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [Test]
+        public void DisablingPresentationDoesNotChangeGameplayState()
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                rig.Presenter.RefreshNow();
+                rig.Presenter.enabled = false;
+
+                // With the presenter disabled (LateUpdate never runs, and
+                // nothing else calls RefreshNow), gameplay must still
+                // capture normally -- presentation reads gameplay state, it
+                // never writes it.
+                bool completed = rig.CompleteWithoutAdvancing();
+
+                Assert.That(completed, Is.True);
+                Assert.That(
+                    rig.Controller.Session.LevelStatus,
+                    Is.EqualTo(CaptureLevelStatus.Completed));
+                Assert.That(
+                    rig.Controller.Session.CapturedFraction,
+                    Is.GreaterThan(0f));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [TestCase(625f, 1000f)]
+        [TestCase(480f, 1500f)]
+        [TestCase(1024f, 820f)]
+        public void SandGeometryStaysProportionalAcrossBoardFrameSizes(
+            float frameWidth,
+            float frameHeight)
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                rig.SetBoardFrameSize(new Vector2(frameWidth, frameHeight));
+                rig.Controller.AdvanceSimulation(0f);
+                rig.Presenter.RefreshNow();
+
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+
+                // The captured rectangle's *logical* bounds -- what the
+                // wipe geometry is computed from -- must be identical
+                // regardless of board frame pixel size, whether the frame
+                // is a tall-phone or a squarer-tablet proportion; only the
+                // on-screen pixel conversion (already covered by
+                // BoardCameraFitter's own aspect-fit tests) varies.
+                LogicalRect capturedBounds =
+                    rig.Controller.Session.Board.CapturedRooms[0].Bounds;
+                Assert.That(capturedBounds.Width, Is.EqualTo(0.6f).Within(0.01f));
+                Assert.That(capturedBounds.Height, Is.EqualTo(16f).Within(0.01f));
+                Assert.That(
+                    rig.Presenter.WipingRoomBounds,
+                    Has.Exactly(1).EqualTo(capturedBounds));
+                // Completion also force-reveals the leftover still-active
+                // room (containing the threat) that was never individually
+                // captured (ADR-021) -- so two rectangles wipe, not one.
+                Assert.That(rig.Presenter.WipingRoomBounds, Has.Count.EqualTo(2));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        private static CoreFunLevelDefinition CreateTwoCutLevel() =>
+            new CoreFunLevelDefinition(
+                "two-cut-test",
+                1,
+                new Vector2(5f, 8f),
+                new Vector2(0f, 1f),
+                2f,
+                0.35f,
+                0.30f,
+                8f,
+                0.08f,
+                0f,
+                8,
+                16,
+                8,
+                "Landmark reveal multi-capture test level.",
+                20f);
 
         [Test]
         public void CompletionRevealsFullArtworkAndPopulatesCard()
@@ -335,38 +711,50 @@ namespace Cutrium.PlayModeTests
             private readonly List<Texture2D> _textures = new List<Texture2D>();
             private readonly List<Sprite> _sprites = new List<Sprite>();
             private readonly GameObject _simulationObject;
+            private RectTransform _frame;
 
-            public IsolatedRig(int levelCount, LandmarkCompletionTiming? timing = null)
+            public IsolatedRig(
+                int levelCount,
+                LandmarkCompletionTiming? timing = null,
+                IReadOnlyList<CoreFunLevelDefinition> explicitLevels = null)
             {
                 _simulationObject = new GameObject("LandmarkRevealTestRig");
                 _simulationObject.SetActive(false);
                 Controller =
                     _simulationObject.AddComponent<FirstPlayableController>();
 
-                var levels = new CoreFunLevelDefinition[levelCount];
-                for (int index = 0; index < levelCount; index++)
+                CoreFunLevelDefinition[] levels;
+                if (explicitLevels != null)
                 {
-                    levels[index] = new CoreFunLevelDefinition(
-                        $"tiny-{index}",
-                        index + 1,
-                        new Vector2(5f, 8f),
-                        new Vector2(1f, 0f),
-                        1f,
-                        0.35f,
-                        0.05f,
-                        8f,
-                        0.08f,
-                        3f,
-                        8,
-                        16,
-                        8,
-                        "Landmark reveal test level.",
-                        10f);
+                    levels = explicitLevels.ToArray();
+                }
+                else
+                {
+                    levels = new CoreFunLevelDefinition[levelCount];
+                    for (int index = 0; index < levelCount; index++)
+                    {
+                        levels[index] = new CoreFunLevelDefinition(
+                            $"tiny-{index}",
+                            index + 1,
+                            new Vector2(5f, 8f),
+                            new Vector2(1f, 0f),
+                            1f,
+                            0.35f,
+                            0.05f,
+                            8f,
+                            0.08f,
+                            3f,
+                            8,
+                            16,
+                            8,
+                            "Landmark reveal test level.",
+                            10f);
+                    }
                 }
 
                 Controller.ConfigureLevelsForSetup(levels);
 
-                Landmarks = new LandmarkDefinition[2];
+                Landmarks = new LandmarkDefinition[3];
                 for (int index = 0; index < Landmarks.Length; index++)
                 {
                     var texture = new Texture2D(2, 2);
@@ -387,12 +775,34 @@ namespace Cutrium.PlayModeTests
                     Landmarks[index] = landmark;
                 }
 
+                var sandTexture = new Texture2D(2, 2);
+                _textures.Add(sandTexture);
+
                 var frameObject = new GameObject(
                     "Frame",
                     typeof(RectTransform));
-                var frame = (RectTransform)frameObject.transform;
-                frame.SetParent(_simulationObject.transform, false);
-                frame.sizeDelta = new Vector2(625f, 1000f);
+                _frame = (RectTransform)frameObject.transform;
+                _frame.SetParent(_simulationObject.transform, false);
+                _frame.sizeDelta = new Vector2(625f, 1000f);
+                RectTransform frame = _frame;
+
+                var grainFlightRootObject = new GameObject(
+                    "GrainFlightRoot",
+                    typeof(RectTransform));
+                var grainFlightRoot =
+                    (RectTransform)grainFlightRootObject.transform;
+                grainFlightRoot.SetParent(_simulationObject.transform, false);
+                grainFlightRoot.anchorMin = Vector2.zero;
+                grainFlightRoot.anchorMax = Vector2.one;
+
+                var bowlFillTargetObject = new GameObject(
+                    "BowlFillTarget",
+                    typeof(RectTransform));
+                var bowlFillTarget =
+                    (RectTransform)bowlFillTargetObject.transform;
+                bowlFillTarget.SetParent(_simulationObject.transform, false);
+                bowlFillTarget.anchoredPosition = new Vector2(0f, -1200f);
+                SandDestination = bowlFillTarget;
 
                 var artworkObject = new GameObject(
                     "Artwork",
@@ -435,8 +845,10 @@ namespace Cutrium.PlayModeTests
                     frame,
                     artworkImage,
                     veilRoot,
+                    sandTexture,
+                    grainFlightRoot,
+                    bowlFillTarget,
                     null,
-                    new Color(0.09f, 0.11f, 0.15f, 0.94f),
                     0.2f,
                     completionArtworkImage,
                     scrimGroup,
@@ -456,6 +868,7 @@ namespace Cutrium.PlayModeTests
             public FirstPlayableController Controller { get; }
             public LandmarkRevealPresenter Presenter { get; }
             public LandmarkDefinition[] Landmarks { get; }
+            public RectTransform SandDestination { get; }
 
             public bool CompleteWithoutAdvancing()
             {
@@ -480,6 +893,24 @@ namespace Cutrium.PlayModeTests
 
                 return Controller.Session.LevelStatus
                     == CaptureLevelStatus.Completed;
+            }
+
+            public void SetBoardFrameSize(Vector2 size)
+            {
+                _frame.sizeDelta = size;
+            }
+
+            public bool RunUntilBarrierResolves(int maxTicks = 600)
+            {
+                for (int tick = 0;
+                     tick < maxTicks && Controller.Session.ActiveBarrier.HasValue;
+                     tick++)
+                {
+                    Controller.AdvanceSimulation(
+                        FirstPlayableController.SimulationStep);
+                }
+
+                return !Controller.Session.ActiveBarrier.HasValue;
             }
 
             public bool CompleteAndAdvance()

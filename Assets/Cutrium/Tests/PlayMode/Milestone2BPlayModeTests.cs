@@ -147,7 +147,7 @@ namespace Cutrium.PlayModeTests
             _mouse = InputSystem.AddDevice<Mouse>();
             InputSystem.EnableDevice(_mouse);
             RectTransform topHud = _composition.transform.parent
-                .Find("Canvas/SafeAreaRoot/TopHUD")
+                .Find("Canvas/SafeAreaRoot/BottomHUD/ProgressBar")
                 .GetComponent<RectTransform>();
             Vector2 hudCenter = GetScreenCenter(topHud);
             Vector2 boardEnd = LogicalToScreen(new LogicalPoint(4f, 4f));

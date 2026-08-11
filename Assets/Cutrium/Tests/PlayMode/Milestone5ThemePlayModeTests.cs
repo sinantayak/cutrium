@@ -61,13 +61,20 @@ namespace Cutrium.PlayModeTests
             Assert.That(_theme.FallbackTheme, Is.Not.Null);
             Assert.That(_theme.FallbackTheme.StableId,
                 Is.EqualTo("minimal-flat-fallback"));
-            Assert.That(_theme.SelectedTheme.BackgroundSprite, Is.Not.Null);
+            Assert.That(_theme.FallbackTheme.BackgroundColor,
+                Is.EqualTo(new Color(0.09f, 0.05f, 0.035f, 1f)));
+            Assert.That(_theme.SelectedTheme.BackgroundSprite, Is.Null);
+            Assert.That(_theme.SelectedTheme.BackgroundColor,
+                Is.EqualTo(new Color(0.12f, 0.07f, 0.045f, 1f)));
             Assert.That(_theme.SelectedTheme.BoardSprite, Is.Not.Null);
             Assert.That(_theme.SelectedTheme.FrameSprite, Is.Not.Null);
             Assert.That(_theme.SelectedTheme.ThreatSprite, Is.Not.Null);
+            Assert.That(_theme.SelectedTheme.ThreatSprite.name,
+                Is.EqualTo("Threat_Visual_0"));
             Assert.That(_theme.SelectedTheme.BarrierBodySprite, Is.Not.Null);
             Assert.That(_theme.SelectedTheme.BarrierCapSprite, Is.Not.Null);
-            Assert.That(_theme.SelectedTheme.CaptureSprite, Is.Not.Null);
+            Assert.That(_theme.SelectedTheme.CaptureSprite, Is.Null);
+            Assert.That(_theme.SelectedTheme.CaptureColor, Is.EqualTo(Color.clear));
             Assert.That(_theme.FallbackTheme.ThreatSprite, Is.Null);
             Assert.That(_theme.FallbackTheme.CaptureMaterial, Is.Null);
             Assert.That(_theme.Current.StableId,
@@ -101,7 +108,9 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Session.TickCount, Is.EqualTo(ticksBefore));
 
             _theme.SetSelectedTheme(cleanup);
-            Assert.That(_theme.Background.sprite, Is.Not.Null);
+            Assert.That(_theme.Background.sprite, Is.Null);
+            Assert.That(_theme.Background.color,
+                Is.EqualTo(cleanup.BackgroundColor));
             Assert.That(_threat.Image.sprite, Is.Not.Null);
         }
 
@@ -163,7 +172,7 @@ namespace Cutrium.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator FallbackCaptureNeedsNoShaderOrMaterial()
+        public IEnumerator CapturedRegionStaysTransparentAndSpriteFree()
         {
             ThemeDefinition cleanup = _theme.SelectedTheme;
             _theme.SetSelectedTheme(null);
@@ -188,7 +197,7 @@ namespace Cutrium.PlayModeTests
             Assert.That(image.sprite, Is.Null);
             Assert.That(_capture.ThemeStyle.Material, Is.Null);
             Assert.That(image.material, Is.SameAs(image.defaultMaterial));
-            Assert.That(image.color.a, Is.GreaterThan(0f));
+            Assert.That(image.color, Is.EqualTo(Color.clear));
             Assert.That(_controller.Session.CapturedFraction,
                 Is.GreaterThan(0f));
             _theme.SetSelectedTheme(cleanup);

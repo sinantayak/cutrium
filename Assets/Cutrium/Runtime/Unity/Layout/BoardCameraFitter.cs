@@ -22,6 +22,10 @@ namespace Cutrium.Unity.Layout
         [SerializeField]
         private RectTransform _boardFrame;
 
+        [SerializeField]
+        [Range(0f, 1f)]
+        private float _verticalAlignment = 0.5f;
+
         private Rect _lastViewportScreenRect;
         private Vector2 _lastScreenSize;
         private bool _hasAppliedLayout;
@@ -47,6 +51,8 @@ namespace Cutrium.Unity.Layout
 
         public RectTransform BoardFrame => _boardFrame;
 
+        public float VerticalAlignment => _verticalAlignment;
+
         public Vector2 LogicalBoardSize => BoardViewportLayout.LogicalSize;
 
         public Rect ViewportScreenRect { get; private set; }
@@ -67,6 +73,21 @@ namespace Cutrium.Unity.Layout
             _boardStage = boardStage;
             _boardViewport = boardViewport;
             _boardFrame = boardFrame;
+            _hasAppliedLayout = false;
+        }
+
+        public void ConfigureVerticalAlignmentForSetup(float verticalAlignment)
+        {
+            if (float.IsNaN(verticalAlignment)
+                || float.IsInfinity(verticalAlignment)
+                || verticalAlignment < 0f
+                || verticalAlignment > 1f)
+            {
+                throw new System.ArgumentOutOfRangeException(
+                    nameof(verticalAlignment));
+            }
+
+            _verticalAlignment = verticalAlignment;
             _hasAppliedLayout = false;
         }
 
@@ -91,9 +112,13 @@ namespace Cutrium.Unity.Layout
             }
 
             Rect boardScreenRect =
-                BoardViewportLayout.CalculateAspectFitRect(viewportScreenRect);
+                BoardViewportLayout.CalculateAspectFitRect(
+                    viewportScreenRect,
+                    _verticalAlignment);
             Rect localBoardRect =
-                BoardViewportLayout.CalculateAspectFitRect(_boardStage.rect);
+                BoardViewportLayout.CalculateAspectFitRect(
+                    _boardStage.rect,
+                    _verticalAlignment);
 
             _boardCamera.rect = new Rect(
                 viewportScreenRect.x / screenSize.x,

@@ -207,10 +207,10 @@ namespace Cutrium.PlayModeTests
                 .Find("BoardStage/BoardViewport").GetComponent<RectTransform>();
             RectTransform bottom = safeArea.Find("BottomHUD")
                 .GetComponent<RectTransform>();
-            RectTransform progress = safeArea.Find("TopHUD/ProgressArea")
+            RectTransform legacyProgress = safeArea.Find("TopHUD/ProgressArea")
                 .GetComponent<RectTransform>();
-            RectTransform blocker = safeArea.Find(
-                "TopHUD/HudBlockerButton").GetComponent<RectTransform>();
+            RectTransform progress = safeArea.Find("BottomHUD/ProgressBar")
+                .GetComponent<RectTransform>();
             LayoutElement overlayLayout = _hudPresenter.CompleteOverlay
                 .GetComponent<LayoutElement>();
             LayoutElement topLayout = top.GetComponent<LayoutElement>();
@@ -228,17 +228,11 @@ namespace Cutrium.PlayModeTests
 
             Assert.That(boardStage.rect.height, Is.GreaterThan(top.rect.height));
             Assert.That(boardStage.rect.height, Is.GreaterThan(bottom.rect.height));
-            // TopHUD is widened past Milestone2's single-text-row baseline
-            // so its progress-bar row reads as centered in the gap between
-            // the screen top and the board, not hugging a barely-tall strip.
-            Assert.That(topLayout.preferredHeight, Is.EqualTo(106f));
+            Assert.That(top.gameObject.activeSelf, Is.True);
+            Assert.That(topLayout.minHeight, Is.EqualTo(52f));
+            Assert.That(topLayout.preferredHeight, Is.EqualTo(60f));
             Assert.That(topLayout.flexibleHeight, Is.Zero);
-            // The landmark presentation pass replaces BottomHUD's debug
-            // status lines and power buttons (both hidden/removed) with a
-            // single compact quick-retry chip, in a band sized to keep the
-            // button centered in the gap between the board and the phone's
-            // bottom edge rather than flush against it.
-            Assert.That(bottomLayout.preferredHeight, Is.EqualTo(114f));
+            Assert.That(bottomLayout.preferredHeight, Is.EqualTo(98f));
             Assert.That(bottomLayout.flexibleHeight, Is.Zero);
             Assert.That(boardLayout.preferredHeight, Is.Zero);
             Assert.That(boardLayout.flexibleHeight, Is.EqualTo(1f));
@@ -247,14 +241,16 @@ namespace Cutrium.PlayModeTests
             Assert.That(topRow.childControlHeight, Is.True);
             Assert.That(topRow.childForceExpandHeight, Is.False);
             Assert.That(topRow.childForceExpandWidth, Is.False);
-            Assert.That(blocker.rect.width, Is.InRange(72f, 100f));
-            Assert.That(blocker.rect.height, Is.LessThanOrEqualTo(48f));
+            Assert.That(progress.gameObject.activeSelf, Is.True);
+            Assert.That(progress.rect.width,
+                Is.LessThan(boardViewport.rect.width));
+            Assert.That(progress.GetComponent<Image>().raycastTarget, Is.True);
             Assert.That(_hudPresenter.PercentageText.transform.parent,
-                Is.SameAs(progress));
+                Is.SameAs(legacyProgress));
             Assert.That(_hudPresenter.TargetText.transform.parent,
-                Is.SameAs(progress));
+                Is.SameAs(legacyProgress));
             AssertChildrenHaveNonFlexibleHeight(top);
-            AssertChildrenHaveNonFlexibleHeight(progress);
+            AssertChildrenHaveNonFlexibleHeight(legacyProgress);
             AssertChildrenHaveNonFlexibleHeight(bottom);
             Assert.That(overlayLayout.ignoreLayout, Is.True);
             Assert.That(_hudPresenter.CompleteOverlay.transform.GetSiblingIndex(),
@@ -263,6 +259,12 @@ namespace Cutrium.PlayModeTests
                 Is.EqualTo("LEARN THE CUT"));
             Assert.That(safeArea.Find("TopHUD/HudBlockerButton/Label")
                 .GetComponent<Text>().text, Is.EqualTo("UI TEST"));
+            for (int index = 0; index < top.childCount; index++)
+            {
+                Assert.That(top.GetChild(index).gameObject.activeSelf,
+                    Is.False,
+                    top.GetChild(index).name);
+            }
             Assert.That(safeArea.Find(
                     "BoardStage/BoardViewport/BoardFrame/BoardLabel")
                 .gameObject.activeSelf, Is.False);
@@ -270,11 +272,18 @@ namespace Cutrium.PlayModeTests
             // BoardViewport must resolve to exactly the aspect-fitted rect
             // within BoardStage -- no leftover letterbox margin of its own.
             Rect expectedFit = BoardViewportLayout.CalculateAspectFitRect(
-                new Rect(Vector2.zero, boardStage.rect.size));
+                new Rect(Vector2.zero, boardStage.rect.size),
+                0.5f);
             Assert.That(boardViewport.rect.width,
                 Is.EqualTo(expectedFit.width).Within(0.5f));
             Assert.That(boardViewport.rect.height,
                 Is.EqualTo(expectedFit.height).Within(0.5f));
+            Assert.That(boardViewport.anchoredPosition.x,
+                Is.EqualTo(0f).Within(0.01f));
+            Assert.That(boardViewport.anchoredPosition.y,
+                Is.EqualTo(0f).Within(0.01f));
+            Assert.That(_root.GetComponentInChildren<BoardCameraFitter>(true)
+                .VerticalAlignment, Is.EqualTo(0.5f));
         }
 
         [TestCase(1080f, 1920f)]
@@ -286,30 +295,55 @@ namespace Cutrium.PlayModeTests
         {
             ResolvedLayout layout = ResolveLayoutAt(width, height);
             TestContext.WriteLine(
-                $"{width:0}x{height:0}: Safe={layout.SafeSize}, " +
-                $"Top={layout.TopSize}, Board={layout.BoardSize}, " +
-                $"Bottom={layout.BottomSize}, UI TEST={layout.ButtonSize}");
+                $"{width:0}x{height:0} pixels: " +
+                $"SafeAreaRoot={layout.SafePixelRect}, " +
+                $"TopHUD={layout.TopPixelRect}, " +
+                $"BoardViewportRegion={layout.BoardStagePixelRect}, " +
+                $"Board10x16={layout.BoardPixelRect}, " +
+                $"BottomHUD={layout.BottomPixelRect}, " +
+                $"ProgressBar={layout.ProgressPixelRect}");
 
-            Assert.That(layout.TopSize.y,
-                Is.LessThanOrEqualTo(layout.SafeSize.y * 0.12f));
+            Assert.That(layout.TopRect.height, Is.GreaterThan(0f));
+            Assert.That(layout.TopRect.height,
+                Is.LessThanOrEqualTo(layout.SafeSize.y * 0.08f));
             Assert.That(layout.BottomSize.y,
                 Is.LessThanOrEqualTo(layout.SafeSize.y * 0.08f));
-            Assert.That(layout.BoardSize.y,
+            Assert.That(layout.BoardStageSize.y,
                 Is.GreaterThanOrEqualTo(layout.SafeSize.y * 0.7f));
-            Assert.That(layout.ButtonSize.x,
-                Is.InRange(72f, 100f));
-            Assert.That(layout.ButtonSize.y,
-                Is.LessThanOrEqualTo(48f));
-            Assert.That(layout.FittedBoard.width / layout.FittedBoard.height,
+            Assert.That(layout.BoardRect.width / layout.BoardRect.height,
                 Is.EqualTo(10f / 16f).Within(0.00001f));
-            Assert.That(layout.FittedBoard.xMin,
-                Is.GreaterThanOrEqualTo(-0.001f));
-            Assert.That(layout.FittedBoard.yMin,
-                Is.GreaterThanOrEqualTo(-0.001f));
-            Assert.That(layout.FittedBoard.xMax,
-                Is.LessThanOrEqualTo(layout.BoardSize.x + 0.001f));
-            Assert.That(layout.FittedBoard.yMax,
-                Is.LessThanOrEqualTo(layout.BoardSize.y + 0.001f));
+            Assert.That(layout.ProgressRect.width,
+                Is.InRange(
+                    layout.BoardRect.width * 0.75f,
+                    layout.BoardRect.width * 0.9f));
+            Assert.That(layout.ProgressRect.yMax,
+                Is.LessThanOrEqualTo(layout.BoardRect.yMin + 0.01f));
+            Assert.That(layout.TopRect.yMin,
+                Is.GreaterThanOrEqualTo(
+                    layout.BoardStageRect.yMax - 0.01f));
+            Assert.That(layout.BottomRect.yMax,
+                Is.LessThanOrEqualTo(
+                    layout.BoardStageRect.yMin + 0.01f));
+            Assert.That(layout.BoardRect.center.y,
+                Is.EqualTo(layout.BoardStageRect.center.y).Within(0.01f));
+            float emptyAbove =
+                layout.BoardStageRect.yMax - layout.BoardRect.yMax;
+            float emptyBelow =
+                layout.BoardRect.yMin - layout.BoardStageRect.yMin;
+            Assert.That(emptyAbove,
+                Is.EqualTo(emptyBelow).Within(0.01f));
+            Assert.That(Mathf.Max(emptyAbove, emptyBelow),
+                Is.LessThanOrEqualTo(layout.SafeSize.y * 0.13f));
+            Assert.That(layout.ProgressRect.xMin,
+                Is.GreaterThanOrEqualTo(layout.BottomRect.xMin - 0.01f));
+            Assert.That(layout.ProgressRect.xMax,
+                Is.LessThanOrEqualTo(layout.BottomRect.xMax + 0.01f));
+            Assert.That(layout.ProgressRect.yMin,
+                Is.GreaterThanOrEqualTo(layout.BottomRect.yMin - 0.01f));
+            Assert.That(layout.ProgressRect.yMax,
+                Is.LessThanOrEqualTo(layout.BottomRect.yMax + 0.01f));
+            Assert.That(layout.ProgressRect.center.y,
+                Is.EqualTo(layout.BottomRect.center.y).Within(0.01f));
             Assert.That(layout.OverlaySize.x,
                 Is.EqualTo(layout.SafeSize.x).Within(0.01f));
             Assert.That(layout.OverlaySize.y,
@@ -376,6 +410,10 @@ namespace Cutrium.PlayModeTests
                     Is.LessThanOrEqualTo(layout.BoardSize.y + 0.001f));
                 Assert.That(viewport.sizeDelta.x / viewport.sizeDelta.y,
                     Is.EqualTo(10f / 16f).Within(0.0001f));
+                Assert.That(viewport.anchoredPosition.x,
+                    Is.EqualTo(0f).Within(0.001f));
+                Assert.That(viewport.anchoredPosition.y,
+                    Is.EqualTo(0f).Within(0.001f));
             }
             finally
             {
@@ -742,7 +780,6 @@ namespace Cutrium.PlayModeTests
             LayoutRebuilder.ForceRebuildLayoutImmediate(clone);
             Canvas.ForceUpdateCanvases();
 
-            RectTransform top = (RectTransform)clone.Find("TopHUD");
             // BoardStage -- not BoardViewport -- is the pure
             // VerticalLayoutGroup-controlled slot that a static clone (no
             // live BoardCameraFitter running) can correctly resolve; it
@@ -750,23 +787,53 @@ namespace Cutrium.PlayModeTests
             // board" role BoardViewport itself used to play before it
             // became the fitted-and-shrunk shell.
             RectTransform board = (RectTransform)clone.Find("BoardStage");
+            RectTransform boardViewport = (RectTransform)clone.Find(
+                "BoardStage/BoardViewport");
+            RectTransform top = (RectTransform)clone.Find("TopHUD");
             RectTransform bottom = (RectTransform)clone.Find("BottomHUD");
-            RectTransform button = (RectTransform)clone.Find(
-                "TopHUD/HudBlockerButton");
+            RectTransform progress = (RectTransform)clone.Find(
+                "BottomHUD/ProgressBar");
             RectTransform overlay = (RectTransform)clone.Find(
                 "LevelCompleteOverlay");
-            Rect fittedBoard = BoardViewportLayout.CalculateAspectFitRect(
-                new Rect(Vector2.zero, board.rect.size));
+            Rect fittedBoardLocal = BoardViewportLayout.CalculateAspectFitRect(
+                board.rect,
+                0.5f);
+            boardViewport.anchorMin = new Vector2(0.5f, 0.5f);
+            boardViewport.anchorMax = new Vector2(0.5f, 0.5f);
+            boardViewport.pivot = new Vector2(0.5f, 0.5f);
+            boardViewport.anchoredPosition =
+                fittedBoardLocal.center - board.rect.center;
+            boardViewport.sizeDelta = fittedBoardLocal.size;
+            progress.GetComponent<SandProgressPresenter>().RefreshLayoutNow();
+            Canvas.ForceUpdateCanvases();
+
             var result = new ResolvedLayout(
                 clone.rect.size,
-                top.rect.size,
-                board.rect.size,
-                bottom.rect.size,
-                button.rect.size,
+                clone.rect,
+                RectInAncestor(top, clone),
+                RectInAncestor(board, clone),
+                RectInAncestor(bottom, clone),
                 overlay.rect.size,
-                fittedBoard);
+                RectInAncestor(boardViewport, clone),
+                RectInAncestor(progress, clone),
+                width / canvasSize.x);
             Object.DestroyImmediate(host);
             return result;
+        }
+
+        private static Rect RectInAncestor(
+            RectTransform rect,
+            RectTransform ancestor)
+        {
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            Vector3 minimum = ancestor.InverseTransformPoint(corners[0]);
+            Vector3 maximum = ancestor.InverseTransformPoint(corners[2]);
+            return Rect.MinMaxRect(
+                minimum.x,
+                minimum.y,
+                maximum.x,
+                maximum.y);
         }
 
         private static Vector2 CalculateCanvasSize(
@@ -805,35 +872,70 @@ namespace Cutrium.PlayModeTests
         {
             public ResolvedLayout(
                 Vector2 safeSize,
-                Vector2 topSize,
-                Vector2 boardSize,
-                Vector2 bottomSize,
-                Vector2 buttonSize,
+                Rect safeRect,
+                Rect topRect,
+                Rect boardStageRect,
+                Rect bottomRect,
                 Vector2 overlaySize,
-                Rect fittedBoard)
+                Rect boardRect,
+                Rect progressRect,
+                float pixelScale)
             {
                 SafeSize = safeSize;
-                TopSize = topSize;
-                BoardSize = boardSize;
-                BottomSize = bottomSize;
-                ButtonSize = buttonSize;
+                SafeRect = safeRect;
+                TopRect = topRect;
+                BoardStageRect = boardStageRect;
+                BottomRect = bottomRect;
                 OverlaySize = overlaySize;
-                FittedBoard = fittedBoard;
+                BoardRect = boardRect;
+                ProgressRect = progressRect;
+                PixelScale = pixelScale;
             }
 
             public Vector2 SafeSize { get; }
 
-            public Vector2 TopSize { get; }
+            public Rect SafeRect { get; }
 
-            public Vector2 BoardSize { get; }
+            public Rect TopRect { get; }
 
-            public Vector2 BottomSize { get; }
+            public Rect BoardStageRect { get; }
 
-            public Vector2 ButtonSize { get; }
+            public Vector2 BoardStageSize => BoardStageRect.size;
+
+            public Vector2 BoardSize => BoardStageSize;
+
+            public Rect BottomRect { get; }
+
+            public Vector2 BottomSize => BottomRect.size;
 
             public Vector2 OverlaySize { get; }
 
-            public Rect FittedBoard { get; }
+            public Rect BoardRect { get; }
+
+            public Rect ProgressRect { get; }
+
+            public float PixelScale { get; }
+
+            public Rect SafePixelRect => ToPixelRect(SafeRect);
+
+            public Rect TopPixelRect => ToPixelRect(TopRect);
+
+            public Rect BoardStagePixelRect => ToPixelRect(BoardStageRect);
+
+            public Rect BoardPixelRect => ToPixelRect(BoardRect);
+
+            public Rect BottomPixelRect => ToPixelRect(BottomRect);
+
+            public Rect ProgressPixelRect => ToPixelRect(ProgressRect);
+
+            private Rect ToPixelRect(Rect rect)
+            {
+                return new Rect(
+                    (rect.xMin - SafeRect.xMin) * PixelScale,
+                    (rect.yMin - SafeRect.yMin) * PixelScale,
+                    rect.width * PixelScale,
+                    rect.height * PixelScale);
+            }
         }
 
         private readonly struct CutCandidate

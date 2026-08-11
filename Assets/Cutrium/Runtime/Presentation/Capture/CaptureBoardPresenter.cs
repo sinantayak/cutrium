@@ -14,7 +14,7 @@ namespace Cutrium.Presentation.Capture
     public sealed class CaptureBoardPresenter : MonoBehaviour
     {
         private static readonly Color CapturedColor =
-            new Color(0.85f, 0.72f, 0.42f, 0.16f);
+            Color.clear;
         private static readonly Color CompletedBarrierColor =
             new Color(0.95f, 0.82f, 0.5f, 0.55f);
 
@@ -238,11 +238,12 @@ namespace Cutrium.Presentation.Capture
                 return;
             }
 
-            image.sprite = _hasThemeStyle ? _themeStyle.Sprite : null;
-            image.material = _hasThemeStyle ? _themeStyle.Material : null;
-            image.color = _hasThemeStyle
-                ? _themeStyle.Color
-                : CapturedColor;
+            // CapturedRegion* remains as pooled geometry for presentation
+            // bookkeeping and regression seams, but it must not paint over
+            // the landmark photograph revealed underneath it.
+            image.sprite = null;
+            image.material = null;
+            image.color = CapturedColor;
             image.type = Image.Type.Simple;
             image.preserveAspect = false;
             image.raycastTarget = false;

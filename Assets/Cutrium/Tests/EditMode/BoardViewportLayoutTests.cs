@@ -54,6 +54,33 @@ namespace Cutrium.Gameplay.EditModeTests
         }
 
         [Test]
+        public void BottomAlignment_PreservesAspectAndUsesLowerViewportEdge()
+        {
+            var viewport = new Rect(12f, 24f, 1080f, 2400f);
+
+            Rect board = BoardViewportLayout.CalculateAspectFitRect(
+                viewport,
+                0f);
+
+            Assert.That(board.width / board.height,
+                Is.EqualTo(10f / 16f).Within(0.00001f));
+            Assert.That(board.yMin, Is.EqualTo(viewport.yMin).Within(0.001f));
+            Assert.That(board.xMin, Is.GreaterThanOrEqualTo(viewport.xMin));
+            Assert.That(board.xMax, Is.LessThanOrEqualTo(viewport.xMax));
+        }
+
+        [TestCase(-0.01f)]
+        [TestCase(1.01f)]
+        [TestCase(float.NaN)]
+        public void InvalidVerticalAlignment_IsRejected(float alignment)
+        {
+            Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => BoardViewportLayout.CalculateAspectFitRect(
+                    new Rect(0f, 0f, 1080f, 1920f),
+                    alignment));
+        }
+
+        [Test]
         public void OrthographicSize_ContainsBothBoardDimensions()
         {
             float phoneSize = BoardViewportLayout.CalculateOrthographicSize(

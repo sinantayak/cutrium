@@ -336,7 +336,7 @@ namespace Cutrium.Editor.Setup
             theme.ConfigureForSetup(
                 "minimal-flat-fallback",
                 null,
-                new Color(0.025f, 0.04f, 0.05f, 1f),
+                new Color(0.09f, 0.05f, 0.035f, 1f),
                 null,
                 new Color(0.06f, 0.13f, 0.14f, 1f),
                 null,

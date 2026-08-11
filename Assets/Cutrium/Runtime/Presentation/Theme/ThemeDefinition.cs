@@ -60,6 +60,11 @@ namespace Cutrium.Presentation.Theme
             new Color(0.25f, 0.92f, 0.79f, 1f);
         [SerializeField] private Color _hudTextColor = Color.white;
 
+        [Header("Sand & Bowl (Landmark Reveal)")]
+        [SerializeField] private Sprite _sandTexture;
+        [SerializeField] private Sprite _bowlOutlineSprite;
+        [SerializeField] private Sprite _bowlInteriorMaskSprite;
+
         public string StableId => _stableId;
         public Sprite BackgroundSprite => _backgroundSprite;
         public Color BackgroundColor => _backgroundColor;
@@ -88,6 +93,31 @@ namespace Cutrium.Presentation.Theme
         public Color HudBackgroundColor => _hudBackgroundColor;
         public Color HudAccentColor => _hudAccentColor;
         public Color HudTextColor => _hudTextColor;
+
+        /// Optional artist-provided sand surface texture for the sand/
+        /// bowl landmark reveal (ADR-026). Null means "use the generated
+        /// default" -- assigning this later replaces the procedural sand
+        /// without any reveal-system code change.
+        public Sprite SandTexture => _sandTexture;
+
+        /// Optional artist-provided decorative bowl silhouette (ADR-026).
+        /// Null means "use the generated default".
+        public Sprite BowlOutlineSprite => _bowlOutlineSprite;
+
+        /// Optional artist-provided bowl-interior alpha mask -- drives the
+        /// UI Mask that clips the rising sand-fill level to the bowl's
+        /// shape (ADR-026). Null means "use the generated default".
+        public Sprite BowlInteriorMaskSprite => _bowlInteriorMaskSprite;
+
+        public void ConfigureSandBowlForSetup(
+            Sprite sandTexture,
+            Sprite bowlOutlineSprite,
+            Sprite bowlInteriorMaskSprite)
+        {
+            _sandTexture = sandTexture;
+            _bowlOutlineSprite = bowlOutlineSprite;
+            _bowlInteriorMaskSprite = bowlInteriorMaskSprite;
+        }
 
         public void ConfigureForSetup(
             string stableId,
@@ -313,8 +343,37 @@ namespace Cutrium.Presentation.Theme
         public Color HudTextColor { get; }
     }
 
+    public readonly struct SandBowlVisualStyle
+    {
+        public SandBowlVisualStyle(
+            Sprite sandTexture,
+            Sprite bowlOutlineSprite,
+            Sprite bowlInteriorMaskSprite)
+        {
+            SandTexture = sandTexture;
+            BowlOutlineSprite = bowlOutlineSprite;
+            BowlInteriorMaskSprite = bowlInteriorMaskSprite;
+        }
+
+        public Sprite SandTexture { get; }
+        public Sprite BowlOutlineSprite { get; }
+        public Sprite BowlInteriorMaskSprite { get; }
+    }
+
     public static class ThemeResolver
     {
+        public static SandBowlVisualStyle ResolveSandBowl(
+            ThemeDefinition selected,
+            ThemeDefinition fallback) =>
+            new SandBowlVisualStyle(
+                ResolveSprite(selected?.SandTexture, fallback?.SandTexture),
+                ResolveSprite(
+                    selected?.BowlOutlineSprite,
+                    fallback?.BowlOutlineSprite),
+                ResolveSprite(
+                    selected?.BowlInteriorMaskSprite,
+                    fallback?.BowlInteriorMaskSprite));
+
         public static ResolvedTheme Resolve(
             ThemeDefinition selected,
             ThemeDefinition fallback)
@@ -323,7 +382,7 @@ namespace Cutrium.Presentation.Theme
             string stableId = values != null ? values.StableId : "component-flat";
             Color background = values != null
                 ? values.BackgroundColor
-                : new Color(0.035f, 0.075f, 0.095f, 1f);
+                : new Color(0.09f, 0.05f, 0.035f, 1f);
             Color board = values != null
                 ? values.BoardColor
                 : new Color(0.055f, 0.16f, 0.18f, 1f);

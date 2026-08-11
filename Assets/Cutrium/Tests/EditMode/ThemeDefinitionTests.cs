@@ -63,9 +63,42 @@ namespace Cutrium.Gameplay.EditModeTests
 
                 ResolvedTheme flat = ThemeResolver.Resolve(null, null);
                 Assert.That(flat.BackgroundSprite, Is.Null);
+                Assert.That(flat.BackgroundColor,
+                    Is.EqualTo(new Color(0.09f, 0.05f, 0.035f, 1f)));
                 Assert.That(flat.Threat.Sprite, Is.Null);
                 Assert.That(flat.Threat.Scale, Is.EqualTo(Vector2.one));
                 Assert.That(flat.StableId, Is.EqualTo("component-flat"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(selected);
+                UnityEngine.Object.DestroyImmediate(fallback);
+            }
+        }
+
+        [Test]
+        public void ResolveSandBowl_UsesSelectedThenFallbackThenNullDefault()
+        {
+            ThemeDefinition selected = CreateTheme("selected");
+            ThemeDefinition fallback = CreateTheme("fallback");
+            selected.ConfigureSandBowlForSetup(_spriteA, null, null);
+            fallback.ConfigureSandBowlForSetup(_spriteB, _spriteB, _spriteB);
+            try
+            {
+                SandBowlVisualStyle resolved =
+                    ThemeResolver.ResolveSandBowl(selected, fallback);
+                // Selected wins for the field it sets (sand texture); falls
+                // through to fallback for the fields it leaves null (bowl
+                // outline/mask).
+                Assert.That(resolved.SandTexture, Is.SameAs(_spriteA));
+                Assert.That(resolved.BowlOutlineSprite, Is.SameAs(_spriteB));
+                Assert.That(resolved.BowlInteriorMaskSprite, Is.SameAs(_spriteB));
+
+                SandBowlVisualStyle none =
+                    ThemeResolver.ResolveSandBowl(null, null);
+                Assert.That(none.SandTexture, Is.Null);
+                Assert.That(none.BowlOutlineSprite, Is.Null);
+                Assert.That(none.BowlInteriorMaskSprite, Is.Null);
             }
             finally
             {

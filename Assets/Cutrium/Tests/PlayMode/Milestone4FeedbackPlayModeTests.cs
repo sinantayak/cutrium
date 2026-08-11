@@ -141,7 +141,8 @@ namespace Cutrium.PlayModeTests
                 .GetChild(0)
                 .GetComponent<Image>();
             Assert.That(fallback, Is.Not.Null);
-            Assert.That(fallback.color.a, Is.GreaterThan(0f));
+            Assert.That(fallback.sprite, Is.Null);
+            Assert.That(fallback.color, Is.EqualTo(Color.clear));
             Assert.That(_boardPresenter.AllVisibleCapturesRevealed, Is.False);
 
             _hud.AdvancePercentageAnimation(0f);
