@@ -71,6 +71,12 @@ namespace Cutrium.PlayModeTests
             Assert.That(_theme.SelectedTheme.ThreatSprite, Is.Not.Null);
             Assert.That(_theme.SelectedTheme.ThreatSprite.name,
                 Is.EqualTo("Threat_Visual_0"));
+            Assert.That(_theme.SelectedTheme.ThreatTrailColor,
+                Is.EqualTo(new Color(1f, 0.78f, 0.68f, 0.86f)));
+            Assert.That(_theme.SelectedTheme.BarrierGrowingColor,
+                Is.EqualTo(new Color(0.38f, 0.15f, 0.055f, 1f)));
+            Assert.That(_theme.SelectedTheme.BarrierPreviewColor,
+                Is.EqualTo(new Color(0.38f, 0.15f, 0.055f, 0.9f)));
             Assert.That(_theme.SelectedTheme.BarrierBodySprite, Is.Not.Null);
             Assert.That(_theme.SelectedTheme.BarrierCapSprite, Is.Not.Null);
             Assert.That(_theme.SelectedTheme.CaptureSprite, Is.Null);
@@ -143,6 +149,62 @@ namespace Cutrium.PlayModeTests
                 _theme.SetSelectedTheme(cleanup);
                 Object.DestroyImmediate(temporary);
             }
+        }
+
+        [Test]
+        public void ThreatTrail_IsVisibleAndPointsOppositeMotion()
+        {
+            _threat.RefreshNow();
+            RectTransform trail = (RectTransform)_threat.Visual.parent.Find(
+                "ThreatTrail");
+            Assert.That(trail, Is.Not.Null);
+            Assert.That(trail.parent, Is.SameAs(_threat.Visual.parent));
+            Assert.That(trail.GetSiblingIndex(),
+                Is.LessThan(_threat.Visual.GetSiblingIndex()));
+
+            Image trailImage = trail.GetComponent<Image>();
+            Assert.That(trailImage.sprite,
+                Is.SameAs(_theme.Current.Threat.TrailSprite));
+            Assert.That(trailImage.preserveAspect, Is.True);
+            Assert.That(trailImage.color.a, Is.GreaterThanOrEqualTo(0.8f));
+
+            float diameter = _threat.Visual.sizeDelta.x;
+            Assert.That(trail.sizeDelta.x,
+                Is.GreaterThan(diameter * 1.5f));
+            Assert.That(trail.sizeDelta.y,
+                Is.EqualTo(trail.sizeDelta.x).Within(0.001f));
+            Vector2 relativeTrailPosition =
+                trail.anchoredPosition - _threat.Visual.anchoredPosition;
+            Assert.That(relativeTrailPosition.magnitude,
+                Is.EqualTo(diameter * 0.78f).Within(0.001f));
+
+            ThreatState threat = _controller.Session.Threat;
+            Vector2 direction = new Vector2(
+                threat.Velocity.X,
+                threat.Velocity.Y).normalized;
+            Assert.That(
+                Vector2.Dot(relativeTrailPosition.normalized, direction),
+                Is.LessThan(-0.99f));
+        }
+
+        [Test]
+        public void GrowingBarrier_UsesOpaqueDarkBrownPresentation()
+        {
+            BarrierStartResult start = _controller.SubmitBarrierIntent(
+                new BarrierIntent(
+                    new LogicalPoint(5f, 4f),
+                    BarrierOrientation.Horizontal));
+            Assert.That(start.Accepted, Is.True);
+
+            _barrier.RefreshNow();
+            Color expected = new Color(0.38f, 0.15f, 0.055f, 1f);
+            Assert.That(_barrier.ThemeStyle.GrowingColor, Is.EqualTo(expected));
+            Assert.That(
+                _barrier.NegativeHalf.GetComponent<Image>().color,
+                Is.EqualTo(expected));
+            Assert.That(
+                _barrier.PositiveHalf.GetComponent<Image>().color,
+                Is.EqualTo(expected));
         }
 
         [Test]

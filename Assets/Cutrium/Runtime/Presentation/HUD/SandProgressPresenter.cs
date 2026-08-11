@@ -22,6 +22,7 @@ namespace Cutrium.Presentation.HUD
         private const float TextGap = 4f;
         private const float MinimumBarWidth = 280f;
         private const float ParentSidePadding = 18f;
+        private const float StartStarHeightMultiplier = 1.1f;
         private const float ComparisonEpsilon = 0.00001f;
 
         private readonly Vector3[] _boardWorldCorners = new Vector3[4];
@@ -33,6 +34,7 @@ namespace Cutrium.Presentation.HUD
         [SerializeField] private RectTransform _fillMaskRect;
         [SerializeField] private Image _fillImage;
         [SerializeField] private Image _frameImage;
+        [SerializeField] private Image _startStarImage;
         [SerializeField] private Text _progressText;
         [SerializeField] private RectTransform _fillStartTarget;
         [SerializeField] [Range(0.5f, 1f)]
@@ -59,6 +61,7 @@ namespace Cutrium.Presentation.HUD
         public RectTransform FillMaskRect => _fillMaskRect;
         public Image FillImage => _fillImage;
         public Image FrameImage => _frameImage;
+        public Image StartStarImage => _startStarImage;
         public Text ProgressText => _progressText;
         public RectTransform FillStartTarget => _fillStartTarget;
         public float DisplayedCapturedFraction =>
@@ -101,7 +104,8 @@ namespace Cutrium.Presentation.HUD
             Image fillImage,
             Image frameImage,
             Text progressText,
-            RectTransform fillStartTarget)
+            RectTransform fillStartTarget,
+            Image startStarImage = null)
         {
             _controller = controller;
             _boardFrame = boardFrame;
@@ -110,9 +114,16 @@ namespace Cutrium.Presentation.HUD
             _fillMaskRect = fillMaskRect;
             _fillImage = fillImage;
             _frameImage = frameImage;
+            _startStarImage = startStarImage;
             _progressText = progressText;
             _fillStartTarget = fillStartTarget;
             ResetForCurrentSession();
+            RefreshLayoutNow();
+        }
+
+        public void ConfigureStartStarForSetup(Image startStarImage)
+        {
+            _startStarImage = startStarImage;
             RefreshLayoutNow();
         }
 
@@ -244,6 +255,7 @@ namespace Cutrium.Presentation.HUD
 
             float visualHeight = barWidth * AuthoredHeight / AuthoredWidth;
             float rootHeight = visualHeight + TextGap + TextHeight;
+            float startStarSize = visualHeight * StartStarHeightMultiplier;
             _progressBarRect.sizeDelta = new Vector2(barWidth, rootHeight);
 
             ConfigureTopVisualRect(_backgroundImage?.rectTransform, visualHeight);
@@ -253,11 +265,14 @@ namespace Cutrium.Presentation.HUD
             {
                 float horizontalInset =
                     barWidth * AuthoredHorizontalInset / AuthoredWidth;
+                float leadingInset = _startStarImage != null
+                    ? startStarSize * 0.5f
+                    : horizontalInset;
                 float verticalInset =
                     visualHeight * AuthoredVerticalInset / AuthoredHeight;
                 float innerWidth = Mathf.Max(
                     0f,
-                    barWidth - (horizontalInset * 2f));
+                    barWidth - leadingInset - horizontalInset);
                 float innerHeight = Mathf.Max(
                     0f,
                     visualHeight - (verticalInset * 2f));
@@ -265,7 +280,7 @@ namespace Cutrium.Presentation.HUD
                 _fillMaskRect.anchorMax = new Vector2(0f, 1f);
                 _fillMaskRect.pivot = new Vector2(0f, 1f);
                 _fillMaskRect.anchoredPosition = new Vector2(
-                    horizontalInset,
+                    leadingInset,
                     -verticalInset);
                 _fillMaskRect.sizeDelta = new Vector2(
                     innerWidth * CurrentFillRatio,
@@ -280,6 +295,28 @@ namespace Cutrium.Presentation.HUD
                     fillRect.anchoredPosition = Vector2.zero;
                     fillRect.sizeDelta = new Vector2(innerWidth, innerHeight);
                 }
+
+                if (_fillStartTarget != null)
+                {
+                    _fillStartTarget.anchorMin = new Vector2(0f, 0.5f);
+                    _fillStartTarget.anchorMax = new Vector2(0f, 0.5f);
+                    _fillStartTarget.pivot = new Vector2(0.5f, 0.5f);
+                    _fillStartTarget.anchoredPosition = Vector2.zero;
+                    _fillStartTarget.sizeDelta = Vector2.zero;
+                }
+            }
+
+            if (_startStarImage != null && _fillStartTarget != null)
+            {
+                RectTransform starRect = _startStarImage.rectTransform;
+                starRect.anchorMin = new Vector2(0.5f, 0.5f);
+                starRect.anchorMax = new Vector2(0.5f, 0.5f);
+                starRect.pivot = new Vector2(0.5f, 0.5f);
+                starRect.anchoredPosition = _progressBarRect.InverseTransformPoint(
+                    _fillStartTarget.TransformPoint(Vector3.zero));
+                starRect.sizeDelta = new Vector2(
+                    startStarSize,
+                    startStarSize);
             }
 
             if (_progressText != null)

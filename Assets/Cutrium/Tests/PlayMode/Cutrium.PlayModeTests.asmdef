@@ -6,7 +6,8 @@
     "Cutrium.Unity",
     "Cutrium.Presentation",
     "Unity.InputSystem",
-    "UnityEngine.UI"
+    "UnityEngine.UI",
+    "Unity.TextMeshPro"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

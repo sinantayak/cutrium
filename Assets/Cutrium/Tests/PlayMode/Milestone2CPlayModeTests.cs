@@ -229,8 +229,8 @@ namespace Cutrium.PlayModeTests
             Assert.That(boardStage.rect.height, Is.GreaterThan(top.rect.height));
             Assert.That(boardStage.rect.height, Is.GreaterThan(bottom.rect.height));
             Assert.That(top.gameObject.activeSelf, Is.True);
-            Assert.That(topLayout.minHeight, Is.EqualTo(52f));
-            Assert.That(topLayout.preferredHeight, Is.EqualTo(60f));
+            Assert.That(topLayout.minHeight, Is.EqualTo(146f));
+            Assert.That(topLayout.preferredHeight, Is.EqualTo(150f));
             Assert.That(topLayout.flexibleHeight, Is.Zero);
             Assert.That(bottomLayout.preferredHeight, Is.EqualTo(98f));
             Assert.That(bottomLayout.flexibleHeight, Is.Zero);
@@ -259,12 +259,23 @@ namespace Cutrium.PlayModeTests
                 Is.EqualTo("LEARN THE CUT"));
             Assert.That(safeArea.Find("TopHUD/HudBlockerButton/Label")
                 .GetComponent<Text>().text, Is.EqualTo("UI TEST"));
+            Transform gameplayHudRow = top.Find("GameplayHudRow");
+            Assert.That(gameplayHudRow, Is.Not.Null);
             for (int index = 0; index < top.childCount; index++)
             {
-                Assert.That(top.GetChild(index).gameObject.activeSelf,
-                    Is.False,
-                    top.GetChild(index).name);
+                Transform child = top.GetChild(index);
+                Assert.That(child.gameObject.activeSelf,
+                    Is.EqualTo(child == gameplayHudRow),
+                    child.name);
             }
+            Assert.That(gameplayHudRow.Find("HealthColumn/HealthHUD"),
+                Is.Not.Null);
+            Assert.That(gameplayHudRow.Find("ScoreColumn/ScoreHUD"),
+                Is.Not.Null);
+            Assert.That(gameplayHudRow.Find("CoinColumn/CoinHUD"),
+                Is.Not.Null);
+            Assert.That(gameplayHudRow.Find(
+                "CoinColumn/SettingsSlot/SettingsButton"), Is.Not.Null);
             Assert.That(safeArea.Find(
                     "BoardStage/BoardViewport/BoardFrame/BoardLabel")
                 .gameObject.activeSelf, Is.False);
@@ -298,6 +309,7 @@ namespace Cutrium.PlayModeTests
                 $"{width:0}x{height:0} pixels: " +
                 $"SafeAreaRoot={layout.SafePixelRect}, " +
                 $"TopHUD={layout.TopPixelRect}, " +
+                $"GameplayHUD={layout.GameplayHudPixelRect}, " +
                 $"BoardViewportRegion={layout.BoardStagePixelRect}, " +
                 $"Board10x16={layout.BoardPixelRect}, " +
                 $"BottomHUD={layout.BottomPixelRect}, " +
@@ -305,7 +317,7 @@ namespace Cutrium.PlayModeTests
 
             Assert.That(layout.TopRect.height, Is.GreaterThan(0f));
             Assert.That(layout.TopRect.height,
-                Is.LessThanOrEqualTo(layout.SafeSize.y * 0.08f));
+                Is.LessThanOrEqualTo(layout.SafeSize.y * 0.10f));
             Assert.That(layout.BottomSize.y,
                 Is.LessThanOrEqualTo(layout.SafeSize.y * 0.08f));
             Assert.That(layout.BoardStageSize.y,
@@ -344,6 +356,16 @@ namespace Cutrium.PlayModeTests
                 Is.LessThanOrEqualTo(layout.BottomRect.yMax + 0.01f));
             Assert.That(layout.ProgressRect.center.y,
                 Is.EqualTo(layout.BottomRect.center.y).Within(0.01f));
+            Assert.That(layout.GameplayHudRect.xMin,
+                Is.GreaterThanOrEqualTo(layout.TopRect.xMin - 0.01f));
+            Assert.That(layout.GameplayHudRect.xMax,
+                Is.LessThanOrEqualTo(layout.TopRect.xMax + 0.01f));
+            Assert.That(layout.GameplayHudRect.yMin,
+                Is.GreaterThanOrEqualTo(layout.TopRect.yMin - 0.01f));
+            Assert.That(layout.GameplayHudRect.yMax,
+                Is.LessThanOrEqualTo(layout.TopRect.yMax + 0.01f));
+            Assert.That(layout.GameplayHudRect.yMin,
+                Is.GreaterThanOrEqualTo(layout.BoardRect.yMax - 0.01f));
             Assert.That(layout.OverlaySize.x,
                 Is.EqualTo(layout.SafeSize.x).Within(0.01f));
             Assert.That(layout.OverlaySize.y,
@@ -790,6 +812,8 @@ namespace Cutrium.PlayModeTests
             RectTransform boardViewport = (RectTransform)clone.Find(
                 "BoardStage/BoardViewport");
             RectTransform top = (RectTransform)clone.Find("TopHUD");
+            RectTransform gameplayHud = (RectTransform)clone.Find(
+                "TopHUD/GameplayHudRow");
             RectTransform bottom = (RectTransform)clone.Find("BottomHUD");
             RectTransform progress = (RectTransform)clone.Find(
                 "BottomHUD/ProgressBar");
@@ -811,6 +835,7 @@ namespace Cutrium.PlayModeTests
                 clone.rect.size,
                 clone.rect,
                 RectInAncestor(top, clone),
+                RectInAncestor(gameplayHud, clone),
                 RectInAncestor(board, clone),
                 RectInAncestor(bottom, clone),
                 overlay.rect.size,
@@ -874,6 +899,7 @@ namespace Cutrium.PlayModeTests
                 Vector2 safeSize,
                 Rect safeRect,
                 Rect topRect,
+                Rect gameplayHudRect,
                 Rect boardStageRect,
                 Rect bottomRect,
                 Vector2 overlaySize,
@@ -884,6 +910,7 @@ namespace Cutrium.PlayModeTests
                 SafeSize = safeSize;
                 SafeRect = safeRect;
                 TopRect = topRect;
+                GameplayHudRect = gameplayHudRect;
                 BoardStageRect = boardStageRect;
                 BottomRect = bottomRect;
                 OverlaySize = overlaySize;
@@ -897,6 +924,8 @@ namespace Cutrium.PlayModeTests
             public Rect SafeRect { get; }
 
             public Rect TopRect { get; }
+
+            public Rect GameplayHudRect { get; }
 
             public Rect BoardStageRect { get; }
 
@@ -919,6 +948,8 @@ namespace Cutrium.PlayModeTests
             public Rect SafePixelRect => ToPixelRect(SafeRect);
 
             public Rect TopPixelRect => ToPixelRect(TopRect);
+
+            public Rect GameplayHudPixelRect => ToPixelRect(GameplayHudRect);
 
             public Rect BoardStagePixelRect => ToPixelRect(BoardStageRect);
 

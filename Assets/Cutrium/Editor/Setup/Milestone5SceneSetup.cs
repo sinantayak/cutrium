@@ -118,7 +118,10 @@ namespace Cutrium.Editor.Setup
             foreach (KeyValuePair<string, GeneratedPattern> pair in patterns)
             {
                 string path = $"{GeneratedFolder}/{pair.Key}.png";
-                EnsureGeneratedPng(path, pair.Value);
+                EnsureGeneratedPng(
+                    path,
+                    pair.Value,
+                    preserveExisting: pair.Key == "threat_trail");
                 Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
                 if (sprite == null)
                 {
@@ -134,28 +137,9 @@ namespace Cutrium.Editor.Setup
 
         private static void EnsureGeneratedPng(
             string path,
-            GeneratedPattern pattern)
+            GeneratedPattern pattern,
+            bool preserveExisting = false)
         {
-            const int size = 32;
-            var texture = new Texture2D(
-                size,
-                size,
-                TextureFormat.RGBA32,
-                false,
-                true);
-            var pixels = new Color[size * size];
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    pixels[y * size + x] = Pixel(pattern, x, y, size);
-                }
-            }
-
-            texture.SetPixels(pixels);
-            texture.Apply(false, false);
-            byte[] png = texture.EncodeToPNG();
-            UnityEngine.Object.DestroyImmediate(texture);
             string projectRoot = Directory.GetParent(Application.dataPath)
                 ?.FullName
                 ?? throw new InvalidOperationException(
@@ -163,11 +147,37 @@ namespace Cutrium.Editor.Setup
             string absolute = Path.Combine(
                 projectRoot,
                 path.Replace('/', Path.DirectorySeparatorChar));
-            bool changed = !File.Exists(absolute)
-                || !File.ReadAllBytes(absolute).SequenceEqual(png);
-            if (changed)
+
+            // threat_trail.png may be replaced directly by authored art.
+            // Keep its established GUID/path and never regenerate its bytes.
+            if (!preserveExisting || !File.Exists(absolute))
             {
-                File.WriteAllBytes(absolute, png);
+                const int size = 32;
+                var texture = new Texture2D(
+                    size,
+                    size,
+                    TextureFormat.RGBA32,
+                    false,
+                    true);
+                var pixels = new Color[size * size];
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        pixels[y * size + x] = Pixel(pattern, x, y, size);
+                    }
+                }
+
+                texture.SetPixels(pixels);
+                texture.Apply(false, false);
+                byte[] png = texture.EncodeToPNG();
+                UnityEngine.Object.DestroyImmediate(texture);
+                bool changed = !File.Exists(absolute)
+                    || !File.ReadAllBytes(absolute).SequenceEqual(png);
+                if (changed)
+                {
+                    File.WriteAllBytes(absolute, png);
+                }
             }
 
             AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);

@@ -12,6 +12,9 @@ namespace Cutrium.Presentation.Threats
     [DisallowMultipleComponent]
     public sealed class ThreatPresenter : MonoBehaviour
     {
+        private const float TrailCenterOffsetInDiameters = 0.78f;
+        private const float TrailLengthInDiameters = 1.55f;
+
         [SerializeField]
         private FirstPlayableController _controller;
 
@@ -174,6 +177,10 @@ namespace Cutrium.Presentation.Threats
                 ThreatView view = _activeViews[id];
                 _activeViews.Remove(id);
                 view.RectTransform.gameObject.SetActive(false);
+                if (view.TrailImage != null)
+                {
+                    view.TrailImage.gameObject.SetActive(false);
+                }
                 if (view != _primaryView)
                 {
                     _availableViews.Add(view);
@@ -282,6 +289,7 @@ namespace Cutrium.Presentation.Threats
         private void ApplyStyle(ThreatView view)
         {
             EnsureDecorations(view);
+            view.TrailImage.gameObject.SetActive(true);
             view.Image.sprite = _hasThemeStyle
                 ? _themeStyle.Sprite ?? _optionalSprite
                 : _optionalSprite;
@@ -295,6 +303,10 @@ namespace Cutrium.Presentation.Threats
             }
 
             view.Image.preserveAspect = false;
+            // The authored meteor trail includes transparent padding around
+            // a tapered silhouette. Preserve its sprite aspect so the form
+            // is never stretched as the threat changes screen size.
+            view.TrailImage.preserveAspect = true;
             view.Image.raycastTarget = false;
             view.ShadowImage.raycastTarget = false;
             view.TrailImage.raycastTarget = false;
@@ -311,12 +323,38 @@ namespace Cutrium.Presentation.Threats
 
             if (view.TrailImage == null)
             {
-                view.TrailImage = GetOrCreateDecoration(
-                    view.RectTransform,
-                    "ThreatTrail");
+                string trailName = view.RectTransform.name == "ThreatVisual"
+                    ? "ThreatTrail"
+                    : view.RectTransform.name.Replace(
+                        "ThreatVisual",
+                        "ThreatTrail");
+                Transform legacyChild = view.RectTransform.Find("ThreatTrail");
+                if (legacyChild != null)
+                {
+                    legacyChild.name = trailName;
+                    legacyChild.SetParent(
+                        view.RectTransform.parent,
+                        false);
+                    view.TrailImage = legacyChild.GetComponent<Image>()
+                        ?? legacyChild.gameObject.AddComponent<Image>();
+                }
+                else
+                {
+                    view.TrailImage = GetOrCreateDecoration(
+                        (RectTransform)view.RectTransform.parent,
+                        trailName);
+                }
             }
 
-            view.TrailImage.transform.SetSiblingIndex(0);
+            // Trail is a sibling immediately behind the threat, not a child
+            // Graphic rendered over it. The authored wide end may therefore
+            // reach the threat center while the ball cleanly occludes it.
+            if (view.TrailImage.transform.GetSiblingIndex()
+                >= view.RectTransform.GetSiblingIndex())
+            {
+                view.TrailImage.transform.SetSiblingIndex(
+                    view.RectTransform.GetSiblingIndex());
+            }
             view.ShadowImage.transform.SetSiblingIndex(1);
         }
 
@@ -361,12 +399,19 @@ namespace Cutrium.Presentation.Threats
                 threat.Velocity.Y).normalized;
             RectTransform trail =
                 (RectTransform)view.TrailImage.transform;
-            trail.anchoredPosition = -direction * diameter * 0.55f;
+            trail.anchoredPosition =
+                view.RectTransform.anchoredPosition
+                - (direction * diameter * TrailCenterOffsetInDiameters);
             trail.localRotation = Quaternion.Euler(
                 0f,
                 0f,
-                Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
-            trail.sizeDelta = new Vector2(diameter * 1.2f, diameter * 0.4f);
+                (Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg) + 180f);
+            // A square, aspect-preserved box retains the authored 256x256
+            // canvas. Its visible meteor silhouette already supplies the
+            // desired long/thin shape through transparent padding.
+            trail.sizeDelta = Vector2.one
+                * diameter
+                * TrailLengthInDiameters;
         }
 
         private void ApplyOptionalSprite(Image image)

@@ -11,6 +11,7 @@ using Cutrium.Presentation.Landmark;
 using Cutrium.Unity.Bootstrap;
 using Cutrium.Unity.Simulation;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -94,7 +95,7 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void NormalGameplayHud_ReservesBandsAndShowsOnlyProgressContent()
+        public void NormalGameplayHud_ShowsGameplayTopHudAndBottomProgress()
         {
             Transform safeArea = _root.transform.Find("Canvas/SafeAreaRoot");
             Transform bottomHud = safeArea.Find("BottomHUD");
@@ -108,14 +109,51 @@ namespace Cutrium.PlayModeTests
             Assert.That(topHud.gameObject.activeSelf, Is.True);
             LayoutElement topLayout = topHud.GetComponent<LayoutElement>();
             Assert.That(topLayout, Is.Not.Null);
-            Assert.That(topLayout.preferredHeight, Is.EqualTo(60f));
+            Assert.That(topLayout.preferredHeight, Is.EqualTo(150f));
             Assert.That(topLayout.flexibleHeight, Is.Zero);
+            Transform gameplayRow = topHud.Find("GameplayHudRow");
+            Assert.That(gameplayRow, Is.Not.Null);
+            Assert.That(gameplayRow.gameObject.activeSelf, Is.True);
             for (int index = 0; index < topHud.childCount; index++)
             {
-                Assert.That(topHud.GetChild(index).gameObject.activeSelf,
-                    Is.False,
-                    topHud.GetChild(index).name);
+                Transform child = topHud.GetChild(index);
+                Assert.That(child.gameObject.activeSelf,
+                    Is.EqualTo(child == gameplayRow),
+                    child.name);
             }
+
+            AssertTopHudPanel(
+                gameplayRow.Find("HealthColumn/HealthHUD"),
+                "Health_HUD_0",
+                "10x");
+            AssertTopHudPanel(
+                gameplayRow.Find("ScoreColumn/ScoreHUD"),
+                "Score_HUD_0",
+                "4200");
+            AssertTopHudPanel(
+                gameplayRow.Find("CoinColumn/CoinHUD"),
+                "Coin_HUD_0",
+                "10x");
+            Transform settings = gameplayRow.Find(
+                "CoinColumn/SettingsSlot/SettingsButton");
+            Assert.That(settings, Is.Not.Null);
+            Assert.That(settings.GetComponent<Image>().sprite.name,
+                Is.EqualTo("Settings_Button_0"));
+            Assert.That(settings.GetComponent<Button>().interactable, Is.False);
+            RectTransform healthPanel = (RectTransform)gameplayRow.Find(
+                "HealthColumn/HealthHUD");
+            RectTransform scorePanel = (RectTransform)gameplayRow.Find(
+                "ScoreColumn/ScoreHUD");
+            RectTransform coinPanel = (RectTransform)gameplayRow.Find(
+                "CoinColumn/CoinHUD");
+            RectTransform settingsRect = (RectTransform)settings;
+            Canvas.ForceUpdateCanvases();
+            Assert.That(WorldCenter(healthPanel).x,
+                Is.LessThan(WorldCenter(scorePanel).x));
+            Assert.That(WorldCenter(scorePanel).x,
+                Is.LessThan(WorldCenter(coinPanel).x));
+            Assert.That(WorldBottom(settingsRect),
+                Is.GreaterThanOrEqualTo(WorldTop(coinPanel) - 0.01f));
             Assert.That(retryTransform, Is.Not.Null);
             Assert.That(retryTransform.gameObject.activeSelf, Is.False);
             Assert.That(bowl, Is.Not.Null);
@@ -142,6 +180,9 @@ namespace Cutrium.PlayModeTests
                 Is.EqualTo("Progress_Background_0"));
             Assert.That(progressPresenter.FillImage.sprite.name,
                 Is.EqualTo("Progress_Fill_0"));
+            Assert.That(progressPresenter.StartStarImage, Is.Not.Null);
+            Assert.That(progressPresenter.StartStarImage.sprite.name,
+                Is.EqualTo("Yellow_Star_0"));
             Assert.That(progressPresenter.FillMaskRect
                 .GetComponent<RectMask2D>(), Is.Not.Null);
             Assert.That(progressPresenter.FillStartTarget, Is.Not.Null);
@@ -151,12 +192,74 @@ namespace Cutrium.PlayModeTests
                 Is.Zero);
             Assert.That(_landmarkPresenter.SandDestination,
                 Is.SameAs(progressPresenter.FillStartTarget));
+            Assert.That(
+                Vector3.Distance(
+                    progressPresenter.StartStarImage.rectTransform
+                        .TransformPoint(Vector3.zero),
+                    progressPresenter.FillStartTarget
+                        .TransformPoint(Vector3.zero)),
+                Is.LessThan(0.01f));
+            var starCorners = new Vector3[4];
+            var progressCorners = new Vector3[4];
+            progressPresenter.StartStarImage.rectTransform.GetWorldCorners(
+                starCorners);
+            progressPresenter.ProgressBarRect.GetWorldCorners(progressCorners);
+            Assert.That(starCorners[0].x,
+                Is.EqualTo(progressCorners[0].x).Within(0.01f));
             Assert.That(_landmarkPresenter.SandProgressPresenter,
                 Is.SameAs(progressPresenter));
 
             GameObject[] hits = RaycastAtCenter((RectTransform)progress);
             Assert.That(hits, Is.Not.Empty);
             Assert.That(hits[0], Is.SameAs(progress.gameObject));
+        }
+
+        private static void AssertTopHudPanel(
+            Transform panel,
+            string spriteName,
+            string value)
+        {
+            Assert.That(panel, Is.Not.Null);
+            Assert.That(panel.gameObject.activeSelf, Is.True);
+            Image image = panel.GetComponent<Image>();
+            Assert.That(image, Is.Not.Null);
+            Assert.That(image.sprite.name, Is.EqualTo(spriteName));
+            Assert.That(image.preserveAspect, Is.True);
+            TextMeshProUGUI text = panel.Find("ValueText")
+                .GetComponent<TextMeshProUGUI>();
+            Assert.That(text.text, Is.EqualTo(value));
+            Assert.That(text.font.name, Is.EqualTo("gomarice_rocks SDF"));
+            Assert.That(text.alignment,
+                Is.EqualTo(TextAlignmentOptions.Center));
+            Assert.That(text.color,
+                Is.EqualTo(new Color(0.34f, 0.105f, 0.025f, 1f)));
+            TextMeshProUGUI shadow = panel.Find("ShadowText")
+                .GetComponent<TextMeshProUGUI>();
+            Assert.That(shadow, Is.Not.Null);
+            Assert.That(shadow.text, Is.EqualTo(value));
+            Assert.That(shadow.font, Is.SameAs(text.font));
+            Assert.That(shadow.color, Is.EqualTo(Color.white));
+            Assert.That(shadow.rectTransform.anchoredPosition,
+                Is.EqualTo(new Vector2(2f, -2f)));
+        }
+
+        private static Vector3 WorldCenter(RectTransform rect)
+        {
+            return rect.TransformPoint(rect.rect.center);
+        }
+
+        private static float WorldTop(RectTransform rect)
+        {
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            return corners[2].y;
+        }
+
+        private static float WorldBottom(RectTransform rect)
+        {
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            return corners[0].y;
         }
 
         private GameObject[] RaycastAtCenter(RectTransform rect)

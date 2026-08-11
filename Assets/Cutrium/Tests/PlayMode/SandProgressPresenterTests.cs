@@ -11,6 +11,32 @@ namespace Cutrium.PlayModeTests
     public sealed class SandProgressPresenterTests
     {
         [Test]
+        public void StartStarCenterMatchesFillStartAndSandDestination()
+        {
+            using (var rig = new IsolatedRig(0.97f))
+            {
+                RectTransform star = rig.Presenter.StartStarImage.rectTransform;
+                RectTransform target = rig.Presenter.FillStartTarget;
+                Assert.That(
+                    Vector3.Distance(
+                        star.TransformPoint(Vector3.zero),
+                        target.TransformPoint(Vector3.zero)),
+                    Is.LessThan(0.001f));
+                Assert.That(star.sizeDelta.x,
+                    Is.EqualTo(star.sizeDelta.y).Within(0.001f));
+                Assert.That(rig.Presenter.StartStarImage.preserveAspect,
+                    Is.True);
+
+                var starCorners = new Vector3[4];
+                var progressCorners = new Vector3[4];
+                star.GetWorldCorners(starCorners);
+                rig.Presenter.ProgressBarRect.GetWorldCorners(progressCorners);
+                Assert.That(starCorners[0].x,
+                    Is.EqualTo(progressCorners[0].x).Within(0.001f));
+            }
+        }
+
+        [Test]
         public void CurrentOverTarget_DrivesFillAndExactCombinedText()
         {
             using (var rig = new IsolatedRig(0.97f))
@@ -240,6 +266,8 @@ namespace Cutrium.PlayModeTests
                     new Vector2(700f, 40f));
                 Image fill = CreateImage(fillMask, "Fill");
                 Image frame = CreateImage(progressRect, "Frame");
+                Image startStar = CreateImage(progressRect, "StartStar");
+                startStar.preserveAspect = true;
                 Text text = CreateText(progressRect, "ProgressText");
                 RectTransform fillStart = CreateRect(
                     fillMask,
@@ -257,7 +285,8 @@ namespace Cutrium.PlayModeTests
                     fill,
                     frame,
                     text,
-                    fillStart);
+                    fillStart,
+                    startStar);
                 Presenter.ConfigureAnimationForSetup(0.5f, 0.8f, 0.86f);
                 _root.SetActive(true);
                 Presenter.RefreshNow();
