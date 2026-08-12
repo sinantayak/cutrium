@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L05_MyraAntikKenti
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: myra-antik-kenti
+  _displayTitle: Myra Antik Kenti
+  _shortDescription: "Myra, Likya Birli\u011Fi\u2019nin en g\xFC\xE7l\xFC kentlerinden
+    biriydi ve \xF6zellikle kayalara oyulmu\u015F g\xF6rkemli mezarlar\u0131yla tan\u0131n\u0131r.
+    Roma d\xF6neminden kalan b\xFCy\xFCk tiyatro, kentin antik \xE7a\u011Fdaki zenginli\u011Fini
+    bug\xFCn de hissettirir. Yak\u0131ndaki Demre, Aziz Nikolaos gelene\u011Fiyle
+    de d\xFCnya \xE7ap\u0131nda bilinen \xF6nemli bir tarih ve inan\xE7 merkezidir."
+  _sector: "Antalya / T\xDCRK\u0130YE"
+  _artwork: {fileID: -8562059219766368568, guid: acb8424ea4773204299f9f8b78454cde, type: 3}

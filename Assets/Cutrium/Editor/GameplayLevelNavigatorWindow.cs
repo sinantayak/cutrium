@@ -81,6 +81,22 @@ namespace Cutrium.Editor
                 "Expected / Difficulty",
                 $"{definition.ExpectedHumanCompletionSeconds:0}s / " +
                 $"{definition.DifficultyRating} of 5");
+            EditorGUILayout.LabelField(
+                "Logical capture",
+                $"{controller.Session.CapturedFraction:P1} / " +
+                $"{controller.Session.TargetCapturedFraction:P0}");
+            EditorGUILayout.LabelField(
+                "Cuts",
+                controller.Session.HasCutLimit
+                    ? $"{controller.Session.AcceptedCutCount} used / " +
+                      $"{controller.Session.MaximumAcceptedCuts} limit " +
+                      $"({controller.Session.CutsRemaining} left)"
+                    : "Unlimited");
+            EditorGUILayout.LabelField(
+                "Charges",
+                $"Freeze {controller.FreezePulseChargesRemaining} / " +
+                $"Instant {controller.InstantBarrierChargesRemaining}" +
+                (controller.InstantBarrierArmed ? " (armed)" : string.Empty));
 
             EditorGUILayout.Space(8f);
             using (new EditorGUILayout.HorizontalScope())

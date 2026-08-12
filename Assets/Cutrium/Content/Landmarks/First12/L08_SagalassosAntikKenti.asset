@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L08_SagalassosAntikKenti
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: sagalassos-antik-kenti
+  _displayTitle: Sagalassos Antik Kenti
+  _shortDescription: "Bat\u0131 Toroslar\u2019\u0131n y\xFCkseklerinde kurulan Sagalassos,
+    Pisidia b\xF6lgesinin en zengin antik kentlerinden biriydi. Restore edilen Antoninler
+    \xC7e\u015Fmesi\u2019nden bug\xFCn bile su akmas\u0131, kenti benzersiz bir deneyime
+    d\xF6n\xFC\u015Ft\xFCr\xFCr. Tiyatro, agoralar ve an\u0131tsal yap\u0131lar,
+    \xF6zellikle Roma d\xF6nemindeki refah\u0131n\u0131 g\xFC\xE7l\xFC bi\xE7imde
+    ortaya koyar."
+  _sector: "Burdur / T\xDCRK\u0130YE"
+  _artwork: {fileID: -2819285369776722068, guid: 145e8a659d2194243b783860a7737e3a, type: 3}

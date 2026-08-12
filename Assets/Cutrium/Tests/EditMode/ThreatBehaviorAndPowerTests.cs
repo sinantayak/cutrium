@@ -32,6 +32,10 @@ namespace Cutrium.Gameplay.EditModeTests
                 ThreatBehaviorConfiguration.CreateHunter(1.1f));
             Assert.DoesNotThrow(() =>
                 ThreatBehaviorConfiguration.CreateHunter(1f));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ThreatBehaviorConfiguration.CreateHunter(0.5f, 0f));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ThreatBehaviorConfiguration.CreateHunter(0.5f, 75.1f));
 
             Assert.Throws<ArgumentOutOfRangeException>(() =>
                 ThreatBehaviorConfiguration.CreatePulse(0f, 1.5f, 1f, 1f));
@@ -62,7 +66,7 @@ namespace Cutrium.Gameplay.EditModeTests
         }
 
         [Test]
-        public void Hunter_ReactsOnceWithBoundedBlendAndPreservesSpeed()
+        public void Hunter_ReactsOnceWithBoundedTurnAndPreservesSpeed()
         {
             var behavior = ThreatBehaviorConfiguration.CreateHunter(0.5f);
             var configuration = new ThreatMotionConfiguration(
@@ -81,9 +85,12 @@ namespace Cutrium.Gameplay.EditModeTests
                     BarrierOrientation.Vertical));
 
             Assert.That(result.Accepted, Is.True);
-            float expected = 2f / MathF.Sqrt(2f);
-            Assert.That(session.Threat.Velocity.X, Is.EqualTo(expected).Within(0.0005f));
-            Assert.That(session.Threat.Velocity.Y, Is.EqualTo(expected).Within(0.0005f));
+            float expectedX = 2f * MathF.Cos(26f * MathF.PI / 180f);
+            float expectedY = 2f * MathF.Sin(26f * MathF.PI / 180f);
+            Assert.That(session.Threat.Velocity.X,
+                Is.EqualTo(expectedX).Within(0.0005f));
+            Assert.That(session.Threat.Velocity.Y,
+                Is.EqualTo(expectedY).Within(0.0005f));
             Assert.That(session.Threat.Speed, Is.EqualTo(2f).Within(0.0005f));
         }
 

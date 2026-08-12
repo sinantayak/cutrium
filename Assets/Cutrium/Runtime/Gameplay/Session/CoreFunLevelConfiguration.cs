@@ -82,7 +82,8 @@ namespace Cutrium.Gameplay.Session
             string purposeLine,
             PowerConfiguration power,
             string intendedDecision = "",
-            int difficultyRating = 1)
+            int difficultyRating = 1,
+            int expectedReasonableCutUsage = 0)
         {
             if (string.IsNullOrWhiteSpace(stableId))
             {
@@ -143,6 +144,20 @@ namespace Cutrium.Gameplay.Session
                     "Difficulty rating must be in the range 1 through 5.");
             }
 
+            if (expectedReasonableCutUsage < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(expectedReasonableCutUsage));
+            }
+
+            if (capture.HasCutLimit
+                && expectedReasonableCutUsage > capture.MaximumAcceptedCuts)
+            {
+                throw new ArgumentException(
+                    "Expected cut usage cannot exceed the configured limit.",
+                    nameof(expectedReasonableCutUsage));
+            }
+
             StableId = stableId;
             DisplayNumber = displayNumber;
             _threatMotions = Array.AsReadOnly(copiedThreats);
@@ -156,6 +171,7 @@ namespace Cutrium.Gameplay.Session
             Power = power;
             IntendedDecision = intendedDecision ?? string.Empty;
             DifficultyRating = difficultyRating;
+            ExpectedReasonableCutUsage = expectedReasonableCutUsage;
         }
 
         public string StableId { get; }
@@ -187,6 +203,8 @@ namespace Cutrium.Gameplay.Session
         public string IntendedDecision { get; }
 
         public int DifficultyRating { get; }
+
+        public int ExpectedReasonableCutUsage { get; }
 
         private static void ValidateThreat(
             ThreatMotionConfiguration threatMotion,

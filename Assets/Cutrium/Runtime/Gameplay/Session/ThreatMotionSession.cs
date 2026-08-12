@@ -22,6 +22,8 @@ namespace Cutrium.Gameplay.Session
             new List<BarrierApproachSample>(128);
         private readonly List<FeedbackEvent> _feedbackEvents =
             new List<FeedbackEvent>(8);
+        private readonly List<ThreatId> _lastHunterReactionThreatIds =
+            new List<ThreatId>(4);
         private int _nextBarrierId;
         private float _barrierElapsed;
         private ComboState _combo;
@@ -165,6 +167,9 @@ namespace Cutrium.Gameplay.Session
 
         public IReadOnlyList<FeedbackEvent> FeedbackEvents => _feedbackEvents;
 
+        public IReadOnlyList<ThreatId> LastHunterReactionThreatIds =>
+            _lastHunterReactionThreatIds;
+
         public RoomSplitApplyResult LastRoomSplitResult { get; private set; }
 
         public ThreatMotionDiagnostic LastDiagnostic { get; private set; }
@@ -187,6 +192,17 @@ namespace Cutrium.Gameplay.Session
 
         public int LockedBarrierCount { get; private set; }
 
+        public int AcceptedCutCount { get; private set; }
+
+        public bool HasCutLimit => _captureConfiguration.HasCutLimit;
+
+        public int MaximumAcceptedCuts =>
+            _captureConfiguration.MaximumAcceptedCuts;
+
+        public int CutsRemaining => HasCutLimit
+            ? Math.Max(0, MaximumAcceptedCuts - AcceptedCutCount)
+            : int.MaxValue;
+
         public int TickCount { get; private set; }
 
         public int FreezePulseChargesRemaining { get; private set; }
@@ -204,7 +220,7 @@ namespace Cutrium.Gameplay.Session
             LastBarrierContact = BarrierContactKind.None;
             LastBarrierDiagnostic = BarrierSimulationDiagnostic.None;
             LastDiagnostic = ThreatMotionDiagnostic.None;
-            if (LevelStatus == CaptureLevelStatus.Completed)
+            if (LevelStatus != CaptureLevelStatus.Playing)
             {
                 return;
             }
@@ -246,6 +262,7 @@ namespace Cutrium.Gameplay.Session
                 ApplyHunterReaction(
                     startedBarrier.ParentRoomId,
                     intent.Origin);
+                AcceptedCutCount++;
                 ActiveBarrier = startedBarrier;
                 LastBarrierSnapshot = startedBarrier;
                 _barrierElapsed = 0f;
@@ -269,7 +286,7 @@ namespace Cutrium.Gameplay.Session
         public bool TryActivateFreezePulse()
         {
             _feedbackEvents.Clear();
-            if (LevelStatus == CaptureLevelStatus.Completed
+            if (LevelStatus != CaptureLevelStatus.Playing
                 || FreezePulseChargesRemaining <= 0)
             {
                 AddFeedback(
@@ -294,7 +311,7 @@ namespace Cutrium.Gameplay.Session
         public bool TryArmInstantBarrier()
         {
             _feedbackEvents.Clear();
-            if (LevelStatus == CaptureLevelStatus.Completed
+            if (LevelStatus != CaptureLevelStatus.Playing
                 || InstantBarrierArmed
                 || InstantBarrierChargesRemaining <= 0)
             {
@@ -317,11 +334,21 @@ namespace Cutrium.Gameplay.Session
 
         public BarrierStartResult ValidateBarrierStart(BarrierIntent intent)
         {
-            if (LevelStatus == CaptureLevelStatus.Completed)
+            if (LevelStatus != CaptureLevelStatus.Playing)
             {
                 return new BarrierStartResult(
                     false,
-                    BarrierRejectionReason.LevelCompleted,
+                    LevelStatus == CaptureLevelStatus.Completed
+                        ? BarrierRejectionReason.LevelCompleted
+                        : BarrierRejectionReason.CutLimitReached,
+                    default);
+            }
+
+            if (HasCutLimit && AcceptedCutCount >= MaximumAcceptedCuts)
+            {
+                return new BarrierStartResult(
+                    false,
+                    BarrierRejectionReason.CutLimitReached,
                     default);
             }
 
@@ -385,6 +412,7 @@ namespace Cutrium.Gameplay.Session
             LastBarrierDiagnostic = BarrierSimulationDiagnostic.None;
             FailedBarrierCount = 0;
             LockedBarrierCount = 0;
+            AcceptedCutCount = 0;
             _nextBarrierId = 1;
             TickCount = 0;
             _barrierElapsed = 0f;
@@ -400,6 +428,7 @@ namespace Cutrium.Gameplay.Session
                 _powerConfiguration.InstantBarrierCharges;
             InstantBarrierArmed = false;
             _feedbackEvents.Clear();
+            _lastHunterReactionThreatIds.Clear();
             AddFeedback(
                 FeedbackEventKind.SessionReset,
                 default,
@@ -620,6 +649,10 @@ namespace Cutrium.Gameplay.Session
                     capturedFractionDelta,
                     nearMiss.ClosestClearance);
             }
+            else
+            {
+                EvaluateCutLimitExhaustion(representative.Barrier.Id);
+            }
         }
 
         private void ApplyEarliestBarrierFailure(
@@ -685,6 +718,8 @@ namespace Cutrium.Gameplay.Session
                     0f,
                     float.PositiveInfinity);
             }
+
+            EvaluateCutLimitExhaustion(failure.Barrier.Id);
         }
 
         private void RecordApproachSamples(
@@ -891,10 +926,63 @@ namespace Cutrium.Gameplay.Session
                 : behavior.PulseFastSpeedMultiplier;
         }
 
+        public ThreatBehaviorConfiguration BehaviorFor(ThreatId id) =>
+            ConfigurationFor(id).Behavior;
+
+        public float PulsePhaseMultiplierFor(ThreatId id)
+        {
+            int index = IndexFor(id);
+            ThreatBehaviorConfiguration behavior =
+                _configurations[index].Behavior;
+            return behavior.Kind == ThreatBehaviorKind.Pulse
+                ? PulsePhaseMultiplier(behavior, _pulseElapsedSeconds[index])
+                : 1f;
+        }
+
+        public static LogicalVector CalculateHunterReactionDirection(
+            LogicalVector currentDirection,
+            LogicalVector targetDirection,
+            ThreatBehaviorConfiguration behavior)
+        {
+            if (behavior.Kind != ThreatBehaviorKind.Hunter)
+            {
+                return currentDirection / currentDirection.Length;
+            }
+
+            LogicalVector current =
+                currentDirection / currentDirection.Length;
+            LogicalVector target = targetDirection / targetDirection.Length;
+            float dot = Math.Max(-1f, Math.Min(
+                1f,
+                current.X * target.X + current.Y * target.Y));
+            float angle = (float)Math.Acos(dot);
+            if (angle <= 0f)
+            {
+                return current;
+            }
+
+            float turnFraction = Math.Min(
+                behavior.HunterSteerFactor,
+                0.9f);
+            float maximumTurnRadians =
+                behavior.HunterMaximumTurnDegrees
+                * ((float)Math.PI / 180f);
+            float turn = Math.Min(angle * turnFraction, maximumTurnRadians);
+            float cross = current.X * target.Y - current.Y * target.X;
+            float signedTurn = cross >= 0f ? turn : -turn;
+            float cosine = (float)Math.Cos(signedTurn);
+            float sine = (float)Math.Sin(signedTurn);
+            return new LogicalVector(
+                current.X * cosine - current.Y * sine,
+                current.X * sine + current.Y * cosine);
+        }
+
         private void ApplyHunterReaction(
             RoomId roomId,
             LogicalPoint barrierOrigin)
         {
+            _lastHunterReactionThreatIds.Clear();
+            bool reacted = false;
             for (int index = 0; index < Board.Threats.Count; index++)
             {
                 ThreatState threat = Board.Threats[index];
@@ -919,20 +1007,51 @@ namespace Cutrium.Gameplay.Session
                 LogicalVector targetDirection = toOrigin / toOrigin.Length;
                 LogicalVector currentDirection =
                     threat.Velocity / threat.Velocity.Length;
-                LogicalVector blended =
-                    currentDirection * (1f - behavior.HunterSteerFactor)
-                    + targetDirection * behavior.HunterSteerFactor;
-                if (blended.LengthSquared <= 0f)
+                // A Hunter reacts once, but always keeps some angular error
+                // and can never turn farther than its authored fairness cap.
+                LogicalVector newDirection =
+                    CalculateHunterReactionDirection(
+                        currentDirection,
+                        targetDirection,
+                        behavior);
+                if (newDirection == currentDirection)
                 {
                     continue;
                 }
-
-                LogicalVector newDirection = blended / blended.Length;
                 float baseSpeed = threat.Speed;
                 Board.UpdateThreat(threat.WithMotion(
                     threat.Position,
                     newDirection * baseSpeed));
+                _lastHunterReactionThreatIds.Add(threat.Id);
+                reacted = true;
             }
+
+            if (reacted)
+            {
+                AddFeedback(
+                    FeedbackEventKind.HunterReacted,
+                    default,
+                    0f,
+                    float.PositiveInfinity);
+            }
+        }
+
+        private void EvaluateCutLimitExhaustion(BarrierId barrierId)
+        {
+            if (!HasCutLimit
+                || AcceptedCutCount < MaximumAcceptedCuts
+                || LevelStatus != CaptureLevelStatus.Playing
+                || ActiveBarrier.HasValue)
+            {
+                return;
+            }
+
+            LevelStatus = CaptureLevelStatus.OutOfCuts;
+            AddFeedback(
+                FeedbackEventKind.CutLimitExhausted,
+                barrierId,
+                0f,
+                float.PositiveInfinity);
         }
 
         private ThreatMotionConfiguration ConfigurationFor(ThreatId id) =>

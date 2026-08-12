@@ -14,5 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkCatalog
   _landmarks:
   - {fileID: 11400000, guid: 2cf7acaa516c47344b5ed2bc4785e143, type: 2}
-  - {fileID: 11400000, guid: 736ef4d3c4fb1ac45bf4b050e78b6364, type: 2}
-  - {fileID: 11400000, guid: 8ed7d703ffb436143b91d79d02b9bb32, type: 2}
+  - {fileID: 11400000, guid: a110d86e0e6b49f9a1b15dad13166802, type: 2}
+  - {fileID: 11400000, guid: 3ecae4b2845d4609a378696b53e9c2bc, type: 2}
+  - {fileID: 11400000, guid: 1f41eecc024c4a3db61af81d6787df28, type: 2}
+  - {fileID: 11400000, guid: 524269897b564a03a7385165cd038b42, type: 2}
+  - {fileID: 11400000, guid: d79fac94b4b84447a42837cb2a32c26d, type: 2}
+  - {fileID: 11400000, guid: 8132dc43b6ca41698ea422f26abcb2ca, type: 2}
+  - {fileID: 11400000, guid: f3065388514748348f523d2f2d40b854, type: 2}
+  - {fileID: 11400000, guid: 62caa98c03d54567af77a8b370a8d43c, type: 2}
+  - {fileID: 11400000, guid: 18181c2ef42146429bcc3a0a8757a401, type: 2}
+  - {fileID: 11400000, guid: ad9f009ae6a4481d99860662fac5972a, type: 2}
+  - {fileID: 11400000, guid: e6d893b5a2084431940735549865034f, type: 2}

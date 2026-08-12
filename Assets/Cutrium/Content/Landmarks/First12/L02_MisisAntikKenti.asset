@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L02_MisisAntikKenti
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: misis-antik-kenti
+  _displayTitle: Misis Antik Kenti
+  _shortDescription: "Misis, \xC7ukurova\u2019n\u0131n do\u011Fusunda binlerce y\u0131ll\u0131k
+    yerle\u015Fim izleri ta\u015F\u0131yan ve tarih\xEE ticaret yollar\u0131 \xFCzerinde
+    geli\u015Fen \xF6nemli bir antik merkezdir. Roma d\xF6neminden kalma k\xF6pr\xFCs\xFC
+    ve mozaikleri, kentin farkl\u0131 \xE7a\u011Flarda ta\u015F\u0131d\u0131\u011F\u0131
+    \xF6nemi g\xF6sterir. B\xF6lgedeki kaz\u0131lar, Misis\u2019in Anadolu ile Mezopotamya
+    aras\u0131ndaki ge\xE7i\u015F yollar\u0131nda uzun s\xFCre ya\u015Fayan bir kent
+    oldu\u011Funu ortaya koyuyor."
+  _sector: "Adana / T\xDCRK\u0130YE"
+  _artwork: {fileID: 2684848585834160326, guid: 8c8dcbe3e48ae92498b390e8b9a82106, type: 3}

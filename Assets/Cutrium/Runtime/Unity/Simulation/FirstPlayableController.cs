@@ -154,7 +154,7 @@ namespace Cutrium.Unity.Simulation
                 }
 
                 return _levelCatalogDefinition != null
-                    ? _levelCatalogDefinition.Levels
+                    ? _levelCatalogDefinition.EffectiveLevels
                     : _levelDefinitions;
             }
         }
@@ -370,6 +370,17 @@ namespace Cutrium.Unity.Simulation
         public bool InstantBarrierArmed =>
             Session?.InstantBarrierArmed ?? false;
 
+        public bool HasCutLimit => Session?.HasCutLimit ?? false;
+
+        public int AcceptedCutCount => Session?.AcceptedCutCount ?? 0;
+
+        public int MaximumAcceptedCuts =>
+            Session?.MaximumAcceptedCuts ?? 0;
+
+        public int CutsRemaining => Session?.HasCutLimit == true
+            ? Session.CutsRemaining
+            : 0;
+
         public void RetryLevel()
         {
             InitializeOnce();
@@ -541,7 +552,8 @@ namespace Cutrium.Unity.Simulation
         {
             if (_levelCatalogDefinition != null)
             {
-                _activeLevelDefinitions = _levelCatalogDefinition.Levels;
+                _activeLevelDefinitions =
+                    _levelCatalogDefinition.EffectiveLevels;
                 return _levelCatalogDefinition.BuildRuntimeCatalog();
             }
 

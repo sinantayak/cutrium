@@ -1,12 +1,15 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using Cutrium.Editor.Setup;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
 using Cutrium.Gameplay.Threats;
 using Cutrium.Presentation.Landmark;
 using Cutrium.Unity.Simulation;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 namespace Cutrium.Gameplay.EditModeTests
@@ -58,12 +61,12 @@ namespace Cutrium.Gameplay.EditModeTests
                 definitions.Select(level => level.ExpectedHumanCompletionSeconds),
                 Is.EqualTo(new[]
                 {
-                    15f, 20f, 24f, 26f, 28f, 30f,
-                    32f, 32f, 35f, 38f, 42f, 45f,
+                    15f, 24f, 28f, 30f, 30f, 32f,
+                    36f, 38f, 38f, 40f, 43f, 45f,
                 }));
             Assert.That(
                 definitions.Select(level => level.DifficultyRating),
-                Is.EqualTo(new[] { 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5 }));
+                Is.EqualTo(new[] { 1, 2, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5 }));
             Assert.That(
                 definitions.Skip(1).All(
                     level => level.ExpectedHumanCompletionSeconds >= 20f
@@ -151,15 +154,15 @@ namespace Cutrium.Gameplay.EditModeTests
                 levels.Select(level => level.Capture.TargetCapturedFraction),
                 Is.EqualTo(new[]
                 {
-                    0.75f, 0.78f, 0.78f, 0.84f, 0.8f, 0.8f,
-                    0.82f, 0.84f, 0.82f, 0.84f, 0.86f, 0.88f,
+                    0.75f, 0.78f, 0.8f, 0.84f, 0.8f, 0.8f,
+                    0.82f, 0.84f, 0.84f, 0.84f, 0.87f, 0.9f,
                 }));
             Assert.That(
                 levels.Select(level => level.Barrier.GrowthSpeed),
                 Is.EqualTo(new[]
                 {
-                    3.4f, 2.4f, 3f, 3.2f, 2.85f, 2.8f,
-                    2.35f, 2.2f, 2.7f, 2.6f, 2.35f, 2.5f,
+                    3.4f, 2.15f, 2.8f, 3.2f, 2.6f, 2.55f,
+                    1.85f, 1.75f, 2.45f, 2.35f, 1.85f, 2f,
                 }));
 
             foreach (CoreFunLevelConfiguration level in levels)
@@ -189,18 +192,18 @@ namespace Cutrium.Gameplay.EditModeTests
             AssertThreat(levels[2], 1, 7f, 11f, -0.82f, -0.57f, 2.2f);
             AssertThreat(levels[3], 0, 7.6f, 12.2f, -0.72f, -0.69f, 2.25f);
             AssertThreat(levels[4], 0, 5f, 8f, 0.8f, 0.6f, 2f);
-            AssertThreat(levels[5], 0, 4f, 10f, 0.65f, -0.76f, 2f);
-            AssertThreat(levels[6], 0, 6.2f, 8.5f, -0.74f, 0.67f, 2.15f);
+            AssertThreat(levels[5], 0, 4f, 10f, 0.65f, -0.76f, 1.9f);
+            AssertThreat(levels[6], 0, 6.2f, 8.5f, -0.74f, 0.67f, 2f);
             AssertThreat(levels[7], 0, 3f, 6f, 0.88f, 0.48f, 2.1f);
             AssertThreat(levels[7], 1, 7.2f, 10.8f, -0.68f, -0.73f, 2.15f);
             AssertThreat(levels[8], 0, 3.2f, 5.2f, 0.82f, 0.57f, 1.95f);
             AssertThreat(levels[8], 1, 7f, 11.4f, -0.78f, -0.63f, 2.15f);
-            AssertThreat(levels[9], 0, 3.3f, 10.8f, 0.78f, -0.62f, 1.95f);
+            AssertThreat(levels[9], 0, 3.3f, 10.8f, 0.78f, -0.62f, 1.9f);
             AssertThreat(levels[9], 1, 7.1f, 5.2f, -0.84f, 0.54f, 2.15f);
-            AssertThreat(levels[10], 0, 3.2f, 6f, 0.82f, 0.57f, 2f);
-            AssertThreat(levels[10], 1, 7f, 10.5f, -0.76f, -0.65f, 1.9f);
-            AssertThreat(levels[11], 0, 2.8f, 5f, 0.86f, 0.51f, 1.95f);
-            AssertThreat(levels[11], 1, 7.2f, 8.3f, -0.72f, 0.69f, 1.9f);
+            AssertThreat(levels[10], 0, 3.2f, 6f, 0.82f, 0.57f, 1.95f);
+            AssertThreat(levels[10], 1, 7f, 10.5f, -0.76f, -0.65f, 1.85f);
+            AssertThreat(levels[11], 0, 2.8f, 5f, 0.86f, 0.51f, 1.9f);
+            AssertThreat(levels[11], 1, 7.2f, 8.3f, -0.72f, 0.69f, 1.85f);
             AssertThreat(levels[11], 2, 4.8f, 12.5f, 0.62f, -0.78f, 2.1f);
         }
 
@@ -220,6 +223,35 @@ namespace Cutrium.Gameplay.EditModeTests
                 Is.GreaterThan(levels[1].ThreatMotions.Count));
             Assert.That(levels[11].Capture.TargetCapturedFraction,
                 Is.GreaterThan(levels[1].Capture.TargetCapturedFraction));
+        }
+
+        [Test]
+        public void LimitedLevels_HaveGenerousDocumentedCutBudgetsAndIntroductions()
+        {
+            CoreFunLevelDefinition[] definitions = Definitions();
+            CoreFunLevelConfiguration[] levels = Configurations();
+
+            Assert.That(
+                levels.Select(level => level.Capture.MaximumAcceptedCuts),
+                Is.EqualTo(new[] { 0, 0, 0, 10, 0, 0, 10, 9, 0, 0, 8, 10 }));
+            Assert.That(
+                levels.Select(level => level.ExpectedReasonableCutUsage),
+                Is.EqualTo(new[] { 3, 5, 6, 7, 5, 5, 7, 6, 7, 7, 6, 8 }));
+            foreach (CoreFunLevelConfiguration level in levels
+                .Where(level => level.Capture.HasCutLimit))
+            {
+                Assert.That(
+                    level.Capture.MaximumAcceptedCuts
+                    - level.ExpectedReasonableCutUsage,
+                    Is.GreaterThanOrEqualTo(2),
+                    level.StableId);
+            }
+
+            Assert.That(definitions[3].IntroTitle, Is.EqualTo("10 CUTS"));
+            Assert.That(definitions[4].IntroTitle, Is.EqualTo("HUNTER"));
+            Assert.That(definitions[5].IntroTitle, Is.EqualTo("PULSE"));
+            Assert.That(definitions[6].IntroTitle, Is.EqualTo("FREEZE"));
+            Assert.That(definitions[7].IntroTitle, Is.EqualTo("INSTANT"));
         }
 
         [Test]
@@ -247,6 +279,49 @@ namespace Cutrium.Gameplay.EditModeTests
         }
 
         [Test]
+        public void CheckedInGameplayCatalog_ResolvesToIdentityRevision()
+        {
+            CoreFunLevelCatalogDefinition asset =
+                AssetDatabase.LoadAssetAtPath<CoreFunLevelCatalogDefinition>(
+                    GameplayProgressionSetup.GameplayCatalogPath);
+
+            Assert.That(asset, Is.Not.Null);
+            CoreFunLevelCatalog catalog = asset.BuildRuntimeCatalog();
+            Assert.That(catalog.Count, Is.EqualTo(12));
+            Assert.That(catalog[3].Capture.MaximumAcceptedCuts, Is.EqualTo(10));
+            Assert.That(catalog[4].ThreatMotion.Behavior.HunterSteerFactor,
+                Is.EqualTo(0.72f));
+            Assert.That(asset.EffectiveLevels[4].IntroTitle,
+                Is.EqualTo("HUNTER"));
+        }
+
+        [Test]
+        public void PowerWindowLevels_HaveAuthoredChargesAndExposureTuning()
+        {
+            CoreFunLevelConfiguration[] levels = Configurations();
+
+            Assert.That(levels[6].Barrier.GrowthSpeed, Is.EqualTo(1.85f));
+            Assert.That(levels[6].Power.FreezePulseDurationSeconds,
+                Is.EqualTo(3.8f));
+            Assert.That(levels[6].Power.FreezePulseSpeedMultiplier,
+                Is.EqualTo(0.1f));
+            Assert.That(levels[7].Barrier.GrowthSpeed, Is.EqualTo(1.75f));
+            Assert.That(levels[7].Power.InstantBarrierGrowthSpeed,
+                Is.EqualTo(600f));
+            foreach (int index in new[] { 10, 11 })
+            {
+                Assert.That(levels[index].Power.FreezePulseCharges,
+                    Is.EqualTo(1));
+                Assert.That(levels[index].Power.InstantBarrierCharges,
+                    Is.EqualTo(1));
+                Assert.That(levels[index].Power.FreezePulseDurationSeconds,
+                    Is.EqualTo(3.5f));
+                Assert.That(levels[index].Power.InstantBarrierGrowthSpeed,
+                    Is.EqualTo(600f));
+            }
+        }
+
+        [Test]
         public void LandmarkCatalog_IsSeparateAndPairsByProgressionIndex()
         {
             LandmarkDefinition first = Landmark("first");
@@ -265,6 +340,66 @@ namespace Cutrium.Gameplay.EditModeTests
             UnityEngine.Object.DestroyImmediate(first);
             UnityEngine.Object.DestroyImmediate(second);
             UnityEngine.Object.DestroyImmediate(third);
+        }
+
+        [Test]
+        public void FirstTwelveLandmarks_MatchMarkdownAndImportedArtwork()
+        {
+            FirstTwelveLandmarkContent.Entry[] entries =
+                FirstTwelveLandmarkContent.Entries;
+            string markdown = File.ReadAllText("landmarks.md");
+
+            Assert.That(entries, Has.Length.EqualTo(12));
+            Assert.That(entries[0].Title, Is.EqualTo("Galata Kulesi"));
+            Assert.That(entries.Select(entry => entry.Id).Distinct().Count(),
+                Is.EqualTo(12));
+            string plainMarkdown = markdown.Replace("*", string.Empty);
+            foreach (FirstTwelveLandmarkContent.Entry entry in entries)
+            {
+                Assert.That(markdown, Does.Contain(entry.Title));
+                Assert.That(
+                    plainMarkdown,
+                    Does.Contain(entry.Description),
+                    entry.Title);
+                Assert.That(
+                    AssetDatabase.LoadAssetAtPath<Sprite>(entry.ArtworkPath),
+                    Is.Not.Null,
+                    entry.ArtworkPath);
+            }
+
+            LandmarkDefinition[] definitions =
+                FirstTwelveLandmarkContent.CreateOrUpdateAssets();
+            Assert.That(definitions, Has.Length.EqualTo(12));
+            Assert.That(definitions.All(definition =>
+                definition != null
+                && definition.Artwork != null
+                && !string.IsNullOrWhiteSpace(definition.ShortDescription)),
+                Is.True);
+        }
+
+        [Test]
+        public void CheckedInLandmarkCatalog_HasTwelveRealOrderedEntries()
+        {
+            LandmarkCatalog catalog = AssetDatabase.LoadAssetAtPath<LandmarkCatalog>(
+                GameplayProgressionSetup.LandmarkCatalogPath);
+
+            Assert.That(catalog, Is.Not.Null);
+            Assert.That(catalog.Count, Is.EqualTo(12));
+            Assert.That(catalog.Landmarks.Select(item => item.LandmarkId),
+                Is.EqualTo(FirstTwelveLandmarkContent.Entries.Select(
+                    item => item.Id)));
+            for (int index = 0; index < catalog.Count; index++)
+            {
+                LandmarkDefinition landmark = catalog.Landmarks[index];
+                FirstTwelveLandmarkContent.Entry source =
+                    FirstTwelveLandmarkContent.Entries[index];
+                Assert.That(landmark.DisplayTitle, Is.EqualTo(source.Title));
+                Assert.That(landmark.ShortDescription,
+                    Is.EqualTo(source.Description));
+                Assert.That(landmark.Sector,
+                    Is.EqualTo($"{source.City} / TÜRKİYE"));
+                Assert.That(landmark.Artwork, Is.Not.Null);
+            }
         }
 
         [Test]

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L09_Oludeniz
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: oludeniz
+  _displayTitle: "\xD6l\xFCdeniz"
+  _shortDescription: "\xD6l\xFCdeniz, turkuaz lag\xFCn\xFC ve Kumburnu\u2019nun olu\u015Fturdu\u011Fu
+    benzersiz k\u0131y\u0131 \u015Fekliyle T\xFCrkiye\u2019nin en tan\u0131nan do\u011Fal
+    manzaralar\u0131ndan biridir. Sakin lag\xFCn ile a\xE7\u0131k denizin yan yana
+    olu\u015Fturdu\u011Fu renk ge\xE7i\u015Fi, b\xF6lgenin ikonik g\xF6r\xFCnt\xFCs\xFCn\xFC
+    yarat\u0131r. Babada\u011F\u2019dan yap\u0131lan yama\xE7 para\u015F\xFCtleri
+    de bu manzaray\u0131 d\xFCnyaca \xFCnl\xFC h\xE2le getirmi\u015Ftir."
+  _sector: "Fethiye / T\xDCRK\u0130YE"
+  _artwork: {fileID: -9157456900084020562, guid: 58066c99c63942d4ca8f5e10ff4c1d35, type: 3}

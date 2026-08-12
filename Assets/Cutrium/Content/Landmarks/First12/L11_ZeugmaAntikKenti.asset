@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L11_ZeugmaAntikKenti
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: zeugma-antik-kenti
+  _displayTitle: Zeugma Antik Kenti
+  _shortDescription: "F\u0131rat k\u0131y\u0131s\u0131ndaki Zeugma, Helenistik ve
+    Roma d\xF6nemlerinde do\u011Fu ile bat\u0131 aras\u0131ndaki ticaret yollar\u0131n\u0131
+    kontrol eden zengin bir kentti. Kent \xF6zellikle villalar\u0131n\u0131 s\xFCsleyen
+    ola\u011Fan\xFCst\xFC taban mozaikleriyle tan\u0131n\u0131r. Zeugma\u2019dan
+    \xE7\u0131kar\u0131lan eserlerin b\xFCy\xFCk b\xF6l\xFCm\xFC, bug\xFCn d\xFCnyan\u0131n
+    en \xF6nemli mozaik koleksiyonlar\u0131ndan birini bar\u0131nd\u0131ran Zeugma
+    Mozaik M\xFCzesi\u2019nde sergilenir."
+  _sector: "Gaziantep / T\xDCRK\u0130YE"
+  _artwork: {fileID: -6012674146138027017, guid: a3daf5c8628997249bdde2adbeef6738, type: 3}

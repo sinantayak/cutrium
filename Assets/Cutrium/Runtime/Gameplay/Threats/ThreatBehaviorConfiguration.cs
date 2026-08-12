@@ -15,6 +15,7 @@ namespace Cutrium.Gameplay.Threats
         private ThreatBehaviorConfiguration(
             ThreatBehaviorKind kind,
             float hunterSteerFactor,
+            float hunterMaximumTurnDegrees,
             float pulseSlowSpeedMultiplier,
             float pulseFastSpeedMultiplier,
             float pulseSlowDurationSeconds,
@@ -22,6 +23,7 @@ namespace Cutrium.Gameplay.Threats
         {
             Kind = kind;
             HunterSteerFactor = hunterSteerFactor;
+            HunterMaximumTurnDegrees = hunterMaximumTurnDegrees;
             PulseSlowSpeedMultiplier = pulseSlowSpeedMultiplier;
             PulseFastSpeedMultiplier = pulseFastSpeedMultiplier;
             PulseSlowDurationSeconds = pulseSlowDurationSeconds;
@@ -31,6 +33,8 @@ namespace Cutrium.Gameplay.Threats
         public ThreatBehaviorKind Kind { get; }
 
         public float HunterSteerFactor { get; }
+
+        public float HunterMaximumTurnDegrees { get; }
 
         public float PulseSlowSpeedMultiplier { get; }
 
@@ -47,6 +51,7 @@ namespace Cutrium.Gameplay.Threats
             new ThreatBehaviorConfiguration(
                 ThreatBehaviorKind.Normal,
                 0f,
+                0f,
                 1f,
                 1f,
                 0f,
@@ -54,6 +59,13 @@ namespace Cutrium.Gameplay.Threats
 
         public static ThreatBehaviorConfiguration CreateHunter(
             float steerFactor)
+        {
+            return CreateHunter(steerFactor, 52f);
+        }
+
+        public static ThreatBehaviorConfiguration CreateHunter(
+            float steerFactor,
+            float maximumTurnDegrees)
         {
             if (!IsFinite(steerFactor) || steerFactor <= 0f || steerFactor > 1f)
             {
@@ -63,9 +75,20 @@ namespace Cutrium.Gameplay.Threats
                     "Hunter steer factor must be in the range (0, 1].");
             }
 
+            if (!IsFinite(maximumTurnDegrees)
+                || maximumTurnDegrees <= 0f
+                || maximumTurnDegrees > 75f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(maximumTurnDegrees),
+                    maximumTurnDegrees,
+                    "Hunter maximum turn must be in the range (0, 75].");
+            }
+
             return new ThreatBehaviorConfiguration(
                 ThreatBehaviorKind.Hunter,
                 steerFactor,
+                maximumTurnDegrees,
                 1f,
                 1f,
                 0f,
@@ -85,6 +108,7 @@ namespace Cutrium.Gameplay.Threats
             return new ThreatBehaviorConfiguration(
                 ThreatBehaviorKind.Pulse,
                 0f,
+                0f,
                 slowSpeedMultiplier,
                 fastSpeedMultiplier,
                 slowDurationSeconds,
@@ -94,6 +118,8 @@ namespace Cutrium.Gameplay.Threats
         public bool Equals(ThreatBehaviorConfiguration other) =>
             Kind == other.Kind
             && HunterSteerFactor.Equals(other.HunterSteerFactor)
+            && HunterMaximumTurnDegrees.Equals(
+                other.HunterMaximumTurnDegrees)
             && PulseSlowSpeedMultiplier.Equals(other.PulseSlowSpeedMultiplier)
             && PulseFastSpeedMultiplier.Equals(other.PulseFastSpeedMultiplier)
             && PulseSlowDurationSeconds.Equals(other.PulseSlowDurationSeconds)
@@ -108,6 +134,8 @@ namespace Cutrium.Gameplay.Threats
             {
                 int hashCode = (int)Kind;
                 hashCode = (hashCode * 397) ^ HunterSteerFactor.GetHashCode();
+                hashCode = (hashCode * 397)
+                    ^ HunterMaximumTurnDegrees.GetHashCode();
                 hashCode = (hashCode * 397)
                     ^ PulseSlowSpeedMultiplier.GetHashCode();
                 hashCode = (hashCode * 397)

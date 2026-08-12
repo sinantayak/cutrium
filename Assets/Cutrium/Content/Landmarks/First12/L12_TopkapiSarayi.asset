@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L12_TopkapiSarayi
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: topkapi-sarayi
+  _displayTitle: "Topkap\u0131 Saray\u0131"
+  _shortDescription: "Fatih Sultan Mehmet d\xF6neminde yap\u0131m\u0131na ba\u015Flanan
+    Topkap\u0131 Saray\u0131, yakla\u015F\u0131k d\xF6rt y\xFCzy\u0131l boyunca Osmanl\u0131
+    y\xF6netiminin ve saray ya\u015Fam\u0131n\u0131n merkezi oldu. Bo\u011Faz ve
+    Hali\xE7\u2019e h\xE2kim konumu, saraya \u0130stanbul\u2019un en g\xFC\xE7l\xFC
+    panoramalar\u0131ndan birini kazand\u0131r\u0131r. Avlular\u0131, Harem\u2019i,
+    k\xF6\u015Fkleri ve imparatorluk koleksiyonlar\u0131 Osmanl\u0131 saray d\xFCnyas\u0131n\u0131n
+    farkl\u0131 katmanlar\u0131n\u0131 bir arada g\xF6sterir."
+  _sector: "\u0130stanbul / T\xDCRK\u0130YE"
+  _artwork: {fileID: -5280515556473802121, guid: 93808a0ba34d3d344bf478885799a746, type: 3}

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L03_Yilankale
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: yilankale
+  _displayTitle: "Y\u0131lankale"
+  _shortDescription: "Ceyhan Ovas\u0131\u2019na h\xE2kim sarp bir kayal\u0131k \xFCzerine
+    kurulan Y\u0131lankale, Orta \xC7a\u011F \xC7ukurova\u2019s\u0131n\u0131n en
+    etkileyici savunma yap\u0131lar\u0131ndan biridir. Kale, \xF6zellikle Kilikya
+    Ermeni Krall\u0131\u011F\u0131 d\xF6nemine ait mimarisi ve vadiden g\xF6r\xFClen
+    g\xFC\xE7l\xFC sil\xFCetiyle dikkat \xE7eker. T\xFCrk halk anlat\u0131lar\u0131nda
+    \u015Eahmeran efsanesiyle de ili\u015Fkilendirilmesi, yap\u0131ya tarih kadar
+    g\xFC\xE7l\xFC bir mitolojik kimlik kazand\u0131r\u0131r."
+  _sector: "Adana / T\xDCRK\u0130YE"
+  _artwork: {fileID: -7969959534760470610, guid: d73996f59359a6b4ea2eb04b53320084, type: 3}

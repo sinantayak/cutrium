@@ -12,8 +12,7 @@ namespace Cutrium.Presentation.Threats
     [DisallowMultipleComponent]
     public sealed class ThreatPresenter : MonoBehaviour
     {
-        private const float TrailCenterOffsetInDiameters = 0.78f;
-        private const float TrailLengthInDiameters = 1.55f;
+        private const float HunterReactionEmphasisSeconds = 0.34f;
 
         [SerializeField]
         private FirstPlayableController _controller;
@@ -41,6 +40,8 @@ namespace Cutrium.Presentation.Threats
         private ThreatView _primaryView;
         private ThreatVisualStyle _themeStyle;
         private bool _hasThemeStyle;
+        private bool _feedbackSubscribed;
+        private float _hunterReactionEmphasisUntil;
 
         public FirstPlayableController Controller => _controller;
 
@@ -83,6 +84,7 @@ namespace Cutrium.Presentation.Threats
             _primaryView = null;
             SetVisualLogicalDiameter(visualLogicalDiameter);
             ApplyOptionalSprite(_image);
+            SubscribeFeedback();
         }
 
         public void ApplyTheme(ThreatVisualStyle style)
@@ -157,6 +159,16 @@ namespace Cutrium.Presentation.Threats
         private void LateUpdate()
         {
             RefreshNow();
+        }
+
+        private void OnEnable()
+        {
+            SubscribeFeedback();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeFeedback();
         }
 
         private void SynchronizeViews()
@@ -283,7 +295,27 @@ namespace Cutrium.Presentation.Threats
                 diameter * visualScale.x,
                 diameter * visualScale.y);
             ApplyStyle(view);
-            PositionDecorations(view, threat, diameter);
+            ThreatBehaviorConfiguration behavior =
+                _controller.Session.BehaviorFor(threat.Id);
+            float pulseMultiplier =
+                _controller.Session.PulsePhaseMultiplierFor(threat.Id);
+            bool hunterEmphasized =
+                behavior.Kind == ThreatBehaviorKind.Hunter
+                && Time.unscaledTime < _hunterReactionEmphasisUntil
+                && WasLastReactingHunter(threat.Id);
+            ThreatTrailTreatment treatment = ThreatTrailTreatment.Resolve(
+                behavior.Kind,
+                pulseMultiplier,
+                hunterEmphasized);
+            PositionDecorations(view, threat, diameter, treatment);
+            Color baseTrailColor = _hasThemeStyle
+                ? _themeStyle.TrailColor
+                : view.TrailImage.color;
+            view.TrailImage.color = new Color(
+                baseTrailColor.r,
+                baseTrailColor.g,
+                baseTrailColor.b,
+                Mathf.Clamp01(baseTrailColor.a * treatment.Intensity));
         }
 
         private void ApplyStyle(ThreatView view)
@@ -385,7 +417,8 @@ namespace Cutrium.Presentation.Threats
         private static void PositionDecorations(
             ThreatView view,
             ThreatState threat,
-            float diameter)
+            float diameter,
+            ThreatTrailTreatment treatment)
         {
             RectTransform shadow =
                 (RectTransform)view.ShadowImage.transform;
@@ -401,7 +434,7 @@ namespace Cutrium.Presentation.Threats
                 (RectTransform)view.TrailImage.transform;
             trail.anchoredPosition =
                 view.RectTransform.anchoredPosition
-                - (direction * diameter * TrailCenterOffsetInDiameters);
+                - (direction * diameter * treatment.CenterOffsetInDiameters);
             trail.localRotation = Quaternion.Euler(
                 0f,
                 0f,
@@ -411,7 +444,55 @@ namespace Cutrium.Presentation.Threats
             // desired long/thin shape through transparent padding.
             trail.sizeDelta = Vector2.one
                 * diameter
-                * TrailLengthInDiameters;
+                * treatment.ScaleInDiameters;
+        }
+
+        private void SubscribeFeedback()
+        {
+            if (_feedbackSubscribed || _controller == null)
+            {
+                return;
+            }
+
+            _controller.FeedbackEventRaised += OnFeedbackEventRaised;
+            _feedbackSubscribed = true;
+        }
+
+        private bool WasLastReactingHunter(ThreatId id)
+        {
+            IReadOnlyList<ThreatId> reacted =
+                _controller.Session.LastHunterReactionThreatIds;
+            for (int index = 0; index < reacted.Count; index++)
+            {
+                if (reacted[index] == id)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void UnsubscribeFeedback()
+        {
+            if (!_feedbackSubscribed || _controller == null)
+            {
+                return;
+            }
+
+            _controller.FeedbackEventRaised -= OnFeedbackEventRaised;
+            _feedbackSubscribed = false;
+        }
+
+        private void OnFeedbackEventRaised(
+            Cutrium.Gameplay.Feedback.FeedbackEvent feedbackEvent)
+        {
+            if (feedbackEvent.Kind
+                == Cutrium.Gameplay.Feedback.FeedbackEventKind.HunterReacted)
+            {
+                _hunterReactionEmphasisUntil =
+                    Time.unscaledTime + HunterReactionEmphasisSeconds;
+            }
         }
 
         private void ApplyOptionalSprite(Image image)
@@ -440,6 +521,45 @@ namespace Cutrium.Presentation.Threats
             public Image ShadowImage { get; set; }
 
             public Image TrailImage { get; set; }
+        }
+    }
+
+    /// Presentation-only geometry/intensity treatment for the existing blue
+    /// trail. Uniform scaling preserves the authored meteor silhouette.
+    public readonly struct ThreatTrailTreatment
+    {
+        private ThreatTrailTreatment(
+            float scaleInDiameters,
+            float centerOffsetInDiameters,
+            float intensity)
+        {
+            ScaleInDiameters = scaleInDiameters;
+            CenterOffsetInDiameters = centerOffsetInDiameters;
+            Intensity = intensity;
+        }
+
+        public float ScaleInDiameters { get; }
+        public float CenterOffsetInDiameters { get; }
+        public float Intensity { get; }
+
+        public static ThreatTrailTreatment Resolve(
+            ThreatBehaviorKind behavior,
+            float pulsePhaseMultiplier,
+            bool hunterReactionEmphasized)
+        {
+            switch (behavior)
+            {
+                case ThreatBehaviorKind.Hunter:
+                    return hunterReactionEmphasized
+                        ? new ThreatTrailTreatment(2.25f, 1.08f, 1.55f)
+                        : new ThreatTrailTreatment(1.78f, 0.88f, 1.15f);
+                case ThreatBehaviorKind.Pulse:
+                    return pulsePhaseMultiplier > 1f
+                        ? new ThreatTrailTreatment(2.05f, 0.98f, 1.35f)
+                        : new ThreatTrailTreatment(1.08f, 0.58f, 0.68f);
+                default:
+                    return new ThreatTrailTreatment(1.42f, 0.72f, 0.9f);
+            }
         }
     }
 }

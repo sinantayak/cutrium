@@ -709,43 +709,9 @@ namespace Cutrium.Editor.Setup
         private static LandmarkDefinition[] ConfigureLandmarks(
             IReadOnlyDictionary<string, Sprite> sprites)
         {
-            LandmarkDefinition galata = GetOrCreateLandmark(
-                LandmarkAssetPaths[0],
-                LegacyAlpineLandmarkPath);
-            Sprite galataArtwork =
-                LoadGalataArtworkIfPresent() ?? sprites["landmark_alpine"];
-            galata.ConfigureForSetup(
-                "galata-kulesi",
-                "Galata Kulesi",
-                "A centuries-old stone watchtower rising above the Golden " +
-                "Horn, marking where old Istanbul meets the strait.",
-                "Türkiye",
-                galataArtwork);
-            EditorUtility.SetDirty(galata);
-
-            LandmarkDefinition coastal = GetOrCreateLandmark(
-                LandmarkAssetPaths[1]);
-            coastal.ConfigureForSetup(
-                "coastal-lagoon",
-                "Coastal Lagoon",
-                "Warm turquoise water meets soft white sand beneath an " +
-                "endless open sky.",
-                "Oceania",
-                sprites["landmark_coastal"]);
-            EditorUtility.SetDirty(coastal);
-
-            LandmarkDefinition desert = GetOrCreateLandmark(
-                LandmarkAssetPaths[2]);
-            desert.ConfigureForSetup(
-                "desert-dunes",
-                "Desert Dunes",
-                "Rolling amber dunes catch the last light of dusk across a " +
-                "silent horizon.",
-                "Middle East",
-                sprites["landmark_desert"]);
-            EditorUtility.SetDirty(desert);
-
-            return new[] { galata, coastal, desert };
+            // A broad presentation rerun must not restore the old three
+            // placeholder landmarks over the real first-twelve catalog.
+            return FirstTwelveLandmarkContent.CreateOrUpdateAssets();
         }
 
         private static LandmarkDefinition GetOrCreateLandmark(

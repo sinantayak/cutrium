@@ -27,6 +27,10 @@ namespace Cutrium.Unity.Simulation
         [Range(0.01f, 1f)]
         private float _hunterSteerFactor = 0.25f;
 
+        [SerializeField]
+        [Range(1f, 75f)]
+        private float _hunterMaximumTurnDegrees = 52f;
+
         [Header("Pulse")]
         [SerializeField]
         private float _pulseSlowSpeedMultiplier = 0.5f;
@@ -44,10 +48,13 @@ namespace Cutrium.Unity.Simulation
         {
         }
 
-        public CoreFunThreatBehaviorDefinition(float hunterSteerFactor)
+        public CoreFunThreatBehaviorDefinition(
+            float hunterSteerFactor,
+            float hunterMaximumTurnDegrees = 52f)
         {
             _kind = CoreFunThreatBehaviorKind.Hunter;
             _hunterSteerFactor = hunterSteerFactor;
+            _hunterMaximumTurnDegrees = hunterMaximumTurnDegrees;
         }
 
         public CoreFunThreatBehaviorDefinition(
@@ -65,6 +72,7 @@ namespace Cutrium.Unity.Simulation
 
         public CoreFunThreatBehaviorKind Kind => _kind;
         public float HunterSteerFactor => _hunterSteerFactor;
+        public float HunterMaximumTurnDegrees => _hunterMaximumTurnDegrees;
         public float PulseSlowSpeedMultiplier => _pulseSlowSpeedMultiplier;
         public float PulseFastSpeedMultiplier => _pulseFastSpeedMultiplier;
         public float PulseSlowDurationSeconds => _pulseSlowDurationSeconds;
@@ -76,7 +84,8 @@ namespace Cutrium.Unity.Simulation
             {
                 case CoreFunThreatBehaviorKind.Hunter:
                     return ThreatBehaviorConfiguration.CreateHunter(
-                        _hunterSteerFactor);
+                        _hunterSteerFactor,
+                        _hunterMaximumTurnDegrees);
                 case CoreFunThreatBehaviorKind.Pulse:
                     return ThreatBehaviorConfiguration.CreatePulse(
                         _pulseSlowSpeedMultiplier,
@@ -271,6 +280,22 @@ namespace Cutrium.Unity.Simulation
         [Range(1, 5)]
         private int _difficultyRating = 1;
 
+        [Header("Cut Economy")]
+        [SerializeField]
+        [Min(0)]
+        private int _maximumAcceptedCuts;
+
+        [SerializeField]
+        [Min(0)]
+        private int _expectedReasonableCutUsage;
+
+        [Header("Brief Introduction")]
+        [SerializeField]
+        private string _introTitle = string.Empty;
+
+        [SerializeField]
+        private string _introMessage = string.Empty;
+
         public CoreFunLevelDefinition(
             string stableId,
             int displayNumber,
@@ -356,7 +381,11 @@ namespace Cutrium.Unity.Simulation
             string purposeLine,
             CoreFunPowerDefinition power,
             string intendedDecision = "",
-            int difficultyRating = 1)
+            int difficultyRating = 1,
+            int maximumAcceptedCuts = 0,
+            int expectedReasonableCutUsage = 0,
+            string introTitle = "",
+            string introMessage = "")
         {
             _stableId = stableId;
             _displayNumber = displayNumber;
@@ -375,6 +404,10 @@ namespace Cutrium.Unity.Simulation
             _power = power;
             _intendedDecision = intendedDecision;
             _difficultyRating = difficultyRating;
+            _maximumAcceptedCuts = maximumAcceptedCuts;
+            _expectedReasonableCutUsage = expectedReasonableCutUsage;
+            _introTitle = introTitle ?? string.Empty;
+            _introMessage = introMessage ?? string.Empty;
         }
 
         public string StableId => _stableId;
@@ -402,6 +435,11 @@ namespace Cutrium.Unity.Simulation
         public CoreFunPowerDefinition Power => _power;
         public string IntendedDecision => _intendedDecision;
         public int DifficultyRating => _difficultyRating;
+        public int MaximumAcceptedCuts => _maximumAcceptedCuts;
+        public int ExpectedReasonableCutUsage =>
+            _expectedReasonableCutUsage;
+        public string IntroTitle => _introTitle;
+        public string IntroMessage => _introMessage;
 
         public CoreFunLevelConfiguration ToRuntimeConfiguration()
         {
@@ -422,7 +460,8 @@ namespace Cutrium.Unity.Simulation
                 _minimumCutMargin,
                 _maximumBarrierSolverIterations);
             var capture = new CaptureLevelConfiguration(
-                _targetCapturedFraction);
+                _targetCapturedFraction,
+                _maximumAcceptedCuts);
             return new CoreFunLevelConfiguration(
                 _stableId,
                 _displayNumber,
@@ -437,7 +476,8 @@ namespace Cutrium.Unity.Simulation
                     ? _power.ToRuntimeConfiguration()
                     : PowerConfiguration.None,
                 _intendedDecision,
-                _difficultyRating);
+                _difficultyRating,
+                _expectedReasonableCutUsage);
         }
 
         public static CoreFunLevelDefinition[] CreateMilestone3Defaults() =>

@@ -14,7 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: galata-kulesi
   _displayTitle: Galata Kulesi
-  _shortDescription: A centuries-old stone watchtower rising above the Golden Horn,
-    marking where old Istanbul meets the strait.
-  _sector: "T\xFCrkiye"
-  _artwork: {fileID: 21300000, guid: d244b89dae3002c4088d59dcaf768fee, type: 3}
+  _shortDescription: "Galata Kulesi, \u0130stanbul\u2019un en tan\u0131nan simgelerinden
+    biri ve \u015Fehrin y\xFCzy\u0131llara yay\u0131lan sil\xFCetinin \xF6nemli par\xE7alar\u0131ndand\u0131r.
+    G\xFCn\xFCm\xFCzdeki kulenin temelleri, 14. y\xFCzy\u0131lda Galata\u2019daki
+    Ceneviz kolonisi d\xF6neminde at\u0131lm\u0131\u015F ve yap\u0131 zaman i\xE7inde
+    farkl\u0131 ama\xE7larla kullan\u0131lm\u0131\u015Ft\u0131r. Yakla\u015F\u0131k
+    67 metre y\xFCksekli\u011Findeki kule, bulundu\u011Fu konum sayesinde \u0130stanbul
+    Bo\u011Faz\u0131, Hali\xE7 ve tarih\xEE yar\u0131madaya h\xE2kim geni\u015F bir
+    manzara sunar. Galata Kulesi bug\xFCn \u0130stanbul\u2019un Bizans, Ceneviz ve
+    Osmanl\u0131 d\xF6nemlerini bir arada hat\u0131rlatan en g\xFC\xE7l\xFC tarih\xEE
+    yap\u0131lardan biridir."
+  _sector: "\u0130stanbul / T\xDCRK\u0130YE"
+  _artwork: {fileID: 2155170499125424120, guid: eae823b0feb5465479b207154d3bd543, type: 3}

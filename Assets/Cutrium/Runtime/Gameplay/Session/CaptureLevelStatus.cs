@@ -3,6 +3,7 @@ namespace Cutrium.Gameplay.Session
     public enum CaptureLevelStatus
     {
         Playing = 0,
-        Completed = 1
+        Completed = 1,
+        OutOfCuts = 2
     }
 }

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L06_PataraAntikKenti
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: patara-antik-kenti
+  _displayTitle: Patara Antik Kenti
+  _shortDescription: "Patara, Likya\u2019n\u0131n en \xF6nemli liman ve y\xF6netim
+    merkezlerinden biriydi. Kentteki meclis yap\u0131s\u0131, Likya Birli\u011Fi\u2019nin
+    geli\u015Fmi\u015F temsil sisteminin en g\xFC\xE7l\xFC mimari izlerinden biridir.
+    Antik kal\u0131nt\u0131lar\u0131n hemen yan\u0131nda uzanan geni\u015F Patara
+    sahili, buray\u0131 tarih ile do\u011Fal peyzaj\u0131n ayn\u0131 karede bulu\u015Ftu\u011Fu
+    \xF6zel yerlerden biri yapar."
+  _sector: "Antalya / T\xDCRK\u0130YE"
+  _artwork: {fileID: -4313401852604552132, guid: 97e65373fccc1aa488e7bce3ecbb06bc, type: 3}

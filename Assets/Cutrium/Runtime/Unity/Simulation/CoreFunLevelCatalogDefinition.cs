@@ -16,19 +16,47 @@ namespace Cutrium.Unity.Simulation
 
         public IReadOnlyList<CoreFunLevelDefinition> Levels => _levels;
 
+        public bool IsSupersededFirstTwelveCatalog =>
+            _levels != null
+            && _levels.Length == FirstTwelveGameplayProgression.LevelCount
+            && _levels[0] != null
+            && _levels[3] != null
+            && _levels[4] != null
+            && _levels[11] != null
+            && string.Equals(
+                _levels[0].StableId,
+                "learn-the-cut",
+                StringComparison.Ordinal)
+            && string.Equals(
+                _levels[11].StableId,
+                "first-twelve-mastery",
+                StringComparison.Ordinal)
+            && _levels[3].MaximumAcceptedCuts == 0
+            && _levels[4].Threats.Count == 1
+            && _levels[4].Threats[0].Behavior != null
+            && _levels[4].Threats[0].Behavior.Kind
+                == CoreFunThreatBehaviorKind.Hunter
+            && _levels[4].Threats[0].Behavior.HunterSteerFactor < 0.5f;
+
+        public IReadOnlyList<CoreFunLevelDefinition> EffectiveLevels =>
+            IsSupersededFirstTwelveCatalog
+                ? FirstTwelveGameplayProgression.CreateDefinitions()
+                : _levels;
+
         public CoreFunLevelCatalog BuildRuntimeCatalog()
         {
-            if (_levels == null || _levels.Length == 0)
+            IReadOnlyList<CoreFunLevelDefinition> effective = EffectiveLevels;
+            if (effective == null || effective.Count == 0)
             {
                 throw new InvalidOperationException(
                     "A gameplay level catalog needs at least one level.");
             }
 
             var configurations =
-                new CoreFunLevelConfiguration[_levels.Length];
-            for (int index = 0; index < _levels.Length; index++)
+                new CoreFunLevelConfiguration[effective.Count];
+            for (int index = 0; index < effective.Count; index++)
             {
-                CoreFunLevelDefinition level = _levels[index]
+                CoreFunLevelDefinition level = effective[index]
                     ?? throw new InvalidOperationException(
                         "Gameplay level catalogs cannot contain null entries.");
                 configurations[index] = level.ToRuntimeConfiguration();

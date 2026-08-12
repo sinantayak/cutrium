@@ -1306,3 +1306,45 @@ and never runs broad presentation setup. Until that menu can run in a licensed
 Editor, the controller promotes only the exact known three-level legacy scene
 payload to the authored twelve definitions in memory; arbitrary custom and
 test catalogs remain untouched.
+
+## ADR-031 — Bounded Hunter Reaction and Accepted-Cut Economy
+
+**Status:** Accepted for first-twelve human gameplay review.
+
+**Context:**
+Human review found that Hunter did not read differently from Normal and that
+Freeze/Instant rarely affected decisions. The first twelve also lacked a
+level-authored constraint that discouraged repeated tiny edge captures.
+
+**Decision:**
+On each accepted barrier start, a Hunter in the barrier's parent room turns
+once toward the barrier origin. The authored reaction fraction retains at
+least ten percent of the angular error and an independently authored hard cap
+cannot exceed 75 degrees; first-twelve Hunters use 52–55 degrees. This is not
+continuous homing and does not change speed. Emit a presentation-only
+`HunterReacted` feedback event.
+
+Add `MaximumAcceptedCuts` to capture configuration, where zero is unlimited.
+A barrier accepted by gameplay immediately consumes one cut whether it later
+locks or breaks. Rejected, cancelled, short-release, and UI-blocked input
+consume none. The final accepted barrier resolves normally; if it does not
+reach target, the session enters `OutOfCuts`, rejects powers/new cuts, and
+offers Retry. Retry and all level transitions construct/reset a fresh count.
+
+Use the existing owner-provided blue trail sprite for every current threat.
+Normal is calm, Hunter is longer with a short reaction emphasis, and Pulse
+uniformly scales trail length/intensity by its deterministic speed phase.
+Presentation never writes logical radius or motion state.
+
+Pair gameplay levels 1–12 externally with Galata Kulesi followed by entries
+1–11 from repository-root `landmarks.md`. Definitions use the matching artwork
+under `Assets/Cutrium/Content/Landmarks/Artwork/`; gameplay types retain no
+landmark reference.
+
+**Consequences:**
+Limited-cut levels alone show a compact counter. Exhaustion is a small
+retry-only state, separate from the existing landmark completion/Next flow.
+First-introduction levels may show brief non-blocking copy. Numeric balance,
+power value, and visual readability require human playtesting; automated tests
+only prove deterministic rules, wiring, and reset behavior. Levels 13–66 and
+mass content remain out of scope.

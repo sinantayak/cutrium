@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L10_TruvaAntikKenti
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: truva-antik-kenti
+  _displayTitle: Truva Antik Kenti
+  _shortDescription: "Truva, yakla\u015F\u0131k 4 bin y\u0131ll\u0131k yerle\u015Fim
+    katmanlar\u0131yla Anadolu ve Akdeniz uygarl\u0131klar\u0131 aras\u0131ndaki
+    erken temaslar\u0131 g\xF6steren en \xF6nemli arkeolojik alanlardan biridir.
+    Homeros\u2019un \u0130lyada destan\u0131ndaki Troya Sava\u015F\u0131 anlat\u0131s\u0131,
+    kenti d\xFCnya k\xFClt\xFCr\xFCn\xFCn en g\xFC\xE7l\xFC efsanelerinden biri h\xE2line
+    getirmi\u015Ftir. UNESCO D\xFCnya Miras\u0131 olan alandaki \xFCst \xFCste kurulmu\u015F
+    kent katmanlar\u0131, binlerce y\u0131ll\u0131k de\u011Fi\u015Fimi ayn\u0131
+    yerde g\xF6rmeyi m\xFCmk\xFCn k\u0131lar."
+  _sector: "\xC7anakkale / T\xDCRK\u0130YE"
+  _artwork: {fileID: -2287794173825257534, guid: 297687a164a10a648b2e5980590017bc, type: 3}
