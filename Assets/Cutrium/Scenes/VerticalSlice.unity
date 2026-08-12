@@ -387,10 +387,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.LayoutElement
   m_IgnoreLayout: 0
-  m_MinWidth: 34
-  m_MinHeight: 34
-  m_PreferredWidth: 34
-  m_PreferredHeight: 34
+  m_MinWidth: 50
+  m_MinHeight: 50
+  m_PreferredWidth: 0
+  m_PreferredHeight: 50
   m_FlexibleWidth: 0
   m_FlexibleHeight: 0
   m_LayoutPriority: 1
@@ -667,6 +667,7 @@ MonoBehaviour:
   _titleText: {fileID: 1077216128}
   _descriptionText: {fileID: 388913433}
   _sectorText: {fileID: 736829638}
+  _landmarkCatalog: {fileID: 11400000, guid: 599f24667e99fd44090dd18ca1cd5512, type: 2}
   _landmarks:
   - {fileID: 11400000, guid: 2cf7acaa516c47344b5ed2bc4785e143, type: 2}
   - {fileID: 11400000, guid: 736ef4d3c4fb1ac45bf4b050e78b6364, type: 2}
@@ -1577,10 +1578,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1111482061}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 475.08124, y: -118}
-  m_SizeDelta: {x: 950.1625, y: 92}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &388913431
 MonoBehaviour:
@@ -3433,10 +3434,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1111482061}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 475.08124, y: -74}
-  m_SizeDelta: {x: 950.1625, y: 36}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!1 &748938591
 GameObject:
@@ -3728,6 +3729,8 @@ MonoBehaviour:
       _freezePulseSpeedMultiplier: 0.12
       _instantBarrierCharges: 0
       _instantBarrierGrowthSpeed: 600
+    _intendedDecision: 
+    _difficultyRating: 0
   - _stableId: timing-and-failure
     _displayNumber: 2
     _threats:
@@ -3758,6 +3761,8 @@ MonoBehaviour:
       _freezePulseSpeedMultiplier: 0.12
       _instantBarrierCharges: 0
       _instantBarrierGrowthSpeed: 600
+    _intendedDecision: 
+    _difficultyRating: 0
   - _stableId: confident-capture
     _displayNumber: 3
     _threats:
@@ -3800,6 +3805,9 @@ MonoBehaviour:
       _freezePulseSpeedMultiplier: 0.12
       _instantBarrierCharges: 0
       _instantBarrierGrowthSpeed: 600
+    _intendedDecision: 
+    _difficultyRating: 0
+  _levelCatalogDefinition: {fileID: 11400000, guid: f19e3fdf1b48d4e4791fcc47726ae597, type: 2}
   _feedbackTuning: {fileID: 11400000, guid: 6b9e12f6ee47f6941b943978e921bf67, type: 2}
   _distanceTolerance: 0.0001
   _timeTolerance: 0.00001
@@ -4878,10 +4886,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1111482061}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 475.08124, y: 0}
-  m_SizeDelta: {x: 950.1625, y: 66}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1077216126
 MonoBehaviour:

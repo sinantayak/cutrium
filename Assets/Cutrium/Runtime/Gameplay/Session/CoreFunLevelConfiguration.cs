@@ -23,7 +23,9 @@ namespace Cutrium.Gameplay.Session
             int maximumCatchUpTicks,
             string developmentNote,
             float maximumExpectedCompletionSeconds,
-            string purposeLine = "")
+            string purposeLine = "",
+            string intendedDecision = "",
+            int difficultyRating = 1)
             : this(
                 stableId,
                 displayNumber,
@@ -34,7 +36,9 @@ namespace Cutrium.Gameplay.Session
                 developmentNote,
                 maximumExpectedCompletionSeconds,
                 purposeLine,
-                PowerConfiguration.None)
+                PowerConfiguration.None,
+                intendedDecision,
+                difficultyRating)
         {
         }
 
@@ -47,7 +51,9 @@ namespace Cutrium.Gameplay.Session
             int maximumCatchUpTicks,
             string developmentNote,
             float maximumExpectedCompletionSeconds,
-            string purposeLine = "")
+            string purposeLine = "",
+            string intendedDecision = "",
+            int difficultyRating = 1)
             : this(
                 stableId,
                 displayNumber,
@@ -58,7 +64,9 @@ namespace Cutrium.Gameplay.Session
                 developmentNote,
                 maximumExpectedCompletionSeconds,
                 purposeLine,
-                PowerConfiguration.None)
+                PowerConfiguration.None,
+                intendedDecision,
+                difficultyRating)
         {
         }
 
@@ -72,7 +80,9 @@ namespace Cutrium.Gameplay.Session
             string developmentNote,
             float maximumExpectedCompletionSeconds,
             string purposeLine,
-            PowerConfiguration power)
+            PowerConfiguration power,
+            string intendedDecision = "",
+            int difficultyRating = 1)
         {
             if (string.IsNullOrWhiteSpace(stableId))
             {
@@ -125,6 +135,14 @@ namespace Cutrium.Gameplay.Session
                     nameof(maximumExpectedCompletionSeconds));
             }
 
+            if (difficultyRating < 1 || difficultyRating > 5)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(difficultyRating),
+                    difficultyRating,
+                    "Difficulty rating must be in the range 1 through 5.");
+            }
+
             StableId = stableId;
             DisplayNumber = displayNumber;
             _threatMotions = Array.AsReadOnly(copiedThreats);
@@ -136,6 +154,8 @@ namespace Cutrium.Gameplay.Session
             MaximumExpectedCompletionSeconds =
                 maximumExpectedCompletionSeconds;
             Power = power;
+            IntendedDecision = intendedDecision ?? string.Empty;
+            DifficultyRating = difficultyRating;
         }
 
         public string StableId { get; }
@@ -159,7 +179,14 @@ namespace Cutrium.Gameplay.Session
 
         public float MaximumExpectedCompletionSeconds { get; }
 
+        public float ExpectedHumanCompletionSeconds =>
+            MaximumExpectedCompletionSeconds;
+
         public PowerConfiguration Power { get; }
+
+        public string IntendedDecision { get; }
+
+        public int DifficultyRating { get; }
 
         private static void ValidateThreat(
             ThreatMotionConfiguration threatMotion,

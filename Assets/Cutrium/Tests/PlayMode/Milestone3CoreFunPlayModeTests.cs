@@ -45,16 +45,16 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void Scene_StartsLevelOneWithSerializedThreeLevelFlow()
+        public void Scene_StartsLevelOneWithSerializedTwelveLevelFlow()
         {
-            Assert.That(_controller.LevelDefinitions.Count, Is.EqualTo(3));
-            Assert.That(_controller.LevelCount, Is.EqualTo(3));
+            Assert.That(_controller.LevelDefinitions.Count, Is.EqualTo(12));
+            Assert.That(_controller.LevelCount, Is.EqualTo(12));
             Assert.That(_controller.CurrentLevelIndex, Is.Zero);
             Assert.That(_controller.CurrentLevelNumber, Is.EqualTo(1));
             Assert.That(_controller.CurrentLevelId, Is.EqualTo("learn-the-cut"));
-            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.825f));
+            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.75f));
             Assert.That(_controller.ThreatSpeed, Is.EqualTo(1.6f));
-            Assert.That(_controller.BarrierGrowthSpeed, Is.EqualTo(3f));
+            Assert.That(_controller.BarrierGrowthSpeed, Is.EqualTo(3.4f));
             Assert.That(_controller.ThreatCount, Is.EqualTo(1));
             Assert.That(_controller.BoardBounds,
                 Is.EqualTo(new LogicalRect(0f, 0f, 10f, 16f)));
@@ -128,9 +128,9 @@ namespace Cutrium.PlayModeTests
                 Is.EqualTo(sceneBefore.handle));
             Assert.That(_controller.CurrentLevelNumber, Is.EqualTo(2));
             Assert.That(_controller.CurrentLevelId,
-                Is.EqualTo("timing-and-failure"));
-            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.85f));
-            Assert.That(_controller.ThreatSpeed, Is.EqualTo(3.1f));
+                Is.EqualTo("vulnerable-barrier-timing"));
+            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.78f));
+            Assert.That(_controller.ThreatSpeed, Is.EqualTo(2.35f));
             Assert.That(_controller.BarrierGrowthSpeed, Is.EqualTo(2.4f));
             Assert.That(_controller.ThreatCount, Is.EqualTo(1));
             Assert.That(_controller.Session.CapturedFraction, Is.Zero);
@@ -143,21 +143,23 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void FullSequence_LevelThreeCompletionRestartsDevelopmentSequence()
+        public void FullSequence_LevelTwelveCompletionRestartsDevelopmentSequence()
         {
-            CompleteCurrentLevel();
-            Assert.That(_controller.TryAdvanceToNextLevel(), Is.True);
-            CompleteCurrentLevel();
-            Assert.That(_controller.TryAdvanceToNextLevel(), Is.True);
+            for (int level = 1; level < 12; level++)
+            {
+                CompleteCurrentLevel();
+                Assert.That(_controller.TryAdvanceToNextLevel(), Is.True);
+            }
+
             CompleteCurrentLevel();
             _hud.RefreshNow();
 
-            Assert.That(_controller.CurrentLevelNumber, Is.EqualTo(3));
+            Assert.That(_controller.CurrentLevelNumber, Is.EqualTo(12));
             Assert.That(_controller.CurrentLevelId,
-                Is.EqualTo("confident-capture"));
-            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.9f));
-            Assert.That(_controller.ThreatCount, Is.EqualTo(2));
-            Assert.That(_hud.PurposeText.text, Is.EqualTo("KEEP THEM TOGETHER"));
+                Is.EqualTo("first-twelve-mastery"));
+            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.88f));
+            Assert.That(_controller.ThreatCount, Is.EqualTo(3));
+            Assert.That(_hud.PurposeText.text, Is.EqualTo("MASTER THE BOARD"));
             Assert.That(_controller.Session.LevelStatus,
                 Is.EqualTo(CaptureLevelStatus.Completed));
             Assert.That(_controller.HasNextLevel, Is.False);
@@ -177,9 +179,10 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Metrics.SequenceCompletionCount,
                 Is.EqualTo(1));
             Assert.That(_controller.Metrics.LastCompletedSequence.Count,
-                Is.EqualTo(3));
+                Is.EqualTo(12));
             Assert.That(_controller.Metrics.LastCompletedSequence
-                .Select(run => run.LevelNumber), Is.EqualTo(new[] { 1, 2, 3 }));
+                .Select(run => run.LevelNumber),
+                Is.EqualTo(Enumerable.Range(1, 12)));
         }
 
         [Test]
@@ -269,7 +272,7 @@ namespace Cutrium.PlayModeTests
         {
             for (int sequence = 0; sequence < 2; sequence++)
             {
-                for (int level = 0; level < 3; level++)
+                for (int level = 0; level < 12; level++)
                 {
                     CompleteCurrentLevel();
                     Assert.That(
@@ -301,7 +304,7 @@ namespace Cutrium.PlayModeTests
                     .Count(child => child.name.StartsWith(
                         "ThreatVisual",
                         StringComparison.Ordinal)),
-                Is.EqualTo(2));
+                Is.EqualTo(3));
         }
 
         [Test]
@@ -418,7 +421,7 @@ namespace Cutrium.PlayModeTests
         [Test]
         public void MappingStillRejectsDecorativeMarginAfterEveryTransition()
         {
-            for (int level = 1; level <= 3; level++)
+            for (int level = 1; level <= 12; level++)
             {
                 _composition.BoardCameraFitter.RefreshNow();
                 Rect board = _composition.BoardCameraFitter.BoardScreenRect;
@@ -431,7 +434,7 @@ namespace Cutrium.PlayModeTests
                     new Vector2(board.xMin - 1f, board.center.y),
                     out _), Is.False);
 
-                if (level < 3)
+                if (level < 12)
                 {
                     CompleteCurrentLevel();
                     Assert.That(_controller.TryAdvanceToNextLevel(), Is.True);

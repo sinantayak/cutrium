@@ -1259,3 +1259,50 @@ are visually transparent. Re-running the presentation setup applies the brown
 theme and preserves the exact current sand image. Focused tests lock the first
 three landmark order, transparent capture styling, brown theme values, and
 byte-for-byte sand preservation.
+
+## ADR-030 — Separate Data Catalogs for the First Twelve Gameplay Levels
+
+**Status:** Accepted for human gameplay review.
+
+**Context:**
+The persistent gameplay scene supported an inline serialized level array and
+the runtime already implemented normal, Hunter, Pulse, Freeze Pulse, and
+Instant Barrier mechanics. The first progression review needs twelve ordered
+gameplay configurations with explicit design intent, while landmark identity
+must remain replaceable presentation content. Reviewer navigation must not
+reintroduce debug controls into the intentionally minimal gameplay HUD.
+
+**Decision:**
+Store the first twelve gameplay entries in a
+`CoreFunLevelCatalogDefinition` ScriptableObject and convert them into the
+existing immutable `CoreFunLevelCatalog` at runtime. Keep the inline scene
+array only as a compatibility fallback. Each definition records purpose,
+intended player decision, expected human completion time, and a 1–5 difficulty
+rating in addition to its threat, target, barrier, and power configuration.
+
+Store landmark entries in an independent `LandmarkCatalog` ScriptableObject.
+The presentation layer pairs landmarks by progression index; gameplay level
+definitions and configurations contain no landmark type, ID, or selection
+logic. Use one persistent scene for all transitions.
+
+Expose jump, previous, retry, next, reset-sequence, and power-review controls
+through an Editor-only `Level Navigator` window. Development jumps reset the
+metrics sequence at the selected level and do not change completion-gated
+player-facing next behavior.
+
+**Reasoning:**
+Separate catalogs let gameplay balance and landmark content evolve on
+different schedules. An Editor window makes all twelve levels directly
+reviewable without shipping or laying out temporary HUD. Difficulty can grow
+through threat composition, timing, target pressure, barrier exposure, and
+power choice rather than a monotonic speed increase.
+
+**Consequences:**
+The first catalog stops at level twelve; levels 13–66 remain intentionally
+uncreated. Numeric tuning remains provisional until human playtests record
+completion time, failures, largest capture, and power usage on phone and
+tablet Game Views. The focused setup menu creates/wires only the two catalogs
+and never runs broad presentation setup. Until that menu can run in a licensed
+Editor, the controller promotes only the exact known three-level legacy scene
+payload to the authored twelve definitions in memory; arbitrary custom and
+test catalogs remain untouched.

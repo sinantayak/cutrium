@@ -100,6 +100,7 @@ namespace Cutrium.Presentation.Landmark
         [SerializeField] private Text _sectorText;
         [SerializeField] private LandmarkCompletionTiming _timing =
             LandmarkCompletionTiming.Default;
+        [SerializeField] private LandmarkCatalog _landmarkCatalog;
         [SerializeField] private LandmarkDefinition[] _landmarks = Array.Empty<LandmarkDefinition>();
 
         private readonly Dictionary<RoomId, ActiveSandEntry> _activeViews =
@@ -143,7 +144,11 @@ namespace Cutrium.Presentation.Landmark
         public Text CompletionDescriptionText => _descriptionText;
         public Text CompletionSectorText => _sectorText;
         public LandmarkCompletionTiming Timing => _timing;
-        public IReadOnlyList<LandmarkDefinition> Landmarks => _landmarks;
+        public LandmarkCatalog Catalog => _landmarkCatalog;
+        public IReadOnlyList<LandmarkDefinition> Landmarks =>
+            _landmarkCatalog != null
+                ? _landmarkCatalog.Landmarks
+                : _landmarks;
         public LandmarkDefinition CurrentLandmark { get; private set; }
         public int VisibleVeilCount { get; private set; }
         public float CompletionSequenceElapsedSeconds =>
@@ -240,10 +245,20 @@ namespace Cutrium.Presentation.Landmark
             }
 
             _landmarks = copy;
+            _landmarkCatalog = null;
             CurrentLandmark = null;
             _wasCompleted = false;
             _lastSeenSession = null;
             _capturedRoomsSeen = 0;
+        }
+
+        public void ConfigureCatalogForSetup(LandmarkCatalog landmarkCatalog)
+        {
+            _landmarkCatalog = landmarkCatalog
+                ?? throw new ArgumentNullException(nameof(landmarkCatalog));
+            _landmarkCatalog.Validate();
+            CurrentLandmark = null;
+            _lastSeenSession = null;
         }
 
         public void RefreshNow()
@@ -251,8 +266,8 @@ namespace Cutrium.Presentation.Landmark
             if (_controller == null
                 || _controller.Session == null
                 || _boardFrame == null
-                || _landmarks == null
-                || _landmarks.Length == 0)
+                || Landmarks == null
+                || Landmarks.Count == 0)
             {
                 return;
             }
@@ -286,6 +301,12 @@ namespace Cutrium.Presentation.Landmark
 
         private LandmarkDefinition SelectCurrentLandmark()
         {
+            if (_landmarkCatalog != null)
+            {
+                return _landmarkCatalog.SelectForProgressionIndex(
+                    _controller.CurrentLevelIndex);
+            }
+
             int index = _controller.CurrentLevelIndex % _landmarks.Length;
             if (index < 0)
             {

@@ -59,6 +59,9 @@ namespace Cutrium.Unity.Simulation
         private CoreFunLevelDefinition[] _levelDefinitions =
             Array.Empty<CoreFunLevelDefinition>();
 
+        [SerializeField]
+        private CoreFunLevelCatalogDefinition _levelCatalogDefinition;
+
         [Header("Feedback")]
         [SerializeField]
         private FeedbackTuningDefinition _feedbackTuning;
@@ -79,6 +82,7 @@ namespace Cutrium.Unity.Simulation
         private Action<float> _tickAction;
         private FixedStepAccumulator _accumulator;
         private CoreFunLevelCatalog _levelCatalog;
+        private IReadOnlyList<CoreFunLevelDefinition> _activeLevelDefinitions;
         private bool _completionReported;
 
         public ThreatMotionSession Session { get; private set; }
@@ -140,8 +144,23 @@ namespace Cutrium.Unity.Simulation
             ? CurrentLevelConfiguration.Capture.TargetCapturedFraction
             : _targetCapturedFraction;
 
-        public IReadOnlyList<CoreFunLevelDefinition> LevelDefinitions =>
-            _levelDefinitions;
+        public IReadOnlyList<CoreFunLevelDefinition> LevelDefinitions
+        {
+            get
+            {
+                if (_activeLevelDefinitions != null)
+                {
+                    return _activeLevelDefinitions;
+                }
+
+                return _levelCatalogDefinition != null
+                    ? _levelCatalogDefinition.Levels
+                    : _levelDefinitions;
+            }
+        }
+
+        public CoreFunLevelCatalogDefinition LevelCatalogDefinition =>
+            _levelCatalogDefinition;
 
         public CoreFunLevelConfiguration CurrentLevelConfiguration
         {
@@ -176,6 +195,8 @@ namespace Cutrium.Unity.Simulation
         public int LevelLoadCount { get; private set; }
 
         public int SequenceRestartCount { get; private set; }
+
+        public int DevelopmentJumpCount { get; private set; }
 
         public int CompletionLogCount { get; private set; }
 
@@ -287,6 +308,18 @@ namespace Cutrium.Unity.Simulation
 
             _ = new CoreFunLevelCatalog(configurations);
             _levelDefinitions = definitions;
+            _levelCatalogDefinition = null;
+            _activeLevelDefinitions = null;
+        }
+
+        public void ConfigureLevelCatalogForSetup(
+            CoreFunLevelCatalogDefinition levelCatalogDefinition)
+        {
+            _levelCatalogDefinition = levelCatalogDefinition
+                ?? throw new ArgumentNullException(
+                    nameof(levelCatalogDefinition));
+            _ = _levelCatalogDefinition.BuildRuntimeCatalog();
+            _activeLevelDefinitions = null;
         }
 
         public BarrierStartResult SubmitBarrierIntent(BarrierIntent intent)
@@ -397,6 +430,37 @@ namespace Cutrium.Unity.Simulation
                 : RestartSequence();
         }
 
+        public bool TryJumpToLevelForDevelopment(int oneBasedLevelNumber)
+        {
+            InitializeOnce();
+            int index = oneBasedLevelNumber - 1;
+            if (index < 0 || index >= _levelCatalog.Count)
+            {
+                return false;
+            }
+
+            Metrics.StartSequence(_levelCatalog[index]);
+            CurrentLevelIndex = index;
+            CurrentLevelConfiguration = _levelCatalog[index];
+            LoadCurrentLevel();
+            DevelopmentJumpCount++;
+            return true;
+        }
+
+        public bool TryGoToPreviousLevelForDevelopment()
+        {
+            InitializeOnce();
+            return CurrentLevelIndex > 0
+                && TryJumpToLevelForDevelopment(CurrentLevelIndex);
+        }
+
+        public bool TryGoToNextLevelForDevelopment()
+        {
+            InitializeOnce();
+            return CurrentLevelIndex + 1 < _levelCatalog.Count
+                && TryJumpToLevelForDevelopment(CurrentLevelIndex + 2);
+        }
+
         public void NotifyUiFeedback()
         {
             InitializeOnce();
@@ -475,20 +539,28 @@ namespace Cutrium.Unity.Simulation
 
         private CoreFunLevelCatalog BuildLevelCatalog()
         {
+            if (_levelCatalogDefinition != null)
+            {
+                _activeLevelDefinitions = _levelCatalogDefinition.Levels;
+                return _levelCatalogDefinition.BuildRuntimeCatalog();
+            }
+
+            // The checked-in scene predates the ScriptableObject catalog and
+            // carries the exact three-level Milestone 3 gate inline. Promote
+            // only that known legacy payload so the first-twelve progression
+            // is playable before the focused Editor setup can serialize its
+            // catalog asset. Custom/test catalogs are never replaced.
+            if (HasLegacyThreeLevelGate(_levelDefinitions))
+            {
+                _activeLevelDefinitions =
+                    FirstTwelveGameplayProgression.CreateDefinitions();
+                return BuildCatalog(_activeLevelDefinitions);
+            }
+
             if (_levelDefinitions != null && _levelDefinitions.Length > 0)
             {
-                var configurations =
-                    new CoreFunLevelConfiguration[_levelDefinitions.Length];
-                for (int index = 0; index < _levelDefinitions.Length; index++)
-                {
-                    CoreFunLevelDefinition definition = _levelDefinitions[index]
-                        ?? throw new InvalidOperationException(
-                            "Serialized level definitions cannot be null.");
-                    configurations[index] =
-                        definition.ToRuntimeConfiguration();
-                }
-
-                return new CoreFunLevelCatalog(configurations);
+                _activeLevelDefinitions = _levelDefinitions;
+                return BuildCatalog(_activeLevelDefinitions);
             }
 
             var legacyThreat = new ThreatMotionConfiguration(
@@ -518,6 +590,42 @@ namespace Cutrium.Unity.Simulation
                     0f),
             });
         }
+
+        private static CoreFunLevelCatalog BuildCatalog(
+            IReadOnlyList<CoreFunLevelDefinition> definitions)
+        {
+            var configurations =
+                new CoreFunLevelConfiguration[definitions.Count];
+            for (int index = 0; index < definitions.Count; index++)
+            {
+                CoreFunLevelDefinition definition = definitions[index]
+                    ?? throw new InvalidOperationException(
+                        "Serialized level definitions cannot be null.");
+                configurations[index] = definition.ToRuntimeConfiguration();
+            }
+
+            return new CoreFunLevelCatalog(configurations);
+        }
+
+        private static bool HasLegacyThreeLevelGate(
+            IReadOnlyList<CoreFunLevelDefinition> definitions) =>
+            definitions != null
+            && definitions.Count == 3
+            && definitions[0] != null
+            && definitions[1] != null
+            && definitions[2] != null
+            && string.Equals(
+                definitions[0].StableId,
+                "learn-the-cut",
+                StringComparison.Ordinal)
+            && string.Equals(
+                definitions[1].StableId,
+                "timing-and-failure",
+                StringComparison.Ordinal)
+            && string.Equals(
+                definitions[2].StableId,
+                "confident-capture",
+                StringComparison.Ordinal);
 
         private void LoadCurrentLevel()
         {

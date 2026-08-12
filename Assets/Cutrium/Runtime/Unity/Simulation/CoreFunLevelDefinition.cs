@@ -263,6 +263,14 @@ namespace Cutrium.Unity.Simulation
         [SerializeField]
         private CoreFunPowerDefinition _power;
 
+        [SerializeField]
+        [TextArea(2, 4)]
+        private string _intendedDecision;
+
+        [SerializeField]
+        [Range(1, 5)]
+        private int _difficultyRating = 1;
+
         public CoreFunLevelDefinition(
             string stableId,
             int displayNumber,
@@ -346,7 +354,9 @@ namespace Cutrium.Unity.Simulation
             string developmentNote,
             float maximumExpectedCompletionSeconds,
             string purposeLine,
-            CoreFunPowerDefinition power)
+            CoreFunPowerDefinition power,
+            string intendedDecision = "",
+            int difficultyRating = 1)
         {
             _stableId = stableId;
             _displayNumber = displayNumber;
@@ -363,6 +373,8 @@ namespace Cutrium.Unity.Simulation
             _maximumExpectedCompletionSeconds =
                 maximumExpectedCompletionSeconds;
             _power = power;
+            _intendedDecision = intendedDecision;
+            _difficultyRating = difficultyRating;
         }
 
         public string StableId => _stableId;
@@ -385,7 +397,11 @@ namespace Cutrium.Unity.Simulation
         public string PurposeLine => _purposeLine;
         public float MaximumExpectedCompletionSeconds =>
             _maximumExpectedCompletionSeconds;
+        public float ExpectedHumanCompletionSeconds =>
+            _maximumExpectedCompletionSeconds;
         public CoreFunPowerDefinition Power => _power;
+        public string IntendedDecision => _intendedDecision;
+        public int DifficultyRating => _difficultyRating;
 
         public CoreFunLevelConfiguration ToRuntimeConfiguration()
         {
@@ -419,7 +435,9 @@ namespace Cutrium.Unity.Simulation
                 _purposeLine,
                 _power != null
                     ? _power.ToRuntimeConfiguration()
-                    : PowerConfiguration.None);
+                    : PowerConfiguration.None,
+                _intendedDecision,
+                _difficultyRating);
         }
 
         public static CoreFunLevelDefinition[] CreateMilestone3Defaults() =>
