@@ -203,6 +203,15 @@ namespace Cutrium.Gameplay.Session
             ? Math.Max(0, MaximumAcceptedCuts - AcceptedCutCount)
             : int.MaxValue;
 
+        public bool HasBurnLimit => _captureConfiguration.HasBurnLimit;
+
+        public int MaximumAcceptedBarrierBreaks =>
+            _captureConfiguration.MaximumAcceptedBarrierBreaks;
+
+        public int BarrierBreaksRemaining => HasBurnLimit
+            ? Math.Max(0, MaximumAcceptedBarrierBreaks - FailedBarrierCount)
+            : int.MaxValue;
+
         public int TickCount { get; private set; }
 
         public int FreezePulseChargesRemaining { get; private set; }
@@ -720,6 +729,7 @@ namespace Cutrium.Gameplay.Session
             }
 
             EvaluateCutLimitExhaustion(failure.Barrier.Id);
+            EvaluateBurnLimitExhaustion(failure.Barrier.Id);
         }
 
         private void RecordApproachSamples(
@@ -1049,6 +1059,24 @@ namespace Cutrium.Gameplay.Session
             LevelStatus = CaptureLevelStatus.OutOfCuts;
             AddFeedback(
                 FeedbackEventKind.CutLimitExhausted,
+                barrierId,
+                0f,
+                float.PositiveInfinity);
+        }
+
+        private void EvaluateBurnLimitExhaustion(BarrierId barrierId)
+        {
+            if (!HasBurnLimit
+                || FailedBarrierCount < MaximumAcceptedBarrierBreaks
+                || LevelStatus != CaptureLevelStatus.Playing
+                || ActiveBarrier.HasValue)
+            {
+                return;
+            }
+
+            LevelStatus = CaptureLevelStatus.OutOfLives;
+            AddFeedback(
+                FeedbackEventKind.BurnLimitExhausted,
                 barrierId,
                 0f,
                 float.PositiveInfinity);

@@ -110,21 +110,23 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void PowerButtons_AreHiddenFromTheDefaultGameplayHud()
+        public void PowerButtons_AreVisibleButNonInteractableInTheDefaultGameplayHud()
         {
-            // The landmark presentation pass hides PowerControls: the
-            // default (Milestone 3) level catalog grants zero Freeze
-            // Pulse/Instant Barrier charges, so these buttons would
-            // otherwise sit permanently non-interactable in real play.
-            // PowerHudPresenter's references stay valid (see
-            // Scene_HasOnePowerHudPresenterWithCompleteReferences) even
-            // though the controls themselves are not shown.
+            // The landmark presentation pass reparents the Freeze Pulse/
+            // Instant Barrier buttons into BottomHUD's SkillRow, where they
+            // are part of the default visible HUD (see
+            // GameplayDefaultHud_ShowsThreeSkillSlotsInBottomHudSkillRow in
+            // LandmarkRevealPlayModeTests). The default (Milestone 3) level
+            // catalog grants zero charges, so both buttons stay visible but
+            // non-interactable until a level configures a power.
             Assert.That(
                 _powerHud.FreezePulseButton.gameObject.activeInHierarchy,
-                Is.False);
+                Is.True);
+            Assert.That(_powerHud.FreezePulseButton.interactable, Is.False);
             Assert.That(
                 _powerHud.InstantBarrierButton.gameObject.activeInHierarchy,
-                Is.False);
+                Is.True);
+            Assert.That(_powerHud.InstantBarrierButton.interactable, Is.False);
         }
 
         [Test]

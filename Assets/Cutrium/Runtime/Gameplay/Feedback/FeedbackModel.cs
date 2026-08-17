@@ -25,6 +25,7 @@ namespace Cutrium.Gameplay.Feedback
         PowerUnavailable = 15,
         HunterReacted = 16,
         CutLimitExhausted = 17,
+        BurnLimitExhausted = 18,
     }
 
     public readonly struct FeedbackEvent

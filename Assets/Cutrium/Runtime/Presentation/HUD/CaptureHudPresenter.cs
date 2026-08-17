@@ -1,4 +1,5 @@
 using Cutrium.Gameplay.Session;
+using Cutrium.Presentation.Landmark;
 using Cutrium.Unity.Simulation;
 using UnityEngine;
 using UnityEngine.UI;
@@ -54,6 +55,9 @@ namespace Cutrium.Presentation.HUD
         private Text _nextButtonLabel;
 
         [SerializeField]
+        private LandmarkRevealPresenter _completionRevealGate;
+
+        [SerializeField]
         [Min(0f)]
         private float _percentageAnimationSeconds = 0.22f;
 
@@ -92,6 +96,9 @@ namespace Cutrium.Presentation.HUD
         public Button NextButton => _nextButton;
 
         public Text NextButtonLabel => _nextButtonLabel;
+
+        public LandmarkRevealPresenter CompletionRevealGate =>
+            _completionRevealGate;
 
         public float DisplayedCapturedFraction =>
             _displayedCapturedFraction;
@@ -199,6 +206,13 @@ namespace Cutrium.Presentation.HUD
             _percentageAnimationSeconds = duration;
         }
 
+        public void ConfigureCompletionRevealGateForSetup(
+            LandmarkRevealPresenter completionRevealGate)
+        {
+            _completionRevealGate = completionRevealGate;
+            RefreshNow();
+        }
+
         private void RefreshPresentation(
             bool settleImmediately,
             float elapsedTime)
@@ -207,6 +221,8 @@ namespace Cutrium.Presentation.HUD
             {
                 return;
             }
+
+            ResolveLegacyCompletionRevealGate();
 
             float captured = _controller.Session.CapturedFraction;
             float target = _controller.Session.TargetCapturedFraction;
@@ -250,7 +266,11 @@ namespace Cutrium.Presentation.HUD
 
             bool completed = _controller.Session.LevelStatus
                 == CaptureLevelStatus.Completed;
-            SetCompletionVisible(completed);
+            bool completionPresentationReady =
+                _completionRevealGate == null
+                || _completionRevealGate.CompletionPresentationReady;
+            SetCompletionVisible(
+                completed && completionPresentationReady);
 
             if (_completeText != null)
             {
@@ -274,10 +294,25 @@ namespace Cutrium.Presentation.HUD
 
         private void OnEnable()
         {
+            ResolveLegacyCompletionRevealGate();
             if (Application.isPlaying)
             {
                 SubscribeButtons();
             }
+        }
+
+        private void ResolveLegacyCompletionRevealGate()
+        {
+            if (_completionRevealGate != null || _controller == null)
+            {
+                return;
+            }
+
+            // Compatibility only for scenes serialized before the focused
+            // completion-popup setup existed. The normal dependency path is
+            // the explicit ConfigureCompletionRevealGateForSetup reference.
+            _completionRevealGate = _controller.transform.root
+                .GetComponentInChildren<LandmarkRevealPresenter>(true);
         }
 
         private void OnDisable()

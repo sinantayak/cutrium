@@ -87,6 +87,8 @@ namespace Cutrium.Unity.Simulation
 
         public ThreatMotionSession Session { get; private set; }
 
+        public bool SimulationHeld { get; private set; }
+
         public event Action<FeedbackEvent> FeedbackEventRaised;
 
         public GeometryTolerancePolicy Tolerance { get; private set; }
@@ -225,7 +227,23 @@ namespace Cutrium.Unity.Simulation
 
         private void Update()
         {
-            AdvanceSimulation(Time.deltaTime);
+            if (!SimulationHeld)
+            {
+                AdvanceSimulation(Time.deltaTime);
+            }
+        }
+
+        // The pre-level intro sequence (PreLevelIntroPresenter) holds the
+        // simulation and disables barrier input while its staged text plays
+        // over a hidden board, so threats stay frozen and untouchable until
+        // the level visibly starts.
+        public void SetSimulationHold(bool held)
+        {
+            SimulationHeld = held;
+            if (_barrierGesture != null)
+            {
+                _barrierGesture.enabled = !held;
+            }
         }
 
         public FixedStepAdvanceResult AdvanceSimulation(float renderDeltaTime)

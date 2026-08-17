@@ -1348,3 +1348,64 @@ First-introduction levels may show brief non-blocking copy. Numeric balance,
 power value, and visual readability require human playtesting; automated tests
 only prove deterministic rules, wiring, and reset behavior. Levels 13–66 and
 mass content remain out of scope.
+
+## ADR-032 — Completion Popup Waits for the Final Capture Presentation
+
+**Status:** Accepted for the first-twelve gameplay review.
+
+**Context:**
+Gameplay correctly marks a level complete on the simulation tick that reaches
+the target, but the full-screen landmark popup previously covered the board on
+that same frame. The player therefore missed the final captured-region reveal
+and the sand-fed progress bar settling to its authoritative value. Longer
+landmark descriptions were also truncated by a fixed 92-unit text slot.
+
+**Decision:**
+Keep logical completion immediate. Gate only the presentation of the existing
+completion overlay until the final captured-room sand recede has finished and
+the progress presenter has settled exactly to the latest logical capture
+fraction. Then start the existing scrim/content/button reveal timing from zero.
+`CaptureHudPresenter` receives the gate as a normal serialized presentation
+reference; a root-scoped compatibility lookup supports scenes saved before the
+focused setup was introduced.
+
+Compute completion layout from the current safe-area rect. Keep the hero image
+square, use 8-unit summary/photo/text gaps, reserve the flexible remainder for
+description copy, and clamp Retry/Next height to 58–76 units. Use the existing
+Lapsus-Pro Bold font asset with bounded best-fit sizes. The focused setup changes only
+completion typography/reference wiring and does not overwrite the owner-authored
+brown popup background or any gameplay/theme/sand asset.
+
+**Consequences:**
+Threats, input, capture percentage, target checks, metrics, and level completion
+remain deterministic and immediate. Only player-facing overlay visibility is
+delayed. Retry/Next cannot receive input while the final reward presentation is
+still visible. Responsive geometry and exact text fit still require human Game
+View checks at the supported phone/tablet resolutions.
+
+## ADR-033 — Responsive Gameplay Bands Preserve the Logical 10x16 Board
+
+**Status:** Accepted for device review.
+
+**Context:**
+On a 4:3 tablet, the progress frame itself remained under the fitted board,
+but `SafeAreaRoot` reserved only four layout units between `BoardStage` and a
+98-unit `BottomHUD`. The start star is ten percent taller than the progress
+frame and had approximately one unit of containment margin, so it read as
+overlapping the board and could cross the band edge under scaling.
+
+**Decision:**
+Keep `SafeAreaRoot/TopHUD`, `BoardStage`, and `BottomHUD` as layout-controlled
+sibling regions and preserve the logical 10x16 board. Use 10-unit outer
+vertical padding, 12-unit spacing between regions, a fixed 150-unit TopHUD,
+one flexible BoardStage, and a fixed 116-unit BottomHUD. Keep the progress
+centered in BottomHUD. Its width remains derived from the fitted board, but is
+also capped by the available BottomHUD height so the frame, text, and enlarged
+start star all remain inside the reserved band.
+
+**Consequences:**
+The visual board becomes slightly smaller on height-limited tablets/phones,
+while gameplay dimensions, capture percentages, input mapping, solver state,
+and difficulty stay unchanged. Progress and both HUD bands remain outside the
+board input rect. A focused idempotent Editor menu can reapply only these
+layout values without touching colors, artwork, sand, trails, or gameplay.

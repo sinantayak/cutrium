@@ -48,6 +48,7 @@ MonoBehaviour:
     _difficultyRating: 1
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 3
+    _maximumAcceptedBarrierBreaks: 5
     _introTitle: 
     _introMessage: 
   - _stableId: vulnerable-barrier-timing
@@ -87,6 +88,7 @@ MonoBehaviour:
     _difficultyRating: 2
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 5
+    _maximumAcceptedBarrierBreaks: 5
     _introTitle: 
     _introMessage: 
   - _stableId: two-normal-threats
@@ -138,6 +140,7 @@ MonoBehaviour:
     _difficultyRating: 2
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 6
+    _maximumAcceptedBarrierBreaks: 4
     _introTitle: 
     _introMessage: 
   - _stableId: confident-large-capture
@@ -176,6 +179,7 @@ MonoBehaviour:
     _difficultyRating: 2
     _maximumAcceptedCuts: 10
     _expectedReasonableCutUsage: 7
+    _maximumAcceptedBarrierBreaks: 4
     _introTitle: 10 CUTS
     _introMessage: MAKE THEM COUNT
   - _stableId: hunter-introduction
@@ -214,6 +218,7 @@ MonoBehaviour:
     _difficultyRating: 2
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 5
+    _maximumAcceptedBarrierBreaks: 4
     _introTitle: HUNTER
     _introMessage: REACTS TO YOUR CUTS
   - _stableId: pulse-introduction
@@ -253,6 +258,7 @@ MonoBehaviour:
     _difficultyRating: 2
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 5
+    _maximumAcceptedBarrierBreaks: 4
     _introTitle: PULSE
     _introMessage: WATCH ITS SPEED
   - _stableId: freeze-pulse-window
@@ -292,6 +298,7 @@ MonoBehaviour:
     _difficultyRating: 3
     _maximumAcceptedCuts: 10
     _expectedReasonableCutUsage: 7
+    _maximumAcceptedBarrierBreaks: 3
     _introTitle: FREEZE
     _introMessage: CREATE A SAFE WINDOW
   - _stableId: instant-barrier-window
@@ -344,6 +351,7 @@ MonoBehaviour:
     _difficultyRating: 3
     _maximumAcceptedCuts: 9
     _expectedReasonableCutUsage: 6
+    _maximumAcceptedBarrierBreaks: 3
     _introTitle: INSTANT
     _introMessage: SAVE IT FOR A RISKY CUT
   - _stableId: hunter-normal-pair
@@ -396,6 +404,7 @@ MonoBehaviour:
     _difficultyRating: 3
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 7
+    _maximumAcceptedBarrierBreaks: 3
     _introTitle: 
     _introMessage: 
   - _stableId: pulse-multiple-threats
@@ -447,6 +456,7 @@ MonoBehaviour:
     _difficultyRating: 4
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 7
+    _maximumAcceptedBarrierBreaks: 3
     _introTitle: 
     _introMessage: 
   - _stableId: meaningful-power-choice
@@ -499,6 +509,7 @@ MonoBehaviour:
     _difficultyRating: 4
     _maximumAcceptedCuts: 8
     _expectedReasonableCutUsage: 6
+    _maximumAcceptedBarrierBreaks: 2
     _introTitle: 
     _introMessage: 
   - _stableId: first-twelve-mastery
@@ -563,5 +574,6 @@ MonoBehaviour:
     _difficultyRating: 5
     _maximumAcceptedCuts: 10
     _expectedReasonableCutUsage: 8
+    _maximumAcceptedBarrierBreaks: 2
     _introTitle: 
     _introMessage: 

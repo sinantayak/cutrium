@@ -42,6 +42,7 @@ namespace Cutrium.Presentation.Threats
         private bool _hasThemeStyle;
         private bool _feedbackSubscribed;
         private float _hunterReactionEmphasisUntil;
+        private bool _visible = true;
 
         public FirstPlayableController Controller => _controller;
 
@@ -65,6 +66,29 @@ namespace Cutrium.Presentation.Threats
         public ThreatVisualStyle ThemeStyle => _themeStyle;
 
         public bool HasThemeStyle => _hasThemeStyle;
+
+        public bool Visible => _visible;
+
+        // Lets the pre-level intro cinematic (PreLevelIntroPresenter) hide
+        // just the threats -- not the board/sand/landmark art around them --
+        // until its staged text resolves and the level actually starts.
+        public void SetVisible(bool visible)
+        {
+            _visible = visible;
+            foreach (ThreatView view in _activeViews.Values)
+            {
+                ApplyVisibility(view);
+            }
+        }
+
+        private void ApplyVisibility(ThreatView view)
+        {
+            view.RectTransform.gameObject.SetActive(_visible);
+            if (view.TrailImage != null)
+            {
+                view.TrailImage.gameObject.SetActive(_visible);
+            }
+        }
 
         public void Configure(
             FirstPlayableController controller,
@@ -215,7 +239,7 @@ namespace Cutrium.Presentation.Threats
                 view.RectTransform.name = id.Value == 1
                     ? "ThreatVisual"
                     : $"ThreatVisual_{id.Value}";
-                view.RectTransform.gameObject.SetActive(true);
+                view.RectTransform.gameObject.SetActive(_visible);
                 ApplyStyle(view);
                 _activeViews.Add(id, view);
             }
@@ -321,7 +345,7 @@ namespace Cutrium.Presentation.Threats
         private void ApplyStyle(ThreatView view)
         {
             EnsureDecorations(view);
-            view.TrailImage.gameObject.SetActive(true);
+            view.TrailImage.gameObject.SetActive(_visible);
             view.Image.sprite = _hasThemeStyle
                 ? _themeStyle.Sprite ?? _optionalSprite
                 : _optionalSprite;

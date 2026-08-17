@@ -289,6 +289,11 @@ namespace Cutrium.Unity.Simulation
         [Min(0)]
         private int _expectedReasonableCutUsage;
 
+        [Header("Life Economy")]
+        [SerializeField]
+        [Min(0)]
+        private int _maximumAcceptedBarrierBreaks;
+
         [Header("Brief Introduction")]
         [SerializeField]
         private string _introTitle = string.Empty;
@@ -385,7 +390,8 @@ namespace Cutrium.Unity.Simulation
             int maximumAcceptedCuts = 0,
             int expectedReasonableCutUsage = 0,
             string introTitle = "",
-            string introMessage = "")
+            string introMessage = "",
+            int maximumAcceptedBarrierBreaks = 0)
         {
             _stableId = stableId;
             _displayNumber = displayNumber;
@@ -408,6 +414,7 @@ namespace Cutrium.Unity.Simulation
             _expectedReasonableCutUsage = expectedReasonableCutUsage;
             _introTitle = introTitle ?? string.Empty;
             _introMessage = introMessage ?? string.Empty;
+            _maximumAcceptedBarrierBreaks = maximumAcceptedBarrierBreaks;
         }
 
         public string StableId => _stableId;
@@ -440,6 +447,8 @@ namespace Cutrium.Unity.Simulation
             _expectedReasonableCutUsage;
         public string IntroTitle => _introTitle;
         public string IntroMessage => _introMessage;
+        public int MaximumAcceptedBarrierBreaks =>
+            _maximumAcceptedBarrierBreaks;
 
         public CoreFunLevelConfiguration ToRuntimeConfiguration()
         {
@@ -461,7 +470,8 @@ namespace Cutrium.Unity.Simulation
                 _maximumBarrierSolverIterations);
             var capture = new CaptureLevelConfiguration(
                 _targetCapturedFraction,
-                _maximumAcceptedCuts);
+                _maximumAcceptedCuts,
+                _maximumAcceptedBarrierBreaks);
             return new CoreFunLevelConfiguration(
                 _stableId,
                 _displayNumber,

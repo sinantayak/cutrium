@@ -4,6 +4,7 @@ namespace Cutrium.Gameplay.Session
     {
         Playing = 0,
         Completed = 1,
-        OutOfCuts = 2
+        OutOfCuts = 2,
+        OutOfLives = 3
     }
 }

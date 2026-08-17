@@ -670,7 +670,8 @@ namespace Cutrium.Editor.Setup
             RectTransform rectTransform = CreateUiObject(name, parent);
             Stretch(rectTransform);
             Text text = rectTransform.gameObject.AddComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font =
+                LandmarkRevealPresentationSetup.LoadLegacyUiFontForSetup();
             text.text = content;
             text.fontSize = fontSize;
             text.fontStyle = fontStyle;

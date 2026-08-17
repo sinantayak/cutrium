@@ -288,7 +288,8 @@ namespace Cutrium.Editor.Setup
             TextAnchor alignment)
         {
             Text text = GetOrAddComponent<Text>(rect.gameObject);
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font =
+                LandmarkRevealPresentationSetup.LoadLegacyUiFontForSetup();
             text.text = value;
             text.fontSize = fontSize;
             text.alignment = alignment;

@@ -2,7 +2,9 @@ using System;
 using System.Linq;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
+using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Simulation;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -21,6 +23,92 @@ namespace Cutrium.Editor.Setup
 
         public const string LandmarkCatalogPath =
             "Assets/Cutrium/Content/Landmarks/LandmarkCatalog.asset";
+
+        [MenuItem("Cutrium/Setup/Fix Stale BottomHudRow LayoutElement Only")]
+        public static void FixStaleBottomHudRowLayoutElementOnly()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "Exit Play Mode before editing the scene.");
+            }
+
+            Scene scene = OpenVerticalSliceWithoutDiscardingDirtyScenes();
+            GameObject root = scene.GetRootGameObjects().Single(
+                candidate => candidate.name == "VerticalSliceRoot");
+            RectTransform bottomHud = FindRect(root.transform, "BottomHUD");
+            Transform bottomRow = bottomHud != null
+                ? bottomHud.Find("BottomHudRow")
+                : null;
+            LayoutElement layout = bottomRow != null
+                ? bottomRow.GetComponent<LayoutElement>()
+                : null;
+            if (layout == null || layout.flexibleHeight <= 0f)
+            {
+                Debug.Log(
+                    "BottomHudRow's LayoutElement is already non-flexible; " +
+                    "nothing to fix.");
+                return;
+            }
+
+            layout.flexibleHeight = 0f;
+            EditorUtility.SetDirty(layout);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(
+                    scene,
+                    Milestone2SceneSetup.VerticalSliceScenePath))
+            {
+                throw new InvalidOperationException(
+                    "Unity could not save the BottomHudRow layout fix.");
+            }
+
+            AssetDatabase.SaveAssets();
+            Debug.Log("Fixed BottomHudRow's stale flexible LayoutElement.");
+        }
+
+        [MenuItem("Cutrium/Setup/Remove Legacy BottomHUD Cut Counter Only")]
+        public static void RemoveLegacyBottomHudCutCounterOnly()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "Exit Play Mode before editing the scene.");
+            }
+
+            Scene scene = OpenVerticalSliceWithoutDiscardingDirtyScenes();
+            GameObject root = scene.GetRootGameObjects().Single(
+                candidate => candidate.name == "VerticalSliceRoot");
+            RectTransform bottomHud = FindRect(root.transform, "BottomHUD");
+            // The Cut counter moved into the TopHUD Cut panel (see
+            // ConfigureIdentityHud); this discards the direct BottomHUD
+            // child an earlier presentation pass left behind, which
+            // Milestone2SceneSetup's baseline validation otherwise rejects
+            // (every BottomHUD child must carry an explicit non-flexible
+            // LayoutElement). Safe to run repeatedly -- a no-op once gone.
+            Transform legacy = bottomHud != null
+                ? bottomHud.Find("CutLimitCounter")
+                : null;
+            if (legacy == null)
+            {
+                Debug.Log(
+                    "No legacy BottomHUD/CutLimitCounter element found; " +
+                    "nothing to remove.");
+                return;
+            }
+
+            UnityEngine.Object.DestroyImmediate(legacy.gameObject);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(
+                    scene,
+                    Milestone2SceneSetup.VerticalSliceScenePath))
+            {
+                throw new InvalidOperationException(
+                    "Unity could not save the legacy cut counter removal.");
+            }
+
+            AssetDatabase.SaveAssets();
+            Debug.Log("Removed the legacy BottomHUD/CutLimitCounter element.");
+        }
 
         [MenuItem("Cutrium/Setup/Validate First 12 Gameplay Progression")]
         public static void ValidateExistingAssets()
@@ -101,6 +189,8 @@ namespace Cutrium.Editor.Setup
             }
 
             ConfigureIdentityHud(root, controller);
+            ConfigureHealthHud(root, controller);
+            ConfigurePreLevelIntro(root, controller);
 
             Validate(controller);
             EditorSceneManager.MarkSceneDirty(scene);
@@ -188,63 +278,69 @@ namespace Cutrium.Editor.Setup
         {
             RectTransform safeArea = FindRect(root.transform, "SafeAreaRoot");
             RectTransform bottomHud = FindRect(root.transform, "BottomHUD");
-            RectTransform boardStage = FindRect(root.transform, "BoardStage")
-                ?? FindRect(root.transform, "BoardViewport");
-            if (safeArea == null || bottomHud == null || boardStage == null)
+            if (safeArea == null || bottomHud == null)
             {
                 throw new InvalidOperationException(
-                    "Identity HUD requires SafeAreaRoot, BoardStage, and BottomHUD.");
+                    "Identity HUD requires SafeAreaRoot and BottomHUD.");
             }
 
             GameplayIdentityHudPresenter presenter =
                 GetOrAddComponent<GameplayIdentityHudPresenter>(
                     safeArea.gameObject);
 
-            Text cutText = GetOrCreateText(
-                bottomHud,
-                "CutLimitCounter",
-                new Vector2(0.5f, 1f),
-                new Vector2(0.5f, 1f),
-                new Vector2(0f, -4f),
-                new Vector2(260f, 30f),
-                20,
-                TextAnchor.MiddleCenter);
-            cutText.color = new Color(0.22f, 0.1f, 0.035f, 1f);
-            cutText.raycastTarget = false;
+            // The Cut counter's live text lives inside the TopHUD Cut panel
+            // built by the Landmark presentation pass
+            // (ConfigureGameplayTopHud) -- that pass must already have run.
+            RectTransform cutPanel = FindRect(root.transform, "CutHUD");
+            TMP_Text cutText = cutPanel != null
+                ? cutPanel.Find("ValueText")?.GetComponent<TMP_Text>()
+                : null;
+            if (cutText == null)
+            {
+                throw new InvalidOperationException(
+                    "Identity HUD requires the TopHUD Cut panel from the " +
+                    "Landmark presentation pass to already exist.");
+            }
 
-            RectTransform introRect = GetOrCreateRect(
-                boardStage,
-                "MechanicIntro",
-                new Vector2(0.5f, 1f),
-                new Vector2(0.5f, 1f),
-                new Vector2(0f, -36f),
-                new Vector2(520f, 94f));
-            CanvasGroup introGroup = GetOrAddComponent<CanvasGroup>(
-                introRect.gameObject);
-            introGroup.blocksRaycasts = false;
-            introGroup.interactable = false;
-            Text introTitle = GetOrCreateText(
-                introRect,
-                "Title",
-                new Vector2(0f, 0.48f),
-                Vector2.one,
-                Vector2.zero,
-                Vector2.zero,
-                30,
-                TextAnchor.LowerCenter);
-            Text introMessage = GetOrCreateText(
-                introRect,
-                "Message",
-                Vector2.zero,
-                new Vector2(1f, 0.5f),
-                Vector2.zero,
-                Vector2.zero,
-                18,
-                TextAnchor.UpperCenter);
-            introTitle.color = new Color(1f, 0.82f, 0.3f, 1f);
-            introMessage.color = Color.white;
-            introTitle.raycastTarget = false;
-            introMessage.raycastTarget = false;
+            // Same idea for the Speed region: its placeholder text is
+            // replaced every frame with the current level's real
+            // growing-barrier speed (see
+            // GameplayIdentityHudPresenter.RefreshNow), which varies per
+            // level instead of holding one fixed value.
+            RectTransform speedPanel = FindRect(root.transform, "SpeedHUD");
+            TMP_Text speedText = speedPanel != null
+                ? speedPanel.Find("ValueText")?.GetComponent<TMP_Text>()
+                : null;
+            if (speedText == null)
+            {
+                throw new InvalidOperationException(
+                    "Identity HUD requires the TopHUD Speed region from " +
+                    "the Landmark presentation pass to already exist.");
+            }
+
+            // The speedometer needle sprite: same live-per-level idea as
+            // the Cut/Speed text above, just swapping an icon instead of a
+            // string (see GameplayIdentityHudPresenter.RefreshNow).
+            Image speedIconImage = speedPanel.Find("Icon")
+                ?.GetComponent<Image>();
+            Sprite[] speedTierSprites =
+            {
+                AssetDatabase.LoadAssetAtPath<Sprite>(
+                    LandmarkRevealPresentationSetup.SpeedIconL1Path),
+                AssetDatabase.LoadAssetAtPath<Sprite>(
+                    LandmarkRevealPresentationSetup.SpeedIconL2Path),
+                AssetDatabase.LoadAssetAtPath<Sprite>(
+                    LandmarkRevealPresentationSetup.SpeedIconL3Path),
+                AssetDatabase.LoadAssetAtPath<Sprite>(
+                    LandmarkRevealPresentationSetup.SpeedIconL4Path),
+            };
+            if (speedIconImage == null || speedTierSprites.Any(s => s == null))
+            {
+                throw new InvalidOperationException(
+                    "Identity HUD requires the Speed icon and all four " +
+                    "SpeedIconL1..L4 sprites from the Landmark " +
+                    "presentation pass to already exist.");
+            }
 
             RectTransform failureRect = GetOrCreateRect(
                 safeArea,
@@ -255,6 +351,9 @@ namespace Cutrium.Editor.Setup
                 Vector2.zero);
             CanvasGroup failureGroup = GetOrAddComponent<CanvasGroup>(
                 failureRect.gameObject);
+            LayoutElement failureLayout = GetOrAddComponent<LayoutElement>(
+                failureRect.gameObject);
+            failureLayout.ignoreLayout = true;
             Image scrim = GetOrAddComponent<Image>(failureRect.gameObject);
             scrim.color = new Color(0.08f, 0.035f, 0.02f, 0.86f);
             scrim.raycastTarget = true;
@@ -294,18 +393,229 @@ namespace Cutrium.Editor.Setup
             retryLabel.text = "RETRY";
             retryLabel.color = new Color(0.2f, 0.08f, 0.02f, 1f);
             retryLabel.raycastTarget = false;
+            // LevelCompleteOverlay must remain the final safe-area sibling
+            // (see LandmarkRevealPresentationSetup's
+            // ConfigureGrainFlightRoot/Validate) so the completion screen
+            // still renders on top of a still-visible cut-limit failure.
+            // SetSiblingIndex(completionOverlay.GetSiblingIndex()) does NOT
+            // achieve that -- moving failureRect *to* completion's index
+            // displaces completion to one slot earlier instead of landing
+            // failureRect just before it. Re-asserting completion as last
+            // *after* placing failureRect, the same pattern
+            // ConfigureGrainFlightRoot already uses, is unambiguous.
             failureRect.SetAsLastSibling();
+            Transform completionOverlay = safeArea.Find("LevelCompleteOverlay");
+            if (completionOverlay != null)
+            {
+                completionOverlay.SetAsLastSibling();
+            }
+
+            EditorUtility.SetDirty(failureLayout);
 
             Undo.RecordObject(presenter, "Configure Gameplay Identity HUD");
             presenter.ConfigureForSetup(
                 controller,
                 cutText,
-                introGroup,
-                introTitle,
-                introMessage,
+                speedText,
+                speedIconImage,
+                speedTierSprites,
                 failureGroup,
                 failureText,
                 retryButton);
+            EditorUtility.SetDirty(presenter);
+        }
+
+        // Wires the live heart row (HealthHudPresenter) built by
+        // LandmarkRevealPresentationSetup.ConfigureHealthRegion -- kept in
+        // this pass, not that one, so the burn-limit-driven heart count
+        // stays alongside the other live controller-driven wiring
+        // (ConfigureIdentityHud's Cut/Speed text).
+        private static void ConfigureHealthHud(
+            GameObject root,
+            FirstPlayableController controller)
+        {
+            RectTransform heartRow = FindRect(root.transform, "HeartRow");
+            if (heartRow == null)
+            {
+                throw new InvalidOperationException(
+                    "Health HUD requires the HeartRow from the Landmark " +
+                    "presentation pass to already exist.");
+            }
+
+            Sprite heartSprite = AssetDatabase.LoadAssetAtPath<Sprite>(
+                LandmarkRevealPresentationSetup.HealthIconPath);
+            if (heartSprite == null)
+            {
+                throw new InvalidOperationException(
+                    "Health HUD requires the heart sprite at " +
+                    LandmarkRevealPresentationSetup.HealthIconPath +
+                    " to already be imported by the Landmark " +
+                    "presentation pass.");
+            }
+
+            HealthHudPresenter presenter = GetOrAddComponent<HealthHudPresenter>(
+                heartRow.gameObject);
+            Undo.RecordObject(presenter, "Configure Health HUD");
+            presenter.ConfigureForSetup(controller, heartRow, heartSprite);
+            EditorUtility.SetDirty(presenter);
+        }
+
+        // Big, staged "LEVEL N -> TARGET X% -> intro copy" text that plays
+        // before a genuinely new level starts, while only the threats stay
+        // hidden (see PreLevelIntroPresenter/ThreatPresenter.SetVisible) --
+        // the board, sand, and landmark art stay visible and ready. Runs
+        // after ConfigureIdentityHud so the TopHUD Cut panel and the
+        // sand-flight FillStartTarget it lands text on already exist.
+        private static void ConfigurePreLevelIntro(
+            GameObject root,
+            FirstPlayableController controller)
+        {
+            RectTransform safeArea = FindRect(root.transform, "SafeAreaRoot");
+            if (safeArea == null)
+            {
+                throw new InvalidOperationException(
+                    "Pre-level intro requires SafeAreaRoot.");
+            }
+
+            ThreatPresenter threatPresenter =
+                root.GetComponentInChildren<ThreatPresenter>(true);
+            if (threatPresenter == null)
+            {
+                throw new InvalidOperationException(
+                    "Pre-level intro requires a ThreatPresenter already " +
+                    "wired into the scene.");
+            }
+
+            RectTransform progressDestination =
+                FindRect(root.transform, "FillStartTarget");
+            if (progressDestination == null)
+            {
+                throw new InvalidOperationException(
+                    "Pre-level intro requires the progress bar's " +
+                    "FillStartTarget from the Landmark presentation pass " +
+                    "to already exist.");
+            }
+
+            RectTransform cutPanel = FindRect(root.transform, "CutHUD");
+            RectTransform cutDestination = cutPanel != null
+                ? cutPanel.Find("ValueText") as RectTransform
+                : null;
+            if (cutDestination == null)
+            {
+                throw new InvalidOperationException(
+                    "Pre-level intro requires the TopHUD Cut panel from " +
+                    "the Landmark presentation pass to already exist.");
+            }
+
+            RectTransform flightRoot = GetOrCreateRect(
+                safeArea,
+                "PreLevelIntroRoot",
+                Vector2.zero,
+                Vector2.one,
+                Vector2.zero,
+                Vector2.zero);
+            LayoutElement flightLayout =
+                GetOrAddComponent<LayoutElement>(flightRoot.gameObject);
+            flightLayout.ignoreLayout = true;
+            EditorUtility.SetDirty(flightLayout);
+            flightRoot.SetAsLastSibling();
+            // Re-assert the overlays that must render above this sequence
+            // (matches ConfigureGrainFlightRoot's/ConfigureIdentityHud's
+            // failureRect pattern -- re-asserting as last is unambiguous,
+            // moving to a captured index is not).
+            Transform failureOverlay = safeArea.Find("CutLimitFailureOverlay");
+            if (failureOverlay != null)
+            {
+                failureOverlay.SetAsLastSibling();
+            }
+
+            Transform completionOverlay = safeArea.Find("LevelCompleteOverlay");
+            if (completionOverlay != null)
+            {
+                completionOverlay.SetAsLastSibling();
+            }
+
+            RectTransform levelRect = GetOrCreateRect(
+                flightRoot,
+                "LevelGroup",
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(900f, 160f));
+            CanvasGroup levelGroup =
+                GetOrAddComponent<CanvasGroup>(levelRect.gameObject);
+            TMP_Text levelText = GetOrCreateTmpChild(
+                levelRect,
+                "Text",
+                PreLevelIntroTextBrown,
+                72);
+
+            RectTransform targetRect = GetOrCreateRect(
+                flightRoot,
+                "TargetGroup",
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(900f, 160f));
+            CanvasGroup targetGroup =
+                GetOrAddComponent<CanvasGroup>(targetRect.gameObject);
+            TMP_Text targetText = GetOrCreateTmpChild(
+                targetRect,
+                "Text",
+                PreLevelIntroTextBrown,
+                72);
+
+            // Title and message sit close together as one tight block (not
+            // spread across a tall box) -- a small +/-6 nudge off each
+            // half's own edge, not the ~45 gap this started with.
+            RectTransform infoRect = GetOrCreateRect(
+                flightRoot,
+                "InfoGroup",
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(900f, 130f));
+            CanvasGroup infoGroup =
+                GetOrAddComponent<CanvasGroup>(infoRect.gameObject);
+            RectTransform infoTitleRect = GetOrCreateRect(
+                infoRect,
+                "Title",
+                new Vector2(0f, 0.5f),
+                Vector2.one,
+                new Vector2(0f, 6f),
+                Vector2.zero);
+            TMP_Text infoTitleText = ConfigureTmp(
+                infoTitleRect,
+                PreLevelIntroTextBrown,
+                70);
+            RectTransform infoMessageRect = GetOrCreateRect(
+                infoRect,
+                "Message",
+                Vector2.zero,
+                new Vector2(1f, 0.5f),
+                new Vector2(0f, -6f),
+                Vector2.zero);
+            TMP_Text infoMessageText = ConfigureTmp(
+                infoMessageRect,
+                Color.white,
+                38);
+
+            PreLevelIntroPresenter presenter =
+                GetOrAddComponent<PreLevelIntroPresenter>(safeArea.gameObject);
+            Undo.RecordObject(presenter, "Configure Pre-Level Intro");
+            presenter.ConfigureForSetup(
+                controller,
+                threatPresenter,
+                levelGroup,
+                levelText,
+                targetGroup,
+                targetText,
+                infoGroup,
+                infoTitleText,
+                infoMessageText,
+                flightRoot,
+                progressDestination,
+                cutDestination);
             EditorUtility.SetDirty(presenter);
         }
 
@@ -379,14 +689,54 @@ namespace Cutrium.Editor.Setup
                 anchoredPosition,
                 sizeDelta);
             Text text = GetOrAddComponent<Text>(rect.gameObject);
-            text.font = AssetDatabase.LoadAssetAtPath<Font>(
-                "Assets/Cutrium/Art/Fonts/gomarice_rocks.ttf")
-                ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font =
+                LandmarkRevealPresentationSetup.LoadLegacyUiFontForSetup();
             text.fontSize = fontSize;
             text.alignment = alignment;
             text.resizeTextForBestFit = true;
             text.resizeTextMinSize = 10;
             text.resizeTextMaxSize = fontSize;
+            return text;
+        }
+
+        private static TMP_Text GetOrCreateTmpChild(
+            RectTransform parent,
+            string name,
+            Color color,
+            int fontSize)
+        {
+            RectTransform rect = GetOrCreateRect(
+                parent,
+                name,
+                Vector2.zero,
+                Vector2.one,
+                Vector2.zero,
+                Vector2.zero);
+            return ConfigureTmp(rect, color, fontSize);
+        }
+
+        // Brown against the sand/board background reads far better than
+        // the pale yellow this started with (see feedback cue text for the
+        // same brown+shadow treatment this now matches).
+        private static readonly Color PreLevelIntroTextBrown =
+            new Color(0.34f, 0.105f, 0.025f, 1f);
+
+        private static TMP_Text ConfigureTmp(
+            RectTransform rect,
+            Color color,
+            int fontSize)
+        {
+            TextMeshProUGUI text =
+                GetOrAddComponent<TextMeshProUGUI>(rect.gameObject);
+            text.font = LandmarkRevealPresentationSetup.LoadTmpUiFontForSetup();
+            text.fontSize = fontSize;
+            text.alignment = TextAlignmentOptions.Center;
+            text.enableAutoSizing = false;
+            text.color = color;
+            text.raycastTarget = false;
+            Shadow shadow = GetOrAddComponent<Shadow>(rect.gameObject);
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.65f);
+            shadow.effectDistance = new Vector2(3f, -3f);
             return text;
         }
 

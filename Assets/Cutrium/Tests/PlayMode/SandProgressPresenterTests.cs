@@ -11,28 +11,41 @@ namespace Cutrium.PlayModeTests
     public sealed class SandProgressPresenterTests
     {
         [Test]
-        public void StartStarCenterMatchesFillStartAndSandDestination()
+        public void FillStartTarget_SitsAtFillMaskLeadingEdge()
+        {
+            // No visible star anymore -- FillStartTarget is still the sand
+            // grains' flight destination and stays anchored to the fill
+            // mask's leading (left) inner edge.
+            using (var rig = new IsolatedRig(0.97f))
+            {
+                RectTransform target = rig.Presenter.FillStartTarget;
+                Assert.That(target.parent, Is.SameAs(rig.Presenter.FillMaskRect));
+                Assert.That(target.anchorMin.x, Is.Zero);
+                Assert.That(target.anchorMax.x, Is.Zero);
+            }
+        }
+
+        [Test]
+        public void ShortBottomHud_CapsWidthAndKeepsWholeProgressVisualInside()
         {
             using (var rig = new IsolatedRig(0.97f))
             {
-                RectTransform star = rig.Presenter.StartStarImage.rectTransform;
-                RectTransform target = rig.Presenter.FillStartTarget;
-                Assert.That(
-                    Vector3.Distance(
-                        star.TransformPoint(Vector3.zero),
-                        target.TransformPoint(Vector3.zero)),
-                    Is.LessThan(0.001f));
-                Assert.That(star.sizeDelta.x,
-                    Is.EqualTo(star.sizeDelta.y).Within(0.001f));
-                Assert.That(rig.Presenter.StartStarImage.preserveAspect,
-                    Is.True);
+                rig.SetLayout(new Vector2(1000f, 90f));
 
-                var starCorners = new Vector3[4];
+                RectTransform parent =
+                    (RectTransform)rig.Presenter.ProgressBarRect.parent;
+                RectTransform progress = rig.Presenter.ProgressBarRect;
+                var parentCorners = new Vector3[4];
                 var progressCorners = new Vector3[4];
-                star.GetWorldCorners(starCorners);
-                rig.Presenter.ProgressBarRect.GetWorldCorners(progressCorners);
-                Assert.That(starCorners[0].x,
-                    Is.EqualTo(progressCorners[0].x).Within(0.001f));
+                parent.GetWorldCorners(parentCorners);
+                progress.GetWorldCorners(progressCorners);
+
+                Assert.That(progress.anchoredPosition, Is.EqualTo(Vector2.zero));
+                Assert.That(progress.rect.width, Is.LessThan(860f));
+                Assert.That(progressCorners[0].y,
+                    Is.GreaterThanOrEqualTo(parentCorners[0].y));
+                Assert.That(progressCorners[2].y,
+                    Is.LessThanOrEqualTo(parentCorners[2].y));
             }
         }
 
@@ -48,6 +61,9 @@ namespace Cutrium.PlayModeTests
                     Is.EqualTo(0.35f).Within(0.0001f));
                 Assert.That(rig.Presenter.DisplayedCapturedFraction, Is.Zero);
                 Assert.That(rig.Presenter.WaitingForSandArrival, Is.True);
+                Assert.That(
+                    rig.Presenter.IsSettledAtLatestLogicalValue,
+                    Is.False);
 
                 rig.Presenter.NotifySandArrived(
                     rig.Controller.Session.CapturedFraction);
@@ -64,6 +80,9 @@ namespace Cutrium.PlayModeTests
                     Is.EqualTo(0.35f / 0.97f).Within(0.0001f));
                 Assert.That(rig.Presenter.ProgressText.text,
                     Is.EqualTo("35% / 97%"));
+                Assert.That(
+                    rig.Presenter.IsSettledAtLatestLogicalValue,
+                    Is.True);
             }
         }
 
@@ -166,6 +185,9 @@ namespace Cutrium.PlayModeTests
                     Is.EqualTo(logical));
                 Assert.That(rig.Presenter.ProgressText.text,
                     Is.EqualTo("35% / 97%"));
+                Assert.That(
+                    rig.Presenter.IsSettledAtLatestLogicalValue,
+                    Is.True);
             }
         }
 
@@ -251,10 +273,6 @@ namespace Cutrium.PlayModeTests
 
                 Controller.ConfigureLevelsForSetup(levels);
 
-                RectTransform boardFrame = CreateRect(
-                    rootRect,
-                    "BoardFrame",
-                    new Vector2(625f, 1000f));
                 RectTransform progressRect = CreateRect(
                     rootRect,
                     "ProgressBar",
@@ -265,9 +283,6 @@ namespace Cutrium.PlayModeTests
                     "FillMask",
                     new Vector2(700f, 40f));
                 Image fill = CreateImage(fillMask, "Fill");
-                Image frame = CreateImage(progressRect, "Frame");
-                Image startStar = CreateImage(progressRect, "StartStar");
-                startStar.preserveAspect = true;
                 Text text = CreateText(progressRect, "ProgressText");
                 RectTransform fillStart = CreateRect(
                     fillMask,
@@ -278,22 +293,25 @@ namespace Cutrium.PlayModeTests
                     .AddComponent<SandProgressPresenter>();
                 Presenter.Configure(
                     Controller,
-                    boardFrame,
                     progressRect,
                     background,
                     fillMask,
                     fill,
-                    frame,
                     text,
-                    fillStart,
-                    startStar);
-                Presenter.ConfigureAnimationForSetup(0.5f, 0.8f, 0.86f);
+                    fillStart);
+                Presenter.ConfigureAnimationForSetup(0.5f, 0.8f);
                 _root.SetActive(true);
                 Presenter.RefreshNow();
             }
 
             public FirstPlayableController Controller { get; }
             public SandProgressPresenter Presenter { get; }
+
+            public void SetLayout(Vector2 parentSize)
+            {
+                ((RectTransform)_root.transform).sizeDelta = parentSize;
+                Presenter.RefreshLayoutNow();
+            }
 
             public bool CaptureToX(float x)
             {

@@ -1,4 +1,5 @@
 using Cutrium.Unity.Simulation;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -33,69 +34,44 @@ namespace Cutrium.Presentation.HUD
                 RectTransform bottomHud = FindRect(
                     controller.transform.root,
                     "BottomHUD");
-                RectTransform boardStage = FindRect(
-                    controller.transform.root,
-                    "BoardStage");
-                if (safeArea == null || bottomHud == null || boardStage == null)
+                if (safeArea == null || bottomHud == null)
                 {
                     continue;
                 }
 
-                Configure(safeArea, bottomHud, boardStage, controller);
+                Configure(safeArea, bottomHud, controller);
             }
         }
 
         private static void Configure(
             RectTransform safeArea,
             RectTransform bottomHud,
-            RectTransform boardStage,
             FirstPlayableController controller)
         {
             GameplayIdentityHudPresenter presenter =
                 safeArea.gameObject.AddComponent<GameplayIdentityHudPresenter>();
-            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            Text cutCounter = Text(
+            Font font = ResolveUiFont(safeArea);
+            TMP_Text cutCounter = TmpText(
                 bottomHud,
                 "CutLimitCounter",
                 new Vector2(0.5f, 1f),
                 new Vector2(0.5f, 1f),
                 new Vector2(0f, -4f),
                 new Vector2(260f, 30f),
-                font,
                 20);
             cutCounter.color = new Color(0.22f, 0.1f, 0.035f, 1f);
             cutCounter.raycastTarget = false;
 
-            RectTransform intro = Rect(
-                boardStage,
-                "MechanicIntro",
+            TMP_Text speedText = TmpText(
+                bottomHud,
+                "BarrierSpeedCounter",
                 new Vector2(0.5f, 1f),
                 new Vector2(0.5f, 1f),
-                new Vector2(0f, -36f),
-                new Vector2(520f, 94f));
-            CanvasGroup introGroup = intro.gameObject.AddComponent<CanvasGroup>();
-            Text introTitle = Text(
-                intro,
-                "Title",
-                new Vector2(0f, 0.48f),
-                Vector2.one,
-                Vector2.zero,
-                Vector2.zero,
-                font,
-                30);
-            Text introMessage = Text(
-                intro,
-                "Message",
-                Vector2.zero,
-                new Vector2(1f, 0.5f),
-                Vector2.zero,
-                Vector2.zero,
-                font,
+                new Vector2(0f, -34f),
+                new Vector2(140f, 26f),
                 18);
-            introTitle.color = new Color(1f, 0.82f, 0.3f, 1f);
-            introMessage.color = Color.white;
-            introTitle.raycastTarget = false;
-            introMessage.raycastTarget = false;
+            speedText.color = new Color(0.22f, 0.1f, 0.035f, 1f);
+            speedText.raycastTarget = false;
 
             RectTransform failure = Rect(
                 safeArea,
@@ -146,12 +122,36 @@ namespace Cutrium.Presentation.HUD
             presenter.Configure(
                 controller,
                 cutCounter,
-                introGroup,
-                introTitle,
-                introMessage,
+                speedText,
+                null,
+                null,
                 failureGroup,
                 failureText,
                 retryButton);
+        }
+
+        private static Font ResolveUiFont(RectTransform safeArea)
+        {
+            Text[] existingTexts = safeArea.GetComponentsInChildren<Text>(true);
+            for (int index = 0; index < existingTexts.Length; index++)
+            {
+                Font candidate = existingTexts[index].font;
+                if (candidate != null && candidate.name == "LapsusPro-Bold")
+                {
+                    return candidate;
+                }
+            }
+
+            for (int index = 0; index < existingTexts.Length; index++)
+            {
+                if (existingTexts[index].font != null)
+                {
+                    return existingTexts[index].font;
+                }
+            }
+
+            throw new System.InvalidOperationException(
+                "Gameplay identity HUD requires a serialized UI font.");
         }
 
         private static RectTransform FindRect(Transform root, string name)
@@ -216,6 +216,32 @@ namespace Cutrium.Presentation.HUD
             text.resizeTextForBestFit = true;
             text.resizeTextMinSize = 10;
             text.resizeTextMaxSize = fontSize;
+            return text;
+        }
+
+        private static TMP_Text TmpText(
+            RectTransform parent,
+            string name,
+            Vector2 anchorMin,
+            Vector2 anchorMax,
+            Vector2 anchoredPosition,
+            Vector2 sizeDelta,
+            int fontSize)
+        {
+            RectTransform rect = Rect(
+                parent,
+                name,
+                anchorMin,
+                anchorMax,
+                anchoredPosition,
+                sizeDelta);
+            TextMeshProUGUI text = rect.gameObject
+                .AddComponent<TextMeshProUGUI>();
+            text.fontSize = fontSize;
+            text.alignment = TextAlignmentOptions.Center;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 10;
+            text.fontSizeMax = fontSize;
             return text;
         }
     }

@@ -79,10 +79,10 @@ namespace Cutrium.Presentation.HUD
 
             // Both power roots stay active for every level. A level that
             // does not configure a power simply has zero charges, which
-            // already disables its button and shows a neutral label through
-            // the same charge-gated path used once charges run out mid-level
-            // -- one rule instead of a second visibility rule to keep in
-            // sync, and a stable HUD that never appears or disappears.
+            // already disables its button through the same charge-gated
+            // path used once charges run out mid-level -- one rule instead
+            // of a second visibility rule to keep in sync, and a stable HUD
+            // that never appears or disappears.
             int freezeChargesRemaining = _controller.FreezePulseChargesRemaining;
             if (_freezePulseButton != null)
             {
@@ -91,10 +91,10 @@ namespace Cutrium.Presentation.HUD
 
             if (_freezePulseChargesText != null)
             {
-                _freezePulseChargesText.text =
-                    _controller.FreezePulseRemainingSeconds > 0f
-                        ? "ACTIVE"
-                        : $"FREEZE x{freezeChargesRemaining}";
+                _freezePulseChargesText.text = freezeChargesRemaining > 0
+                    ? freezeChargesRemaining.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture)
+                    : string.Empty;
             }
 
             int instantChargesRemaining =
@@ -107,10 +107,10 @@ namespace Cutrium.Presentation.HUD
 
             if (_instantBarrierChargesText != null)
             {
-                _instantBarrierChargesText.text =
-                    _controller.InstantBarrierArmed
-                        ? "ARMED"
-                        : $"INSTANT x{instantChargesRemaining}";
+                _instantBarrierChargesText.text = instantChargesRemaining > 0
+                    ? instantChargesRemaining.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture)
+                    : string.Empty;
             }
         }
 

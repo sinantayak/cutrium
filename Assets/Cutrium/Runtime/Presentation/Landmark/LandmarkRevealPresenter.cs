@@ -69,6 +69,13 @@ namespace Cutrium.Presentation.Landmark
         private const float GrainMaxLateralDrift = 22f;
         private const float GrainMaxRotationSpeed = 190f;
         private const float ReferenceLinearFraction = 0.5f;
+        private const float CompletionHorizontalInsetFraction = 0.06f;
+        private const float CompletionHeroWidthFraction = 0.92f;
+        private const float CompletionHeroHeightFraction = 0.53f;
+        private const float CompletionButtonWidthFraction = 0.28f;
+        private const float CompletionButtonCenterFraction = 0.2f;
+        private const float CompletionSectionGap = 8f;
+        private const float CompletionButtonGap = 12f;
 
         private static readonly Color TintColor = new Color(0.32f, 0.22f, 0.1f, TintAlpha);
         private static readonly Color EdgeHighlightColor =
@@ -98,6 +105,7 @@ namespace Cutrium.Presentation.Landmark
         [SerializeField] private Text _titleText;
         [SerializeField] private Text _descriptionText;
         [SerializeField] private Text _sectorText;
+        [SerializeField] private Font _completionFont;
         [SerializeField] private LandmarkCompletionTiming _timing =
             LandmarkCompletionTiming.Default;
         [SerializeField] private LandmarkCatalog _landmarkCatalog;
@@ -121,7 +129,12 @@ namespace Cutrium.Presentation.Landmark
         private ThreatMotionSession _lastSeenSession;
         private int _capturedRoomsSeen;
         private bool _wasCompleted;
+        private bool _completionSequenceStarted;
         private float _completionRevealStartTime;
+        private Vector2 _lastCompletionLayoutSize =
+            new Vector2(float.NaN, float.NaN);
+        private Vector2 _completionContentBaseAnchoredPosition;
+        private bool _completionFontResolutionAttempted;
 
         public FirstPlayableController Controller => _controller;
         public RectTransform BoardFrame => _boardFrame;
@@ -143,6 +156,7 @@ namespace Cutrium.Presentation.Landmark
         public Text CompletionTitleText => _titleText;
         public Text CompletionDescriptionText => _descriptionText;
         public Text CompletionSectorText => _sectorText;
+        public Font CompletionFont => _completionFont;
         public LandmarkCompletionTiming Timing => _timing;
         public LandmarkCatalog Catalog => _landmarkCatalog;
         public IReadOnlyList<LandmarkDefinition> Landmarks =>
@@ -152,7 +166,11 @@ namespace Cutrium.Presentation.Landmark
         public LandmarkDefinition CurrentLandmark { get; private set; }
         public int VisibleVeilCount { get; private set; }
         public float CompletionSequenceElapsedSeconds =>
-            _wasCompleted ? Time.unscaledTime - _completionRevealStartTime : 0f;
+            _completionSequenceStarted
+                ? Time.unscaledTime - _completionRevealStartTime
+                : 0f;
+        public bool CompletionPresentationReady =>
+            _completionSequenceStarted;
 
         /// True once every in-flight sand recede has finished (or none has
         /// ever started). Active (still sand-covered) rooms never affect
@@ -248,8 +266,11 @@ namespace Cutrium.Presentation.Landmark
             _landmarkCatalog = null;
             CurrentLandmark = null;
             _wasCompleted = false;
+            _completionSequenceStarted = false;
             _lastSeenSession = null;
             _capturedRoomsSeen = 0;
+            _lastCompletionLayoutSize = new Vector2(float.NaN, float.NaN);
+            RefreshCompletionLayoutNow();
         }
 
         public void ConfigureCatalogForSetup(LandmarkCatalog landmarkCatalog)
@@ -259,6 +280,15 @@ namespace Cutrium.Presentation.Landmark
             _landmarkCatalog.Validate();
             CurrentLandmark = null;
             _lastSeenSession = null;
+        }
+
+        public void ConfigureCompletionFontForSetup(Font completionFont)
+        {
+            _completionFont = completionFont
+                ?? throw new ArgumentNullException(nameof(completionFont));
+            _completionFontResolutionAttempted = true;
+            _lastCompletionLayoutSize = new Vector2(float.NaN, float.NaN);
+            RefreshCompletionLayoutNow();
         }
 
         public void RefreshNow()
@@ -285,13 +315,27 @@ namespace Cutrium.Presentation.Landmark
             RenderSand(completed, justCompleted);
             AdvanceGrainFlights();
             RefreshCompletionText();
-            if (justCompleted)
+            RefreshCompletionLayoutNow();
+
+            bool finalCapturePresentationSettled = completed
+                && AllVeilsFullyRevealed
+                && (_sandProgressPresenter == null
+                    || !_sandProgressPresenter.isActiveAndEnabled
+                    || _sandProgressPresenter
+                        .IsSettledAtLatestLogicalValue);
+            if (finalCapturePresentationSettled
+                && !_completionSequenceStarted)
             {
+                _completionSequenceStarted = true;
                 _completionRevealStartTime = Time.unscaledTime;
+            }
+            else if (!completed)
+            {
+                _completionSequenceStarted = false;
             }
 
             _wasCompleted = completed;
-            UpdateCompletionSequence(completed);
+            UpdateCompletionSequence(_completionSequenceStarted);
         }
 
         private void LateUpdate()
@@ -437,7 +481,9 @@ namespace Cutrium.Presentation.Landmark
 
             var rect = (RectTransform)_contentCanvasGroup.transform;
             float offset = Mathf.Lerp(ContentSlideOffset, 0f, progress);
-            rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, -offset);
+            rect.anchoredPosition =
+                _completionContentBaseAnchoredPosition
+                + new Vector2(0f, -offset);
         }
 
         private void ResetContentOffset()
@@ -448,9 +494,274 @@ namespace Cutrium.Presentation.Landmark
             }
 
             var rect = (RectTransform)_contentCanvasGroup.transform;
+            rect.anchoredPosition =
+                _completionContentBaseAnchoredPosition
+                + new Vector2(0f, -ContentSlideOffset);
+        }
+
+        /// Reflows the completion screen from its current safe-area size.
+        /// The photo remains square, buttons keep a compact fixed-height
+        /// touch target, and all surplus height belongs to the text region.
+        /// This is presentation-only and never changes board geometry.
+        public void RefreshCompletionLayoutNow()
+        {
+            if (_scrimCanvasGroup == null
+                || _contentCanvasGroup == null
+                || _statsCanvasGroup == null
+                || _retryCanvasGroup == null
+                || _nextCanvasGroup == null
+                || !(_scrimCanvasGroup.transform.parent
+                    is RectTransform overlay))
+            {
+                return;
+            }
+
+            ApplyRuntimeTextReadability(overlay);
+
+            Vector2 size = overlay.rect.size;
+            if (size.x <= 0f || size.y <= 0f)
+            {
+                return;
+            }
+
+            if (Mathf.Abs(size.x - _lastCompletionLayoutSize.x) <= 0.01f
+                && Mathf.Abs(size.y - _lastCompletionLayoutSize.y) <= 0.01f)
+            {
+                return;
+            }
+
+            _lastCompletionLayoutSize = size;
+            float topPadding = Mathf.Clamp(size.y * 0.018f, 24f, 40f);
+            float bottomPadding = Mathf.Clamp(size.y * 0.018f, 24f, 40f);
+            float summaryHeight = Mathf.Clamp(size.y * 0.06f, 88f, 120f);
+            float buttonHeight = Mathf.Clamp(size.y * 0.04f, 58f, 76f);
+            float heroSize = Mathf.Min(
+                size.x * CompletionHeroWidthFraction,
+                size.y * CompletionHeroHeightFraction);
+            float contentWidth =
+                size.x * (1f - (CompletionHorizontalInsetFraction * 2f));
+            float buttonWidth = size.x * CompletionButtonWidthFraction;
+
+            float top = (size.y * 0.5f) - topPadding;
+            float summaryBottom = top - summaryHeight;
+            float heroTop = summaryBottom - CompletionSectionGap;
+            float heroBottom = heroTop - heroSize;
+            float buttonBottom = (-size.y * 0.5f) + bottomPadding;
+            float buttonTop = buttonBottom + buttonHeight;
+            float contentTop = heroBottom - CompletionSectionGap;
+            float contentBottom = buttonTop + CompletionButtonGap;
+
+            SetCenteredRect(
+                (RectTransform)_statsCanvasGroup.transform,
+                Vector2.zero,
+                contentWidth,
+                summaryHeight,
+                (top + summaryBottom) * 0.5f);
+            SetCenteredRect(
+                (RectTransform)_scrimCanvasGroup.transform,
+                Vector2.zero,
+                heroSize,
+                heroSize,
+                (heroTop + heroBottom) * 0.5f);
+
+            float contentHeight = Mathf.Max(180f, contentTop - contentBottom);
+            float contentCenterY = contentTop - (contentHeight * 0.5f);
+            SetCenteredRect(
+                (RectTransform)_contentCanvasGroup.transform,
+                Vector2.zero,
+                contentWidth,
+                contentHeight,
+                contentCenterY);
+            _completionContentBaseAnchoredPosition =
+                ((RectTransform)_contentCanvasGroup.transform)
+                .anchoredPosition;
+
+            float buttonCenterY = (buttonTop + buttonBottom) * 0.5f;
+            SetCenteredRect(
+                (RectTransform)_retryCanvasGroup.transform,
+                new Vector2(-size.x * CompletionButtonCenterFraction, 0f),
+                buttonWidth,
+                buttonHeight,
+                buttonCenterY);
+            SetCenteredRect(
+                (RectTransform)_nextCanvasGroup.transform,
+                new Vector2(size.x * CompletionButtonCenterFraction, 0f),
+                buttonWidth,
+                buttonHeight,
+                buttonCenterY);
+        }
+
+        private void ApplyRuntimeTextReadability(RectTransform overlay)
+        {
+            ResolveLegacyCompletionFont();
+            VerticalLayoutGroup column =
+                _contentCanvasGroup.GetComponent<VerticalLayoutGroup>();
+            if (column != null)
+            {
+                column.spacing = 4f;
+                column.childAlignment = TextAnchor.UpperCenter;
+                column.childControlWidth = true;
+                column.childControlHeight = true;
+                column.childForceExpandWidth = true;
+                column.childForceExpandHeight = false;
+            }
+
+            ConfigureRuntimeText(
+                _titleText,
+                50,
+                28,
+                TextAnchor.MiddleCenter,
+                1f,
+                68f,
+                68f,
+                0f);
+            ConfigureRuntimeText(
+                _sectorText,
+                26,
+                18,
+                TextAnchor.MiddleCenter,
+                1f,
+                36f,
+                36f,
+                0f);
+            ConfigureRuntimeText(
+                _descriptionText,
+                28,
+                18,
+                TextAnchor.UpperCenter,
+                1f,
+                140f,
+                180f,
+                1f);
+            if (_descriptionText != null)
+            {
+                _descriptionText.horizontalOverflow =
+                    HorizontalWrapMode.Wrap;
+                _descriptionText.verticalOverflow =
+                    VerticalWrapMode.Truncate;
+            }
+
+            Text summary = _statsCanvasGroup.GetComponent<Text>();
+            if (summary != null)
+            {
+                summary.fontSize = 26;
+                summary.resizeTextForBestFit = true;
+                summary.resizeTextMinSize = 18;
+                summary.resizeTextMaxSize = 26;
+                summary.alignment = TextAnchor.MiddleCenter;
+                summary.lineSpacing = 0.9f;
+                ApplyCompletionFont(summary);
+            }
+
+            ApplyButtonLabelFont(overlay, "RetryButton/Label");
+            ApplyButtonLabelFont(overlay, "NextButton/Label");
+        }
+
+        private void ConfigureRuntimeText(
+            Text text,
+            int maximumSize,
+            int minimumSize,
+            TextAnchor alignment,
+            float lineSpacing,
+            float minimumHeight,
+            float preferredHeight,
+            float flexibleHeight)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            text.fontSize = maximumSize;
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = minimumSize;
+            text.resizeTextMaxSize = maximumSize;
+            text.alignment = alignment;
+            text.lineSpacing = lineSpacing;
+            ApplyCompletionFont(text);
+            LayoutElement layout = text.GetComponent<LayoutElement>();
+            if (layout != null)
+            {
+                layout.minHeight = minimumHeight;
+                layout.preferredHeight = preferredHeight;
+                layout.flexibleHeight = flexibleHeight;
+            }
+        }
+
+        private void ResolveLegacyCompletionFont()
+        {
+            if (_completionFont != null
+                || _completionFontResolutionAttempted
+                || _controller == null)
+            {
+                return;
+            }
+
+            _completionFontResolutionAttempted = true;
+            // The Cut counter moved to a TMP text element inside the TopHUD
+            // Cut panel, so it can no longer supply a legacy Font here; fall
+            // back to any already-serialized legacy Text using the same
+            // authored typeface, mirroring
+            // GameplayIdentityHudRuntimeBootstrap.ResolveUiFont.
+            Text[] existingTexts = _controller.transform.root
+                .GetComponentsInChildren<Text>(true);
+            for (int index = 0; index < existingTexts.Length; index++)
+            {
+                Font candidate = existingTexts[index].font;
+                if (candidate != null && candidate.name == "LapsusPro-Bold")
+                {
+                    _completionFont = candidate;
+                    return;
+                }
+            }
+        }
+
+        private void ApplyCompletionFont(Text text)
+        {
+            if (text != null && _completionFont != null)
+            {
+                text.font = _completionFont;
+            }
+        }
+
+        private void ApplyButtonLabelFont(
+            RectTransform overlay,
+            string path)
+        {
+            Transform labelTransform = overlay.Find(path);
+            if (labelTransform == null)
+            {
+                return;
+            }
+
+            Text label = labelTransform.GetComponent<Text>();
+            if (label == null)
+            {
+                return;
+            }
+
+            label.fontSize = 26;
+            label.resizeTextForBestFit = true;
+            label.resizeTextMinSize = 18;
+            label.resizeTextMaxSize = 26;
+            label.alignment = TextAnchor.MiddleCenter;
+            ApplyCompletionFont(label);
+        }
+
+        private static void SetCenteredRect(
+            RectTransform rect,
+            Vector2 horizontalOffset,
+            float width,
+            float height,
+            float centerY)
+        {
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = new Vector2(
-                rect.anchoredPosition.x,
-                -ContentSlideOffset);
+                horizontalOffset.x,
+                centerY + horizontalOffset.y);
+            rect.sizeDelta = new Vector2(width, height);
         }
 
         // ------------------------------------------------------------

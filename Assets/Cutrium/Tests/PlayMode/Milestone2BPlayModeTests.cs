@@ -147,7 +147,7 @@ namespace Cutrium.PlayModeTests
             _mouse = InputSystem.AddDevice<Mouse>();
             InputSystem.EnableDevice(_mouse);
             RectTransform topHud = _composition.transform.parent
-                .Find("Canvas/SafeAreaRoot/BottomHUD/ProgressBar")
+                .Find("Canvas/SafeAreaRoot/BottomHUD/BottomHudRow/ProgressSlot/ProgressBar")
                 .GetComponent<RectTransform>();
             Vector2 hudCenter = GetScreenCenter(topHud);
             Vector2 boardEnd = LogicalToScreen(new LogicalPoint(4f, 4f));
@@ -575,6 +575,13 @@ namespace Cutrium.PlayModeTests
             _controller = root.GetComponentInChildren<FirstPlayableController>(true);
             _gesture = root.GetComponentInChildren<BarrierGestureAdapter>(true);
             _presenter = root.GetComponentInChildren<BarrierPresenter>(true);
+            // These tests exercise raw gesture/input plumbing, not the
+            // pre-level cinematic (see PreLevelIntroPresenter), which would
+            // otherwise hold the simulation and disable barrier input for
+            // several seconds after every fresh scene load.
+            root.GetComponentInChildren<
+                    Cutrium.Presentation.HUD.PreLevelIntroPresenter>(true)
+                ?.SkipForTesting();
             Canvas.ForceUpdateCanvases();
             _composition.BoardCameraFitter.RefreshNow();
             _presenter.RefreshNow();

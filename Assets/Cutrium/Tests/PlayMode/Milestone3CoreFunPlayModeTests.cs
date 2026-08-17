@@ -8,6 +8,7 @@ using Cutrium.Gameplay.Session;
 using Cutrium.Gameplay.Threats;
 using Cutrium.Presentation.Capture;
 using Cutrium.Presentation.HUD;
+using Cutrium.Presentation.Landmark;
 using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Bootstrap;
 using Cutrium.Unity.Input;
@@ -101,8 +102,8 @@ namespace Cutrium.PlayModeTests
             Assert.That(_composition.PointerInput.HasActiveInteraction, Is.False);
         }
 
-        [Test]
-        public void Completion_ShowsLevelAndNextLoadsLevelTwoInSameScene()
+        [UnityTest]
+        public IEnumerator Completion_WaitsForFinalRevealThenNextLoadsLevelTwoInSameScene()
         {
             Scene sceneBefore = SceneManager.GetActiveScene();
             CompleteCurrentLevel();
@@ -110,6 +111,23 @@ namespace Cutrium.PlayModeTests
 
             Assert.That(_controller.Session.LevelStatus,
                 Is.EqualTo(CaptureLevelStatus.Completed));
+            LandmarkRevealPresenter landmark = _hud.CompletionRevealGate;
+            if (landmark != null)
+            {
+                Assert.That(_hud.CompletionCanvasGroup.alpha, Is.Zero);
+                float waited = 0f;
+                while (!landmark.CompletionPresentationReady && waited < 3f)
+                {
+                    yield return null;
+                    landmark.RefreshNow();
+                    _hud.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                Assert.That(landmark.CompletionPresentationReady, Is.True);
+            }
+
+            _hud.RefreshNow();
             Assert.That(_hud.CompletionCanvasGroup.alpha, Is.EqualTo(1f));
             Assert.That(_hud.CompletionCanvasGroup.interactable, Is.True);
             Assert.That(_hud.CompletionCanvasGroup.blocksRaycasts, Is.True);
@@ -131,7 +149,7 @@ namespace Cutrium.PlayModeTests
                 Is.EqualTo("vulnerable-barrier-timing"));
             Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.78f));
             Assert.That(_controller.ThreatSpeed, Is.EqualTo(2.35f));
-            Assert.That(_controller.BarrierGrowthSpeed, Is.EqualTo(2.4f));
+            Assert.That(_controller.BarrierGrowthSpeed, Is.EqualTo(2.15f));
             Assert.That(_controller.ThreatCount, Is.EqualTo(1));
             Assert.That(_controller.Session.CapturedFraction, Is.Zero);
             Assert.That(_hud.LevelText.text, Is.EqualTo("LEVEL 2"));
@@ -307,8 +325,8 @@ namespace Cutrium.PlayModeTests
                 Is.EqualTo(3));
         }
 
-        [Test]
-        public void UiAndOverlayStartsNeverCreateBarriers()
+        [UnityTest]
+        public IEnumerator UiAndOverlayStartsNeverCreateBarriers()
         {
             int attempts = _controller.Metrics.Current.BarrierAttempts;
             ProcessBlockedInteraction(new LogicalPoint(5f, 8f));
@@ -319,6 +337,16 @@ namespace Cutrium.PlayModeTests
 
             CompleteCurrentLevel();
             _hud.RefreshNow();
+            float waited = 0f;
+            while (_hud.CompletionRevealGate != null
+                && !_hud.CompletionRevealGate.CompletionPresentationReady
+                && waited < 3f)
+            {
+                yield return null;
+                _hud.RefreshNow();
+                waited += Time.unscaledDeltaTime;
+            }
+
             Assert.That(_hud.CompletionCanvasGroup.blocksRaycasts, Is.True);
             Assert.That(RaycastOverlayCenter(), Does.Contain(
                 _hud.CompleteOverlay));

@@ -39,34 +39,60 @@ namespace Cutrium.Editor.Setup
             LandmarkContentFolder + "/Artwork";
         public const string CleanupThemePath =
             Milestone5SceneSetup.CleanupThemePath;
-        public const string ProgressFramePath =
-            "Assets/Cutrium/Content/Gui/Progress_Frame.png";
         public const string ProgressBackgroundPath =
-            "Assets/Cutrium/Content/Gui/Progress_Background.png";
+            "Assets/Cutrium/Content/Gui/ProgressBackground.png";
         public const string ProgressFillPath =
-            "Assets/Cutrium/Content/Gui/Progress_Fill.png";
-        public const string ProgressStartStarPath =
-            "Assets/Cutrium/Content/Gui/Yellow_Star.png";
+            "Assets/Cutrium/Content/Gui/ProgressFill.png";
         public const string ThreatVisualPath =
             "Assets/Cutrium/Content/Gui/Threat_Visual.png";
-        public const string HealthHudPath =
-            "Assets/Cutrium/Content/Gui/Health_HUD.png";
-        public const string ScoreHudPath =
-            "Assets/Cutrium/Content/Gui/Score_HUD.png";
-        public const string CoinHudPath =
-            "Assets/Cutrium/Content/Gui/Coin_HUD.png";
+        // BigHUDBackground is now the single full-width TopHUD bar; the
+        // earlier per-value SmallHUDBackground plaques are retired.
+        public const string BigHudBackgroundPath =
+            "Assets/Cutrium/Content/Gui/BigHUDBackground.png";
+        public const string HealthIconPath =
+            "Assets/Cutrium/Content/Gui/HealthIcon.png";
+        public const string SpeedIconPath =
+            "Assets/Cutrium/Content/Gui/SpeedIcon.png";
+        // Four speedometer stages (slowest to fastest barrier growth) that
+        // GameplayIdentityHudPresenter swaps between live at runtime, based
+        // on where the current level's BarrierGrowthSpeed falls between the
+        // catalog's own floor and ceiling -- see ConfigureIdentityHud.
+        public const string SpeedIconL1Path =
+            "Assets/Cutrium/Content/Gui/SpeedIconL1.png";
+        public const string SpeedIconL2Path =
+            "Assets/Cutrium/Content/Gui/SpeedIconL2.png";
+        public const string SpeedIconL3Path =
+            "Assets/Cutrium/Content/Gui/SpeedIconL3.png";
+        public const string SpeedIconL4Path =
+            "Assets/Cutrium/Content/Gui/SpeedIconL4.png";
         public const string SettingsButtonPath =
             "Assets/Cutrium/Content/Gui/Settings_Button.png";
+        public const string FreezeSkillPath =
+            "Assets/Cutrium/Content/Gui/FreezeSkill.png";
+        public const string InstantBarrierSkillPath =
+            "Assets/Cutrium/Content/Gui/InstantBarrierSkill.png";
+        public const string MockSkillPath =
+            "Assets/Cutrium/Content/Gui/MockSkill.png";
         public const string TopHudFontPath =
-            "Assets/Cutrium/Art/Fonts/gomarice_rocks SDF.asset";
+            "Assets/Cutrium/Art/Fonts/LapsusPro-Bold SDF.asset";
+        public const string CompletionFontPath =
+            "Assets/Cutrium/Art/Fonts/LapsusPro-Bold.otf";
 
         private const float BarrierVisualLogicalThickness = 0.13f;
         private const float RevealFadeSeconds = 0.35f;
         private const float TopHudMinimumHeight = 146f;
         private const float TopHudPreferredHeight = 150f;
-        private const float TopHudSidePanelWidth = 270f;
-        private const float TopHudScorePanelWidth = 330f;
+        private const int SafeAreaHorizontalPadding = 12;
+        private const int SafeAreaVerticalPadding = 10;
+        private const float SafeAreaSectionSpacing = 12f;
+        private const float BottomHudMinimumHeight = 112f;
+        private const float BottomHudPreferredHeight = 116f;
+        private const int BottomHudPadding = 8;
+        private const float TopHudBarHeight = 84f;
         private const float TopHudSettingsSize = 34f;
+        private const float TopHudIconSizeMultiplier = 0.74f;
+        private const float SkillCellSize = 100f;
+        private const float SkillRowRightInset = 18f;
         private static readonly Color DarkBrownBackground =
             new Color(0.12f, 0.07f, 0.045f, 1f);
         private static readonly Color GrowingBarrierBrown =
@@ -77,6 +103,8 @@ namespace Cutrium.Editor.Setup
             new Color(1f, 0.78f, 0.68f, 0.86f);
         private static readonly Color TopHudTextBrown =
             new Color(0.34f, 0.105f, 0.025f, 1f);
+        private static readonly Color CompletionBackgroundBrown =
+            new Color(0.12156863f, 0.07f, 0.043137256f, 1f);
 
         [MenuItem("Cutrium/Setup/Landmark Reveal Presentation Pass")]
         public static void Apply()
@@ -153,17 +181,23 @@ namespace Cutrium.Editor.Setup
                 "Barrier preview updated without changing other theme values.");
         }
 
-        [MenuItem("Cutrium/Setup/Apply Progress Start Star Only")]
-        public static void ApplyProgressStartStarOnly()
+        [MenuItem("Cutrium/Setup/Apply Completion Popup Readability Only")]
+        public static void ApplyCompletionPopupReadabilityOnly()
         {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "Exit Play Mode before updating the completion popup.");
+            }
+
             Scene scene = SceneManager.GetActiveScene();
             if (scene.path != Milestone2SceneSetup.VerticalSliceScenePath)
             {
-                if (!Application.isBatchMode)
+                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
                 {
-                    throw new InvalidOperationException(
-                        "Open VerticalSlice.unity before applying the " +
-                        "progress start star.");
+                    throw new OperationCanceledException(
+                        "Completion popup setup cancelled before opening " +
+                        "VerticalSlice.unity.");
                 }
 
                 scene = EditorSceneManager.OpenScene(
@@ -172,42 +206,115 @@ namespace Cutrium.Editor.Setup
             }
 
             GameObject root = RequireRoot(scene, "VerticalSliceRoot");
-            RectTransform progressRect = (RectTransform)RequireChild(
+            Transform completionOverlay = RequireChild(
                 root.transform,
-                "Canvas/SafeAreaRoot/BottomHUD/ProgressBar");
-            SandProgressPresenter presenter =
-                progressRect.GetComponent<SandProgressPresenter>()
-                ?? throw new InvalidOperationException(
-                    "ProgressBar requires SandProgressPresenter.");
-            Image starImage = ConfigureProgressStartStar(
-                progressRect,
-                LoadSingleSprite(ProgressStartStarPath));
-            presenter.ConfigureStartStarForSetup(starImage);
-            Canvas.ForceUpdateCanvases();
-            presenter.RefreshLayoutNow();
+                "Canvas/SafeAreaRoot/LevelCompleteOverlay");
+            Font font = LoadCompletionFont();
+            ApplyCompletionReadability(completionOverlay, font);
 
-            if (presenter.FillStartTarget == null
-                || Vector3.Distance(
-                    starImage.rectTransform.TransformPoint(Vector3.zero),
-                    presenter.FillStartTarget.TransformPoint(Vector3.zero))
-                    > 0.01f)
+            LandmarkRevealPresenter landmarkPresenter = root
+                .GetComponentInChildren<LandmarkRevealPresenter>(true);
+            CaptureHudPresenter hud = root
+                .GetComponentInChildren<CaptureHudPresenter>(true);
+            if (landmarkPresenter == null || hud == null)
             {
                 throw new InvalidOperationException(
-                    "Progress star center must match the sand destination.");
+                    "Completion popup requires LandmarkRevealPresenter and " +
+                    "CaptureHudPresenter.");
             }
 
-            EditorUtility.SetDirty(starImage);
-            EditorUtility.SetDirty(presenter);
+            landmarkPresenter.ConfigureCompletionFontForSetup(font);
+            hud.ConfigureCompletionRevealGateForSetup(landmarkPresenter);
+            Canvas.ForceUpdateCanvases();
+            landmarkPresenter.RefreshCompletionLayoutNow();
+            EditorUtility.SetDirty(landmarkPresenter);
+            EditorUtility.SetDirty(hud);
             EditorSceneManager.MarkSceneDirty(scene);
-            if (!EditorSceneManager.SaveScene(scene))
+            if (!EditorSceneManager.SaveScene(
+                    scene,
+                    Milestone2SceneSetup.VerticalSliceScenePath))
             {
                 throw new InvalidOperationException(
-                    "Unity could not save the progress start star.");
+                    "Unity could not save the completion popup update.");
             }
 
             Debug.Log(
-                "Progress start star applied without running the general " +
-                "presentation setup.");
+                "Completion popup readability updated without changing its " +
+                "background, gameplay HUD, board, sand, or theme assets.");
+        }
+
+        [MenuItem("Cutrium/Setup/Apply Lapsus-Pro Bold Fonts Only")]
+        public static void ApplyLapsusProBoldFontsOnly()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "Exit Play Mode before updating UI fonts.");
+            }
+
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.path != Milestone2SceneSetup.VerticalSliceScenePath)
+            {
+                if (!Application.isBatchMode
+                    && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                {
+                    throw new OperationCanceledException(
+                        "Font setup cancelled before opening VerticalSlice.unity.");
+                }
+
+                scene = EditorSceneManager.OpenScene(
+                    Milestone2SceneSetup.VerticalSliceScenePath,
+                    OpenSceneMode.Single);
+            }
+
+            Font legacyFont = LoadLegacyUiFontForSetup();
+            TMP_FontAsset tmpFont = LoadTmpUiFontForSetup();
+            int legacyCount = 0;
+            int tmpCount = 0;
+
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                foreach (Text text in root.GetComponentsInChildren<Text>(true))
+                {
+                    if (text.font == legacyFont)
+                    {
+                        continue;
+                    }
+
+                    Undo.RecordObject(text, "Apply Lapsus-Pro Bold Font");
+                    text.font = legacyFont;
+                    EditorUtility.SetDirty(text);
+                    legacyCount++;
+                }
+
+                foreach (TMP_Text text in root.GetComponentsInChildren<TMP_Text>(true))
+                {
+                    if (text.font == tmpFont)
+                    {
+                        continue;
+                    }
+
+                    Undo.RecordObject(text, "Apply Lapsus-Pro Bold SDF Font");
+                    text.font = tmpFont;
+                    EditorUtility.SetDirty(text);
+                    tmpCount++;
+                }
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(
+                    scene,
+                    Milestone2SceneSetup.VerticalSliceScenePath))
+            {
+                throw new InvalidOperationException(
+                    "Unity could not save the Lapsus-Pro Bold font update.");
+            }
+
+            AssetDatabase.SaveAssets();
+            Debug.Log(
+                $"Lapsus-Pro Bold applied to {legacyCount} Legacy Text and " +
+                $"{tmpCount} TMP components without changing layout, color, " +
+                "background, or gameplay values.");
         }
 
         [MenuItem("Cutrium/Setup/Apply Gameplay Top HUD Only")]
@@ -233,6 +340,7 @@ namespace Cutrium.Editor.Setup
                 root.transform,
                 "Canvas/SafeAreaRoot");
             Transform topHud = RequireChild(safeArea, "TopHUD");
+            ConfigureResponsiveGameplayBands(safeArea);
             ConfigureGameplayTopHud(topHud, LoadTopHudAssets());
 
             Canvas.ForceUpdateCanvases();
@@ -257,6 +365,69 @@ namespace Cutrium.Editor.Setup
             Debug.Log(
                 "Gameplay TopHUD applied without changing theme, progress, " +
                 "sand, trail, completion, or gameplay values.");
+        }
+
+        [MenuItem("Cutrium/Setup/Apply Responsive Gameplay Layout Only")]
+        public static void ApplyResponsiveGameplayLayoutOnly()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "Exit Play Mode before updating gameplay layout.");
+            }
+
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.path != Milestone2SceneSetup.VerticalSliceScenePath)
+            {
+                if (!Application.isBatchMode)
+                {
+                    throw new InvalidOperationException(
+                        "Open VerticalSlice.unity before applying the " +
+                        "responsive gameplay layout.");
+                }
+
+                scene = EditorSceneManager.OpenScene(
+                    Milestone2SceneSetup.VerticalSliceScenePath,
+                    OpenSceneMode.Single);
+            }
+
+            GameObject root = RequireRoot(scene, "VerticalSliceRoot");
+            Transform safeArea = RequireChild(
+                root.transform,
+                "Canvas/SafeAreaRoot");
+            ConfigureResponsiveGameplayBands(safeArea);
+
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(
+                (RectTransform)safeArea);
+            BoardCameraFitter boardFitter = root
+                .GetComponentInChildren<BoardCameraFitter>(true)
+                ?? throw new InvalidOperationException(
+                    "Responsive layout requires BoardCameraFitter.");
+            boardFitter.ConfigureVerticalAlignmentForSetup(0.5f);
+            boardFitter.RefreshNow();
+            SandProgressPresenter progress = root
+                .GetComponentInChildren<SandProgressPresenter>(true)
+                ?? throw new InvalidOperationException(
+                    "Responsive layout requires SandProgressPresenter.");
+            progress.RefreshLayoutNow();
+            Canvas.ForceUpdateCanvases();
+            ValidateBoardHierarchy(root);
+            ValidateGameplayBandVisualSeparation(root);
+
+            EditorUtility.SetDirty(boardFitter);
+            EditorUtility.SetDirty(progress);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene))
+            {
+                throw new InvalidOperationException(
+                    "Unity could not save the responsive gameplay layout.");
+            }
+
+            Debug.Log(
+                "Responsive gameplay layout applied without changing the " +
+                "logical 10x16 board, gameplay, theme, sand, trail, or HUD " +
+                "artwork.");
         }
 
         private static void VerifyBaseline()
@@ -754,28 +925,21 @@ namespace Cutrium.Editor.Setup
 
         private static LandmarkDefinition[] ReloadLandmarks()
         {
-            var reloaded = new LandmarkDefinition[LandmarkAssetPaths.Length];
-            for (int index = 0; index < LandmarkAssetPaths.Length; index++)
-            {
-                string path = LandmarkAssetPaths[index];
-                LandmarkDefinition landmark =
-                    AssetDatabase.LoadAssetAtPath<LandmarkDefinition>(path);
-                reloaded[index] = landmark
-                    ?? throw new InvalidOperationException(
-                        $"Landmark asset '{path}' could not be reloaded " +
-                        "after opening the scene.");
-            }
-
-            return reloaded;
+            return FirstTwelveLandmarkContent.CreateOrUpdateAssets();
         }
 
         private static ProgressSprites LoadProgressSprites()
         {
+            // Sliced: the bar now fills ProgressSlot's full width (flush
+            // left) instead of a fixed aspect-locked size, so width and
+            // height vary independently -- same reasoning as TopHudBar.
+            EnsureUiSpriteImportSettings(
+                ProgressBackgroundPath,
+                sliced9Slice: true);
+            EnsureUiSpriteImportSettings(ProgressFillPath, sliced9Slice: true);
             return new ProgressSprites(
-                LoadSingleSprite(ProgressFramePath),
                 LoadSingleSprite(ProgressBackgroundPath),
-                LoadSingleSprite(ProgressFillPath),
-                LoadSingleSprite(ProgressStartStarPath));
+                LoadSingleSprite(ProgressFillPath));
         }
 
         private static TopHudAssets LoadTopHudAssets()
@@ -788,12 +952,31 @@ namespace Cutrium.Editor.Setup
                     $"Gameplay TopHUD font is missing at '{TopHudFontPath}'.");
             }
 
+            EnsureUiSpriteImportSettings(BigHudBackgroundPath, sliced9Slice: true);
+            EnsureUiSpriteImportSettings(HealthIconPath);
+            EnsureUiSpriteImportSettings(SpeedIconPath);
+            EnsureUiSpriteImportSettings(SpeedIconL1Path);
+            EnsureUiSpriteImportSettings(SpeedIconL2Path);
+            EnsureUiSpriteImportSettings(SpeedIconL3Path);
+            EnsureUiSpriteImportSettings(SpeedIconL4Path);
+
             return new TopHudAssets(
-                LoadSingleSprite(HealthHudPath),
-                LoadSingleSprite(ScoreHudPath),
-                LoadSingleSprite(CoinHudPath),
+                LoadSingleSprite(BigHudBackgroundPath),
+                LoadSingleSprite(HealthIconPath),
+                LoadSingleSprite(SpeedIconPath),
                 LoadSingleSprite(SettingsButtonPath),
                 font);
+        }
+
+        private static SkillAssets LoadSkillAssets()
+        {
+            EnsureUiSpriteImportSettings(FreezeSkillPath);
+            EnsureUiSpriteImportSettings(InstantBarrierSkillPath);
+            EnsureUiSpriteImportSettings(MockSkillPath);
+            return new SkillAssets(
+                LoadSingleSprite(FreezeSkillPath),
+                LoadSingleSprite(InstantBarrierSkillPath),
+                LoadSingleSprite(MockSkillPath));
         }
 
         private static Sprite LoadSingleSprite(string path)
@@ -808,6 +991,65 @@ namespace Cutrium.Editor.Setup
             }
 
             return sprites[0];
+        }
+
+        // User-supplied UI art (HUD plaques, icons, skill art) ships with no
+        // .meta file, so its first import would otherwise default to a
+        // plain Texture2D and LoadSingleSprite above would throw. This
+        // forces the same Sprite (2D and UI) import settings used elsewhere
+        // in this file before any such asset is loaded.
+        //
+        // sliced9Slice: when true, a proportional border (fraction of the
+        // texture's own pixel height, since these are wide short plaques
+        // whose rounded end-caps scale with height) is set on the
+        // importer so the sprite can render as Image.Type.Sliced -- its
+        // rounded corners/bezel stay crisp while the flat middle stretches
+        // to fit a target width that doesn't match its native aspect.
+        private const float HudPlaqueBorderFraction = 0.3f;
+
+        private static void EnsureUiSpriteImportSettings(
+            string path,
+            bool sliced9Slice = false)
+        {
+            AssetDatabase.ImportAsset(
+                path,
+                ImportAssetOptions.ForceSynchronousImport);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            if (importer == null)
+            {
+                throw new InvalidOperationException(
+                    $"UI asset '{path}' could not be imported.");
+            }
+
+            Vector4 border = Vector4.zero;
+            if (sliced9Slice)
+            {
+                importer.GetSourceTextureWidthAndHeight(
+                    out int textureWidth,
+                    out int textureHeight);
+                float edge = Mathf.Min(textureWidth, textureHeight)
+                    * HudPlaqueBorderFraction;
+                border = new Vector4(edge, edge, edge, edge);
+            }
+
+            bool importerChanged =
+                importer.textureType != TextureImporterType.Sprite
+                || importer.spriteImportMode != SpriteImportMode.Single
+                || importer.mipmapEnabled
+                || importer.wrapMode != TextureWrapMode.Clamp
+                || importer.filterMode != FilterMode.Bilinear
+                || importer.spriteBorder != border;
+            if (importerChanged)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.alphaIsTransparency = true;
+                importer.mipmapEnabled = false;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.spriteBorder = border;
+                importer.SaveAndReimport();
+            }
         }
 
         // ------------------------------------------------------------
@@ -850,15 +1092,20 @@ namespace Cutrium.Editor.Setup
             Transform topHud = RequireChild(safeArea, "TopHUD");
             Transform bottomHud = RequireChild(safeArea, "BottomHUD");
 
+            ConfigureResponsiveGameplayBands(safeArea);
             ConfigureGameplayTopHud(topHud, LoadTopHudAssets());
             ConfigureMinimalBottomHud(
                 root,
                 safeArea,
                 controller,
-                boardFrame,
                 progressSprites,
                 out SandProgressPresenter sandProgressPresenter,
                 out RectTransform progressFillStartTarget);
+            ConfigureBottomHudSkillRow(
+                safeArea,
+                controller,
+                powerHud,
+                LoadSkillAssets());
             RectTransform grainFlightRoot = ConfigureGrainFlightRoot(safeArea);
 
             ConfigureLandmarkLayer(
@@ -1004,18 +1251,20 @@ namespace Cutrium.Editor.Setup
                 GetOrAddComponent<Image>(completionOverlay.gameObject);
             overlayBackground.sprite = null;
             overlayBackground.type = Image.Type.Simple;
-            overlayBackground.color = new Color(0.04f, 0.07f, 0.12f, 1f);
+            // Re-assert the owner-authored brown after the legacy milestone
+            // setup chain recreates its old blue baseline.
+            overlayBackground.color = CompletionBackgroundBrown;
             overlayBackground.raycastTarget = true;
 
-            // The hero photo lives in a fixed square frame instead of
+            // The hero photo lives in a fixed-aspect frame instead of
             // stretching to fill the screen, so its aspect ratio is never
-            // distorted. HeroFrameBounds is the available square slot
-            // (positioned above the text/button content); HeroArtwork fits
-            // itself into a centered square within it (AspectRatioFitter),
-            // then the photo itself letterboxes inside that square if it
-            // isn't natively square (Image.preserveAspect). A real frame
-            // sprite (e.g. "hung on a wall") can be layered on this later
-            // without changing the layout.
+            // distorted. HeroFrameBounds is the available slot (positioned
+            // above the text/button content); HeroArtwork fits itself into
+            // a centered, deliberately wide (not square) box within it via
+            // AspectRatioFitter, then the photo itself letterboxes inside
+            // that box if it isn't natively that ratio (Image.preserveAspect).
+            // A real frame sprite (e.g. "hung on a wall") can be layered on
+            // this later without changing the layout.
             RectTransform heroBoundsRect = GetOrCreateUiChild(
                 completionOverlay,
                 "HeroFrameBounds");
@@ -1035,7 +1284,9 @@ namespace Cutrium.Editor.Setup
             AspectRatioFitter heroFitter =
                 GetOrAddComponent<AspectRatioFitter>(heroRect.gameObject);
             heroFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
-            heroFitter.aspectRatio = 1f;
+            // Hand-tuned: 1.35 read too small once seen full-size; 1.1 is
+            // the owner's chosen value.
+            heroFitter.aspectRatio = 1.1f;
             Image heroImage = GetOrAddComponent<Image>(heroRect.gameObject);
             heroImage.raycastTarget = false;
             heroImage.preserveAspect = true;
@@ -1055,7 +1306,7 @@ namespace Cutrium.Editor.Setup
             VerticalLayoutGroup contentColumn =
                 GetOrAddComponent<VerticalLayoutGroup>(contentRect.gameObject);
             contentColumn.padding = new RectOffset(0, 0, 0, 0);
-            contentColumn.spacing = 8f;
+            contentColumn.spacing = 4f;
             contentColumn.childAlignment = TextAnchor.UpperCenter;
             contentColumn.childControlWidth = true;
             contentColumn.childControlHeight = true;
@@ -1069,14 +1320,14 @@ namespace Cutrium.Editor.Setup
             Text titleText = ConfigureText(
                 titleRect,
                 "Landmark",
-                52,
+                50,
                 TextAnchor.LowerCenter,
                 new Color(0.99f, 0.96f, 0.9f, 1f));
             titleText.fontStyle = FontStyle.Bold;
             LayoutElement titleLayout =
                 GetOrAddComponent<LayoutElement>(titleRect.gameObject);
-            titleLayout.minHeight = 66f;
-            titleLayout.preferredHeight = 66f;
+            titleLayout.minHeight = 68f;
+            titleLayout.preferredHeight = 68f;
             titleLayout.flexibleHeight = 0f;
 
             RectTransform sectorRect = GetOrCreateUiChild(contentRect, "Sector");
@@ -1104,16 +1355,16 @@ namespace Cutrium.Editor.Setup
             Text descriptionText = ConfigureText(
                 descriptionRect,
                 "Description",
-                26,
+                28,
                 TextAnchor.UpperCenter,
                 new Color(0.9f, 0.89f, 0.86f, 0.9f));
             descriptionText.horizontalOverflow = HorizontalWrapMode.Wrap;
             descriptionText.verticalOverflow = VerticalWrapMode.Truncate;
             LayoutElement descriptionLayout =
                 GetOrAddComponent<LayoutElement>(descriptionRect.gameObject);
-            descriptionLayout.minHeight = 76f;
-            descriptionLayout.preferredHeight = 92f;
-            descriptionLayout.flexibleHeight = 0f;
+            descriptionLayout.minHeight = 140f;
+            descriptionLayout.preferredHeight = 180f;
+            descriptionLayout.flexibleHeight = 1f;
 
             // The stats line reuses the existing CompleteText element rather
             // than reparenting it: Milestone3CoreFunPlayModeTests looks it up
@@ -1196,6 +1447,21 @@ namespace Cutrium.Editor.Setup
                 descriptionText,
                 LandmarkCompletionTiming.Default,
                 landmarks);
+            Font completionFont = LoadCompletionFont();
+            ApplyCompletionReadability(
+                completionOverlay,
+                completionFont);
+            landmarkPresenter.ConfigureCompletionFontForSetup(completionFont);
+
+            CaptureHudPresenter hud = root
+                .GetComponentInChildren<CaptureHudPresenter>(true);
+            if (hud == null)
+            {
+                throw new InvalidOperationException(
+                    "Completion reveal requires CaptureHudPresenter.");
+            }
+
+            hud.ConfigureCompletionRevealGateForSetup(landmarkPresenter);
 
             EditorUtility.SetDirty(artworkImage);
             EditorUtility.SetDirty(heroImage);
@@ -1204,6 +1470,7 @@ namespace Cutrium.Editor.Setup
             EditorUtility.SetDirty(sectorText);
             EditorUtility.SetDirty(descriptionText);
             EditorUtility.SetDirty(statsText);
+            EditorUtility.SetDirty(hud);
         }
 
         private static void FinalizeThemeTextSync(
@@ -1319,178 +1586,237 @@ namespace Cutrium.Editor.Setup
             HorizontalLayoutGroup row =
                 GetOrAddComponent<HorizontalLayoutGroup>(hudRow.gameObject);
             row.padding = new RectOffset(0, 0, 0, 0);
-            row.spacing = 18f;
-            row.childAlignment = TextAnchor.MiddleCenter;
+            row.spacing = 0f;
+            // Bottom-aligned: TopHudBar (below) is shorter than hudRow's
+            // own reserved height, leaving empty space at the top of
+            // hudRow for SettingsSlot (ignoreLayout, anchored top-right)
+            // to sit above the bar without overlapping it.
+            row.childAlignment = TextAnchor.LowerCenter;
             row.childControlWidth = true;
             row.childControlHeight = true;
             row.childForceExpandWidth = false;
             row.childForceExpandHeight = false;
 
-            RectTransform healthColumn = ConfigureTopHudColumn(
-                hudRow,
-                "HealthColumn",
-                TopHudSidePanelWidth);
-            RectTransform scoreColumn = ConfigureTopHudColumn(
-                hudRow,
-                "ScoreColumn",
-                TopHudScorePanelWidth);
-            RectTransform coinColumn = ConfigureTopHudColumn(
-                hudRow,
-                "CoinColumn",
-                TopHudSidePanelWidth);
-            healthColumn.SetSiblingIndex(0);
-            scoreColumn.SetSiblingIndex(1);
-            coinColumn.SetSiblingIndex(2);
+            // Earlier presentation passes built separate per-value plaques
+            // ("HealthColumn"/"CutColumn"/"SpeedColumn", plus the even
+            // older "ScoreColumn"/"CoinColumn") each with their own
+            // background image at their own width. All superseded by the
+            // single full-width "TopHudBar" below -- discard them outright
+            // so they don't linger as active, unused HorizontalLayoutGroup
+            // children.
+            DestroyLegacyChild(hudRow, "HealthColumn");
+            DestroyLegacyChild(hudRow, "CutColumn");
+            DestroyLegacyChild(hudRow, "SpeedColumn");
+            DestroyLegacyChild(hudRow, "ScoreColumn");
+            DestroyLegacyChild(hudRow, "CoinColumn");
 
-            RectTransform healthSpacer = ConfigureTopHudSpacer(
-                healthColumn,
-                "TopSpacer");
-            RectTransform healthPanel = ConfigureTopHudPanel(
-                healthColumn,
-                "HealthHUD",
-                assets.Health,
+            RectTransform bar = GetOrCreateUiChild(hudRow, "TopHudBar");
+            bar.gameObject.SetActive(true);
+            LayoutElement barLayout = GetOrAddComponent<LayoutElement>(
+                bar.gameObject);
+            barLayout.minWidth = 0f;
+            barLayout.preferredWidth = 0f;
+            barLayout.flexibleWidth = 1f;
+            barLayout.minHeight = TopHudBarHeight;
+            barLayout.preferredHeight = TopHudBarHeight;
+            barLayout.flexibleHeight = 0f;
+
+            // Sliced (not Simple): the bar spans the full row width, far
+            // wider than BigHUDBackground's own native aspect at
+            // TopHudBarHeight, so only the flat middle stretches to fill
+            // it -- the rounded plaque border stays crisp instead of
+            // visibly distorting. Requires the sprite's import border to
+            // be set (see EnsureUiSpriteImportSettings' sliced9Slice
+            // option); a zero border falls back to a plain uniform
+            // stretch of the whole sprite.
+            Image barImage = GetOrAddComponent<Image>(bar.gameObject);
+            barImage.sprite = assets.Background;
+            barImage.type = Image.Type.Sliced;
+            barImage.color = Color.white;
+            barImage.raycastTarget = false;
+
+            // Health/Cut/Speed are regions layered directly on the one
+            // shared bar (left/center/right thirds) instead of each
+            // owning a separate background plaque. Health renders as a live
+            // heart row (HealthHudPresenter) instead of an icon+text pair.
+            RectTransform healthRegion = ConfigureHealthRegion(
+                bar,
+                new Vector2(0.02f, 0f),
+                new Vector2(0.30f, 1f));
+            RectTransform cutRegion = ConfigureTopHudRegion(
+                bar,
+                "CutHUD",
+                new Vector2(0.32f, 0f),
+                new Vector2(0.68f, 1f),
+                null,
                 assets.Font,
-                "10x",
-                TopHudSidePanelWidth,
+                "CUT: 0/0",
+                40,
+                new Vector2(0.06f, 0.08f),
+                new Vector2(0.94f, 0.92f));
+            RectTransform speedRegion = ConfigureTopHudRegion(
+                bar,
+                "SpeedHUD",
+                new Vector2(0.70f, 0f),
+                new Vector2(0.98f, 1f),
+                assets.SpeedIcon,
+                assets.Font,
+                "0.0",
                 44,
-                new Vector2(0.31f, 0.12f),
-                new Vector2(0.84f, 0.88f));
-            healthSpacer.SetSiblingIndex(0);
-            healthPanel.SetSiblingIndex(1);
+                new Vector2(0.34f, 0.12f),
+                new Vector2(0.94f, 0.88f));
+            // Hand-tuned to make room for the speedometer icon: a slightly
+            // smaller, differently placed icon and a right-anchored,
+            // fixed-size value label instead of the generic stretch layout
+            // ConfigureTopHudRegion just applied above. Re-applied every
+            // pass so it survives a re-run instead of only living in the
+            // Editor's last save.
+            RectTransform speedIconRect = speedRegion.Find("Icon")
+                as RectTransform;
+            if (speedIconRect != null)
+            {
+                speedIconRect.anchorMin = new Vector2(0.5f, 0.5f);
+                speedIconRect.anchorMax = new Vector2(0.5f, 0.5f);
+                speedIconRect.pivot = new Vector2(0.5f, 0.5f);
+                speedIconRect.localScale = new Vector3(0.9f, 0.9f, 1f);
+                speedIconRect.anchoredPosition = new Vector2(0f, 5f);
+            }
 
-            RectTransform scoreSpacer = ConfigureTopHudSpacer(
-                scoreColumn,
-                "TopSpacer");
-            RectTransform scorePanel = ConfigureTopHudPanel(
-                scoreColumn,
-                "ScoreHUD",
-                assets.Score,
-                assets.Font,
-                "4200",
-                TopHudScorePanelWidth,
-                52,
-                new Vector2(0.10f, 0.08f),
-                new Vector2(0.90f, 0.92f));
-            scoreSpacer.SetSiblingIndex(0);
-            scorePanel.SetSiblingIndex(1);
+            RectTransform speedValueRect = speedRegion.Find("ValueText")
+                as RectTransform;
+            if (speedValueRect != null)
+            {
+                speedValueRect.anchorMin = new Vector2(1f, 0.12f);
+                speedValueRect.anchorMax = new Vector2(1f, 0.88f);
+                speedValueRect.pivot = new Vector2(1f, 0.5f);
+                speedValueRect.sizeDelta = new Vector2(159f, 10f);
+                speedValueRect.anchoredPosition = new Vector2(20f, 5f);
+            }
+
+            healthRegion.SetSiblingIndex(0);
+            cutRegion.SetSiblingIndex(1);
+            speedRegion.SetSiblingIndex(2);
 
             RectTransform settingsSlot = ConfigureSettingsSlot(
-                coinColumn,
+                hudRow,
                 assets.Settings);
-            RectTransform coinSpacer = ConfigureTopHudSpacer(
-                coinColumn,
-                "PanelSpacer");
-            RectTransform coinPanel = ConfigureTopHudPanel(
-                coinColumn,
-                "CoinHUD",
-                assets.Coin,
-                assets.Font,
-                "10x",
-                TopHudSidePanelWidth,
-                44,
-                new Vector2(0.31f, 0.12f),
-                new Vector2(0.84f, 0.88f));
-            settingsSlot.SetSiblingIndex(0);
-            coinSpacer.SetSiblingIndex(1);
-            coinPanel.SetSiblingIndex(2);
+            settingsSlot.SetSiblingIndex(1);
+            bar.SetSiblingIndex(0);
 
             EditorUtility.SetDirty(rowLayout);
             EditorUtility.SetDirty(row);
+            EditorUtility.SetDirty(barLayout);
+            EditorUtility.SetDirty(barImage);
             EditorUtility.SetDirty(hudRow.gameObject);
             EditorUtility.SetDirty(topHud.gameObject);
         }
 
-        private static RectTransform ConfigureTopHudColumn(
-            Transform parent,
-            string name,
-            float width)
+        // The live heart row itself (HealthHudPresenter, wired by
+        // GameplayProgressionSetup) is a runtime concern -- this only
+        // prepares the named "HeartRow" container it populates, and clears
+        // out the old icon+text pair a previous setup pass may have left
+        // behind here.
+        private static RectTransform ConfigureHealthRegion(
+            RectTransform bar,
+            Vector2 anchorMin,
+            Vector2 anchorMax)
         {
-            RectTransform column = GetOrCreateUiChild(parent, name);
-            column.gameObject.SetActive(true);
-            LayoutElement layout = GetOrAddComponent<LayoutElement>(
-                column.gameObject);
-            layout.minWidth = width;
-            layout.preferredWidth = width;
-            layout.flexibleWidth = 0f;
-            layout.minHeight = 133f;
-            layout.preferredHeight = 133f;
-            layout.flexibleHeight = 0f;
+            RectTransform region = GetOrCreateUiChild(bar, "HealthHUD");
+            region.gameObject.SetActive(true);
+            region.anchorMin = anchorMin;
+            region.anchorMax = anchorMax;
+            region.pivot = new Vector2(0.5f, 0.5f);
+            region.offsetMin = Vector2.zero;
+            region.offsetMax = Vector2.zero;
 
-            VerticalLayoutGroup stack =
-                GetOrAddComponent<VerticalLayoutGroup>(column.gameObject);
-            stack.padding = new RectOffset(0, 0, 0, 0);
-            stack.spacing = 0f;
-            stack.childAlignment = TextAnchor.LowerCenter;
-            stack.childControlWidth = true;
-            stack.childControlHeight = true;
-            stack.childForceExpandWidth = false;
-            stack.childForceExpandHeight = false;
+            string[] staleNames = { "Icon", "ValueText", "ShadowText" };
+            for (int index = 0; index < staleNames.Length; index++)
+            {
+                Transform stale = region.Find(staleNames[index]);
+                if (stale != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(stale.gameObject);
+                }
+            }
+
+            RectTransform heartRow = GetOrCreateUiChild(region, "HeartRow");
+            StretchToParent(heartRow);
+            HorizontalLayoutGroup layout = GetOrAddComponent<HorizontalLayoutGroup>(
+                heartRow.gameObject);
+            layout.childAlignment = TextAnchor.MiddleLeft;
+            layout.spacing = 4f;
+            // Hand-tuned left inset so the hearts don't hug the bar's left
+            // edge -- re-applied every pass so it survives a re-run.
+            layout.padding = new RectOffset(30, 0, 0, 0);
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
             EditorUtility.SetDirty(layout);
-            EditorUtility.SetDirty(stack);
-            return column;
+            return region;
         }
 
-        private static RectTransform ConfigureTopHudSpacer(
-            Transform parent,
-            string name)
-        {
-            RectTransform spacer = GetOrCreateUiChild(parent, name);
-            spacer.gameObject.SetActive(true);
-            LayoutElement layout = GetOrAddComponent<LayoutElement>(
-                spacer.gameObject);
-            layout.minWidth = 0f;
-            layout.preferredWidth = 0f;
-            layout.flexibleWidth = 0f;
-            layout.minHeight = 0f;
-            layout.preferredHeight = 0f;
-            layout.flexibleHeight = 1f;
-            EditorUtility.SetDirty(layout);
-            return spacer;
-        }
-
-        private static RectTransform ConfigureTopHudPanel(
-            Transform parent,
+        private static RectTransform ConfigureTopHudRegion(
+            RectTransform bar,
             string name,
-            Sprite sprite,
+            Vector2 anchorMin,
+            Vector2 anchorMax,
+            Sprite iconSprite,
             TMP_FontAsset font,
             string value,
-            float width,
             int fontSize,
             Vector2 textAnchorMinimum,
             Vector2 textAnchorMaximum)
         {
-            RectTransform panel = GetOrCreateUiChild(parent, name);
-            panel.gameObject.SetActive(true);
-            float height = width * sprite.rect.height / sprite.rect.width;
-            LayoutElement layout = GetOrAddComponent<LayoutElement>(
-                panel.gameObject);
-            layout.minWidth = width;
-            layout.preferredWidth = width;
-            layout.flexibleWidth = 0f;
-            layout.minHeight = height;
-            layout.preferredHeight = height;
-            layout.flexibleHeight = 0f;
+            RectTransform region = GetOrCreateUiChild(bar, name);
+            region.gameObject.SetActive(true);
+            region.anchorMin = anchorMin;
+            region.anchorMax = anchorMax;
+            region.pivot = new Vector2(0.5f, 0.5f);
+            region.offsetMin = Vector2.zero;
+            region.offsetMax = Vector2.zero;
 
-            Image image = GetOrAddComponent<Image>(panel.gameObject);
-            image.sprite = sprite;
-            image.type = Image.Type.Simple;
-            image.color = Color.white;
-            image.preserveAspect = true;
-            image.raycastTarget = false;
+            if (iconSprite != null)
+            {
+                RectTransform iconRect = GetOrCreateUiChild(region, "Icon");
+                iconRect.gameObject.SetActive(true);
+                float iconSize = TopHudBarHeight * TopHudIconSizeMultiplier;
+                iconRect.anchorMin = new Vector2(0f, 0.5f);
+                iconRect.anchorMax = new Vector2(0f, 0.5f);
+                iconRect.pivot = new Vector2(0f, 0.5f);
+                iconRect.anchoredPosition = new Vector2(
+                    TopHudBarHeight * 0.06f,
+                    0f);
+                iconRect.sizeDelta = new Vector2(iconSize, iconSize);
+                Image iconImage = GetOrAddComponent<Image>(iconRect.gameObject);
+                iconImage.sprite = iconSprite;
+                iconImage.type = Image.Type.Simple;
+                iconImage.color = Color.white;
+                iconImage.preserveAspect = true;
+                iconImage.raycastTarget = false;
+                iconRect.SetSiblingIndex(0);
+                EditorUtility.SetDirty(iconImage);
+            }
+            else
+            {
+                Transform staleIcon = region.Find("Icon");
+                if (staleIcon != null)
+                {
+                    staleIcon.gameObject.SetActive(false);
+                    EditorUtility.SetDirty(staleIcon.gameObject);
+                }
+            }
 
-            RectTransform shadowRect = GetOrCreateUiChild(
-                panel,
-                "ShadowText");
-            TextMeshProUGUI shadowText = ConfigureTopHudTextLayer(
-                shadowRect,
-                font,
-                value,
-                fontSize,
-                Color.white,
-                textAnchorMinimum,
-                textAnchorMaximum,
-                new Vector2(2f, -2f));
-            RectTransform textRect = GetOrCreateUiChild(panel, "ValueText");
+            // No shadow copy anymore -- the owner removed it by hand for a
+            // flatter look; keep this idempotent-clean rather than
+            // recreating it if an older scene still has one.
+            Transform staleShadow = region.Find("ShadowText");
+            if (staleShadow != null)
+            {
+                UnityEngine.Object.DestroyImmediate(staleShadow.gameObject);
+            }
+
+            RectTransform textRect = GetOrCreateUiChild(region, "ValueText");
             TextMeshProUGUI text = ConfigureTopHudTextLayer(
                 textRect,
                 font,
@@ -1500,14 +1826,10 @@ namespace Cutrium.Editor.Setup
                 textAnchorMinimum,
                 textAnchorMaximum,
                 Vector2.zero);
-            shadowRect.SetSiblingIndex(0);
-            textRect.SetSiblingIndex(1);
+            textRect.SetSiblingIndex(iconSprite != null ? 1 : 0);
 
-            EditorUtility.SetDirty(layout);
-            EditorUtility.SetDirty(image);
-            EditorUtility.SetDirty(shadowText);
             EditorUtility.SetDirty(text);
-            return panel;
+            return region;
         }
 
         private static TextMeshProUGUI ConfigureTopHudTextLayer(
@@ -1557,44 +1879,30 @@ namespace Cutrium.Editor.Setup
         }
 
         private static RectTransform ConfigureSettingsSlot(
-            Transform coinColumn,
+            RectTransform hudRow,
             Sprite settingsSprite)
         {
-            RectTransform slot = GetOrCreateUiChild(
-                coinColumn,
-                "SettingsSlot");
+            RectTransform slot = GetOrCreateUiChild(hudRow, "SettingsSlot");
             slot.gameObject.SetActive(true);
+            slot.anchorMin = new Vector2(1f, 1f);
+            slot.anchorMax = new Vector2(1f, 1f);
+            slot.pivot = new Vector2(1f, 1f);
+            slot.anchoredPosition = new Vector2(-8f, 0f);
+            slot.sizeDelta = new Vector2(TopHudSettingsSize, TopHudSettingsSize);
+            // ignoreLayout: sits above TopHudBar in the space hudRow's own
+            // bottom-aligned row leaves free, instead of competing with
+            // the bar for a HorizontalLayoutGroup column of its own.
             LayoutElement slotLayout = GetOrAddComponent<LayoutElement>(
                 slot.gameObject);
-            slotLayout.minWidth = TopHudSidePanelWidth;
-            slotLayout.preferredWidth = TopHudSidePanelWidth;
-            slotLayout.flexibleWidth = 0f;
-            slotLayout.minHeight = TopHudSettingsSize;
-            slotLayout.preferredHeight = TopHudSettingsSize;
-            slotLayout.flexibleHeight = 0f;
+            slotLayout.ignoreLayout = true;
 
-            HorizontalLayoutGroup row =
-                GetOrAddComponent<HorizontalLayoutGroup>(slot.gameObject);
-            row.padding = new RectOffset(0, 8, 0, 0);
-            row.spacing = 0f;
-            row.childAlignment = TextAnchor.MiddleRight;
-            row.childControlWidth = true;
-            row.childControlHeight = true;
-            row.childForceExpandWidth = false;
-            row.childForceExpandHeight = false;
-
-            RectTransform buttonRect = GetOrCreateUiChild(
-                slot,
-                "SettingsButton");
+            RectTransform buttonRect = GetOrCreateUiChild(slot, "SettingsButton");
             buttonRect.gameObject.SetActive(true);
-            LayoutElement buttonLayout = GetOrAddComponent<LayoutElement>(
-                buttonRect.gameObject);
-            buttonLayout.minWidth = TopHudSettingsSize;
-            buttonLayout.preferredWidth = TopHudSettingsSize;
-            buttonLayout.flexibleWidth = 0f;
-            buttonLayout.minHeight = TopHudSettingsSize;
-            buttonLayout.preferredHeight = TopHudSettingsSize;
-            buttonLayout.flexibleHeight = 0f;
+            buttonRect.anchorMin = Vector2.zero;
+            buttonRect.anchorMax = Vector2.one;
+            buttonRect.pivot = new Vector2(0.5f, 0.5f);
+            buttonRect.offsetMin = Vector2.zero;
+            buttonRect.offsetMax = Vector2.zero;
 
             Image image = GetOrAddComponent<Image>(buttonRect.gameObject);
             image.sprite = settingsSprite;
@@ -1611,18 +1919,89 @@ namespace Cutrium.Editor.Setup
             button.navigation = navigation;
 
             EditorUtility.SetDirty(slotLayout);
-            EditorUtility.SetDirty(row);
-            EditorUtility.SetDirty(buttonLayout);
             EditorUtility.SetDirty(image);
             EditorUtility.SetDirty(button);
             return slot;
+        }
+
+        private static void ConfigureResponsiveGameplayBands(
+            Transform safeArea)
+        {
+            VerticalLayoutGroup safeLayout =
+                GetOrAddComponent<VerticalLayoutGroup>(safeArea.gameObject);
+            safeLayout.padding = new RectOffset(
+                SafeAreaHorizontalPadding,
+                SafeAreaHorizontalPadding,
+                SafeAreaVerticalPadding,
+                SafeAreaVerticalPadding);
+            safeLayout.spacing = SafeAreaSectionSpacing;
+            safeLayout.childAlignment = TextAnchor.UpperCenter;
+            safeLayout.childControlWidth = true;
+            safeLayout.childControlHeight = true;
+            safeLayout.childForceExpandWidth = true;
+            safeLayout.childForceExpandHeight = false;
+
+            Transform topHud = RequireChild(safeArea, "TopHUD");
+            LayoutElement topLayout = GetOrAddComponent<LayoutElement>(
+                topHud.gameObject);
+            topLayout.minHeight = TopHudMinimumHeight;
+            topLayout.preferredHeight = TopHudPreferredHeight;
+            topLayout.flexibleHeight = 0f;
+
+            Transform boardStage = RequireChild(safeArea, "BoardStage");
+            LayoutElement stageLayout = GetOrAddComponent<LayoutElement>(
+                boardStage.gameObject);
+            stageLayout.minHeight = 320f;
+            stageLayout.preferredHeight = 0f;
+            stageLayout.flexibleHeight = 1f;
+
+            Transform bottomHud = RequireChild(safeArea, "BottomHUD");
+            LayoutElement bottomLayout = GetOrAddComponent<LayoutElement>(
+                bottomHud.gameObject);
+            bottomLayout.minHeight = BottomHudMinimumHeight;
+            bottomLayout.preferredHeight = BottomHudPreferredHeight;
+            bottomLayout.flexibleHeight = 0f;
+
+            VerticalLayoutGroup bottomColumn =
+                GetOrAddComponent<VerticalLayoutGroup>(bottomHud.gameObject);
+            bottomColumn.padding = new RectOffset(
+                BottomHudPadding,
+                BottomHudPadding,
+                BottomHudPadding,
+                BottomHudPadding);
+            bottomColumn.spacing = 0f;
+            bottomColumn.childAlignment = TextAnchor.MiddleCenter;
+            bottomColumn.childControlWidth = true;
+            bottomColumn.childControlHeight = true;
+            bottomColumn.childForceExpandWidth = false;
+            bottomColumn.childForceExpandHeight = false;
+
+            Transform failureOverlay = safeArea.Find(
+                "CutLimitFailureOverlay");
+            LayoutElement failureLayout = null;
+            if (failureOverlay != null)
+            {
+                failureLayout = GetOrAddComponent<LayoutElement>(
+                    failureOverlay.gameObject);
+                failureLayout.ignoreLayout = true;
+                StretchToParent((RectTransform)failureOverlay);
+            }
+
+            EditorUtility.SetDirty(safeLayout);
+            EditorUtility.SetDirty(topLayout);
+            EditorUtility.SetDirty(stageLayout);
+            EditorUtility.SetDirty(bottomLayout);
+            EditorUtility.SetDirty(bottomColumn);
+            if (failureLayout != null)
+            {
+                EditorUtility.SetDirty(failureLayout);
+            }
         }
 
         private static void ConfigureMinimalBottomHud(
             GameObject root,
             Transform safeArea,
             FirstPlayableController controller,
-            RectTransform boardFrame,
             ProgressSprites sprites,
             out SandProgressPresenter presenter,
             out RectTransform fillStartTarget)
@@ -1631,8 +2010,8 @@ namespace Cutrium.Editor.Setup
             bottomHud.gameObject.SetActive(true);
 
             LayoutElement bottomLayout = bottomHud.GetComponent<LayoutElement>();
-            bottomLayout.minHeight = 94f;
-            bottomLayout.preferredHeight = 98f;
+            bottomLayout.minHeight = BottomHudMinimumHeight;
+            bottomLayout.preferredHeight = BottomHudPreferredHeight;
             bottomLayout.flexibleHeight = 0f;
             EditorUtility.SetDirty(bottomLayout);
 
@@ -1640,7 +2019,11 @@ namespace Cutrium.Editor.Setup
                 bottomHud.GetComponent<VerticalLayoutGroup>();
             if (bottomColumn != null)
             {
-                bottomColumn.padding = new RectOffset(4, 4, 4, 4);
+                bottomColumn.padding = new RectOffset(
+                    BottomHudPadding,
+                    BottomHudPadding,
+                    BottomHudPadding,
+                    BottomHudPadding);
                 bottomColumn.spacing = 0f;
                 bottomColumn.childAlignment = TextAnchor.MiddleCenter;
                 EditorUtility.SetDirty(bottomColumn);
@@ -1657,27 +2040,89 @@ namespace Cutrium.Editor.Setup
             HideRow(bottomHud, "PointerStatus");
             HideRow(bottomHud, "MappingStatus");
 
-            RectTransform progressRect = GetOrCreateUiChild(
+            // The Cut counter now lives inside the TopHUD Cut panel (see
+            // GameplayProgressionSetup.ConfigureIdentityHud); an earlier
+            // presentation pass left a "CutLimitCounter" text element as a
+            // direct BottomHUD child, which Milestone2SceneSetup's baseline
+            // validation rejects (every BottomHUD child must carry an
+            // explicit non-flexible LayoutElement). Discard it outright
+            // rather than just hiding it, matching how ConfigureLandmarkLayer
+            // already discards other legacy layouts from earlier passes.
+            DestroyLegacyChild(bottomHud, "CutLimitCounter");
+
+            // An earlier presentation pass parented "ProgressBar" directly
+            // under BottomHUD; it now lives under BottomHudRow/ProgressSlot
+            // instead. Discard the old direct child outright so it doesn't
+            // leave a second, orphaned SandProgressPresenter behind.
+            DestroyLegacyChild(bottomHud, "ProgressBar");
+
+            // BottomHudRow is the single visible row in BottomHUD's vertical
+            // flow, split into a left ProgressSlot and a right SkillRow at
+            // equal (50/50) width via HorizontalLayoutGroup flexible
+            // weights -- not fixed pixel widths, so the split stays even
+            // across phone/tablet aspect ratios.
+            RectTransform bottomRow = GetOrCreateUiChild(
                 bottomHud,
+                "BottomHudRow");
+            bottomRow.gameObject.SetActive(true);
+            bottomRow.SetAsFirstSibling();
+            // A fixed (non-flexible) height, mirroring GameplayHudRow in
+            // TopHUD: BottomHUD's own VerticalLayoutGroup does not force-
+            // expand child height, and Milestone2SceneSetup's baseline
+            // validation requires every direct BottomHUD child to carry an
+            // explicit non-flexible LayoutElement.
+            float bottomRowHeight = Mathf.Max(
+                0f,
+                BottomHudPreferredHeight - (BottomHudPadding * 2f));
+            LayoutElement bottomRowLayout = GetOrAddComponent<LayoutElement>(
+                bottomRow.gameObject);
+            bottomRowLayout.minWidth = 0f;
+            bottomRowLayout.preferredWidth = 0f;
+            bottomRowLayout.flexibleWidth = 1f;
+            bottomRowLayout.minHeight = bottomRowHeight;
+            bottomRowLayout.preferredHeight = bottomRowHeight;
+            bottomRowLayout.flexibleHeight = 0f;
+
+            HorizontalLayoutGroup bottomRowGroup =
+                GetOrAddComponent<HorizontalLayoutGroup>(bottomRow.gameObject);
+            bottomRowGroup.padding = new RectOffset(0, 0, 0, 0);
+            bottomRowGroup.spacing = 16f;
+            bottomRowGroup.childAlignment = TextAnchor.MiddleCenter;
+            bottomRowGroup.childControlWidth = true;
+            bottomRowGroup.childControlHeight = true;
+            bottomRowGroup.childForceExpandWidth = true;
+            bottomRowGroup.childForceExpandHeight = true;
+
+            RectTransform progressSlot = GetOrCreateUiChild(
+                bottomRow,
+                "ProgressSlot");
+            progressSlot.gameObject.SetActive(true);
+            progressSlot.SetSiblingIndex(0);
+            LayoutElement progressSlotLayout = GetOrAddComponent<LayoutElement>(
+                progressSlot.gameObject);
+            progressSlotLayout.minWidth = 0f;
+            progressSlotLayout.preferredWidth = 0f;
+            progressSlotLayout.flexibleWidth = 1f;
+            progressSlotLayout.minHeight = 0f;
+            progressSlotLayout.preferredHeight = 0f;
+            progressSlotLayout.flexibleHeight = 1f;
+
+            RectTransform skillRow = GetOrCreateUiChild(bottomRow, "SkillRow");
+            skillRow.gameObject.SetActive(true);
+            skillRow.SetSiblingIndex(1);
+            LayoutElement skillRowLayout = GetOrAddComponent<LayoutElement>(
+                skillRow.gameObject);
+            skillRowLayout.minWidth = 0f;
+            skillRowLayout.preferredWidth = 0f;
+            skillRowLayout.flexibleWidth = 1f;
+            skillRowLayout.minHeight = 0f;
+            skillRowLayout.preferredHeight = 0f;
+            skillRowLayout.flexibleHeight = 1f;
+
+            RectTransform progressRect = GetOrCreateUiChild(
+                progressSlot,
                 "ProgressBar");
             progressRect.gameObject.SetActive(true);
-            progressRect.SetAsFirstSibling();
-            progressRect.anchorMin = new Vector2(0.5f, 0.5f);
-            progressRect.anchorMax = new Vector2(0.5f, 0.5f);
-            progressRect.pivot = new Vector2(0.5f, 0.5f);
-            progressRect.anchoredPosition = Vector2.zero;
-            progressRect.sizeDelta = new Vector2(720f, 76f);
-
-            LayoutElement progressLayout = GetOrAddComponent<LayoutElement>(
-                progressRect.gameObject);
-            progressLayout.ignoreLayout = true;
-            progressLayout.minWidth = 280f;
-            progressLayout.preferredWidth = 720f;
-            progressLayout.minHeight = 72f;
-            progressLayout.preferredHeight = 88f;
-            progressLayout.flexibleWidth = 0f;
-            progressLayout.flexibleHeight = 0f;
-            EditorUtility.SetDirty(progressLayout);
 
             // A transparent Graphic makes the whole bar/text footprint a UI
             // raycast target. This protects the gesture layer even though the
@@ -1694,7 +2139,7 @@ namespace Cutrium.Editor.Setup
             Image backgroundImage = GetOrAddComponent<Image>(
                 backgroundRect.gameObject);
             backgroundImage.sprite = sprites.Background;
-            backgroundImage.type = Image.Type.Simple;
+            backgroundImage.type = Image.Type.Sliced;
             backgroundImage.color = Color.white;
             backgroundImage.raycastTarget = false;
             backgroundRect.SetSiblingIndex(0);
@@ -1711,11 +2156,15 @@ namespace Cutrium.Editor.Setup
             RectTransform fillRect = GetOrCreateUiChild(fillMaskRect, "Fill");
             Image fillImage = GetOrAddComponent<Image>(fillRect.gameObject);
             fillImage.sprite = sprites.Fill;
-            fillImage.type = Image.Type.Simple;
+            fillImage.type = Image.Type.Sliced;
             fillImage.color = Color.white;
             fillImage.raycastTarget = false;
             fillRect.SetSiblingIndex(0);
 
+            // No visible star anymore -- FillStartTarget is still the sand
+            // grains' flight destination (LandmarkRevealPresenter reads it
+            // by reference), it just marks the fill's leading inner edge
+            // with no artwork of its own now.
             fillStartTarget = GetOrCreateUiChild(
                 fillMaskRect,
                 "FillStartTarget");
@@ -1725,27 +2174,13 @@ namespace Cutrium.Editor.Setup
             fillStartTarget.anchoredPosition = Vector2.zero;
             fillStartTarget.sizeDelta = Vector2.zero;
 
-            RectTransform frameRect = GetOrCreateUiChild(
-                progressRect,
-                "Frame");
-            Image frameImage = GetOrAddComponent<Image>(frameRect.gameObject);
-            frameImage.sprite = sprites.Frame;
-            frameImage.type = Image.Type.Simple;
-            frameImage.color = Color.white;
-            frameImage.raycastTarget = false;
-            frameRect.SetSiblingIndex(2);
-
-            Image startStarImage = ConfigureProgressStartStar(
-                progressRect,
-                sprites.StartStar);
-
             RectTransform textRect = GetOrCreateUiChild(
                 progressRect,
                 "ProgressText");
             Text progressText = ConfigureText(
                 textRect,
                 "0% / 0%",
-                20,
+                27,
                 TextAnchor.MiddleCenter,
                 new Color(0.98f, 0.94f, 0.84f, 1f));
             progressText.fontStyle = FontStyle.Bold;
@@ -1756,54 +2191,211 @@ namespace Cutrium.Editor.Setup
                 progressRect.gameObject);
             presenter.Configure(
                 controller,
-                boardFrame,
                 progressRect,
                 backgroundImage,
                 fillMaskRect,
                 fillImage,
-                frameImage,
                 progressText,
-                fillStartTarget,
-                startStarImage);
+                fillStartTarget);
             presenter.ConfigureAnimationForSetup(
                 animationSeconds: 0.48f,
-                arrivalFallbackSeconds: 0.85f,
-                boardWidthFraction: 0.86f);
+                arrivalFallbackSeconds: 0.85f);
 
+            EditorUtility.SetDirty(bottomRowLayout);
+            EditorUtility.SetDirty(bottomRowGroup);
+            EditorUtility.SetDirty(progressSlotLayout);
+            EditorUtility.SetDirty(skillRowLayout);
             EditorUtility.SetDirty(backgroundImage);
             EditorUtility.SetDirty(fillMask);
             EditorUtility.SetDirty(fillImage);
-            EditorUtility.SetDirty(frameImage);
-            EditorUtility.SetDirty(startStarImage);
             EditorUtility.SetDirty(progressText);
             EditorUtility.SetDirty(presenter);
         }
 
-        private static Image ConfigureProgressStartStar(
-            RectTransform progressRect,
-            Sprite starSprite)
+        // SkillRow owns its own Freeze/Instant/Mock GameObjects outright --
+        // it does NOT reparent Milestone6SceneSetup's PowerControls buttons
+        // (an earlier version did, but that made re-running this pass
+        // non-idempotent: PowerControls' own GetOrCreateUiChild lookup no
+        // longer found the moved-away button on the next run, so
+        // Milestone6SceneSetup created a fresh duplicate pair every time,
+        // and the old pair was never removed from SkillRow -- multiple
+        // Apply() runs visibly multiplied the skill icons). Milestone6's
+        // PowerControls buttons stay where they are (inert, inactive,
+        // harmless) purely so that setup remains usable standalone; this
+        // method builds/reuses its own named children of SkillRow and
+        // clears any stray leftovers first so a scene that already picked
+        // up duplicates from the old behavior self-heals on the next run.
+        private static void ConfigureBottomHudSkillRow(
+            Transform safeArea,
+            FirstPlayableController controller,
+            PowerHudPresenter presenter,
+            SkillAssets skillAssets)
         {
-            RectTransform starRect = GetOrCreateUiChild(
-                progressRect,
-                "StartStar");
-            Image starImage = GetOrAddComponent<Image>(starRect.gameObject);
-            starImage.sprite = starSprite;
-            starImage.type = Image.Type.Simple;
-            starImage.color = Color.white;
-            starImage.preserveAspect = true;
-            starImage.raycastTarget = false;
-
-            Transform progressText = progressRect.Find("ProgressText");
-            if (progressText != null)
+            if (presenter == null)
             {
-                starRect.SetSiblingIndex(progressText.GetSiblingIndex());
-            }
-            else
-            {
-                starRect.SetAsLastSibling();
+                throw new InvalidOperationException(
+                    "Bottom HUD skill row requires a PowerHudPresenter " +
+                    "created by Milestone 6 setup.");
             }
 
-            return starImage;
+            Transform bottomHud = RequireChild(safeArea, "BottomHUD");
+            Transform bottomRow = RequireChild(bottomHud, "BottomHudRow");
+            RectTransform skillRow =
+                (RectTransform)RequireChild(bottomRow, "SkillRow");
+
+            // Discard every existing child unconditionally, not just ones
+            // with an unexpected name -- a scene that already picked up
+            // same-named duplicates from the old reparenting behavior would
+            // otherwise keep all of them, since each individual name still
+            // matches one of the three expected slots. The three slots
+            // below are rebuilt fresh immediately after.
+            for (int index = skillRow.childCount - 1; index >= 0; index--)
+            {
+                UnityEngine.Object.DestroyImmediate(
+                    skillRow.GetChild(index).gameObject);
+            }
+
+            // Right-aligned with a right inset so the last skill's edge
+            // lands at SkillRow's own right edge (mirroring the progress
+            // bar's flush-left placement on the other BottomHudRow half)
+            // instead of the three icons floating small and centered with
+            // unused space on both sides.
+            HorizontalLayoutGroup skillLayout =
+                GetOrAddComponent<HorizontalLayoutGroup>(skillRow.gameObject);
+            skillLayout.padding = new RectOffset(
+                0,
+                (int)SkillRowRightInset,
+                0,
+                0);
+            skillLayout.spacing = 14f;
+            skillLayout.childAlignment = TextAnchor.MiddleRight;
+            skillLayout.childControlWidth = true;
+            skillLayout.childControlHeight = true;
+            skillLayout.childForceExpandWidth = false;
+            skillLayout.childForceExpandHeight = false;
+
+            RectTransform freezeRoot = GetOrCreateUiChild(
+                skillRow,
+                "FreezePulseButton");
+            freezeRoot.gameObject.SetActive(true);
+            Button freezeButton = GetOrAddComponent<Button>(
+                freezeRoot.gameObject);
+            Text freezeCharges = GetOrCreateSkillBadgeText(freezeRoot);
+            ConfigureSkillSlot(
+                skillRow,
+                freezeRoot,
+                skillAssets.Freeze,
+                freezeButton,
+                freezeCharges);
+            freezeRoot.SetSiblingIndex(0);
+
+            RectTransform instantRoot = GetOrCreateUiChild(
+                skillRow,
+                "InstantBarrierButton");
+            instantRoot.gameObject.SetActive(true);
+            Button instantButton = GetOrAddComponent<Button>(
+                instantRoot.gameObject);
+            Text instantCharges = GetOrCreateSkillBadgeText(instantRoot);
+            ConfigureSkillSlot(
+                skillRow,
+                instantRoot,
+                skillAssets.Instant,
+                instantButton,
+                instantCharges);
+            instantRoot.SetSiblingIndex(1);
+
+            RectTransform mockRoot = GetOrCreateUiChild(skillRow, "MockSkillButton");
+            mockRoot.gameObject.SetActive(true);
+            Button mockButton = GetOrAddComponent<Button>(mockRoot.gameObject);
+            mockButton.interactable = false;
+            Text mockCharges = GetOrCreateSkillBadgeText(mockRoot);
+            ConfigureSkillSlot(
+                skillRow,
+                mockRoot,
+                skillAssets.Mock,
+                mockButton,
+                mockCharges);
+            mockRoot.SetSiblingIndex(2);
+
+            presenter.Configure(
+                controller,
+                freezeRoot.gameObject,
+                freezeButton,
+                freezeCharges,
+                instantRoot.gameObject,
+                instantButton,
+                instantCharges);
+
+            EditorUtility.SetDirty(skillLayout);
+            EditorUtility.SetDirty(mockButton);
+            EditorUtility.SetDirty(presenter);
+        }
+
+        private static void ConfigureSkillSlot(
+            RectTransform skillRow,
+            RectTransform slotRoot,
+            Sprite sprite,
+            Button button,
+            Text chargesText)
+        {
+            slotRoot.SetParent(skillRow, false);
+            LayoutElement layout = GetOrAddComponent<LayoutElement>(
+                slotRoot.gameObject);
+            layout.minWidth = SkillCellSize;
+            layout.preferredWidth = SkillCellSize;
+            layout.flexibleWidth = 0f;
+            layout.minHeight = SkillCellSize;
+            layout.preferredHeight = SkillCellSize;
+            layout.flexibleHeight = 0f;
+
+            Image image = GetOrAddComponent<Image>(slotRoot.gameObject);
+            image.sprite = sprite;
+            image.type = Image.Type.Simple;
+            image.color = Color.white;
+            image.preserveAspect = true;
+            if (button != null)
+            {
+                button.targetGraphic = image;
+            }
+
+            // Just the live count -- the skill artwork itself already
+            // draws a badge backing, so no separate chip Image is needed
+            // here (a prior pass added one; drop it if a scene still has
+            // it, matching this file's self-healing convention).
+            Transform staleBackground = slotRoot.Find("LabelBackground");
+            if (staleBackground != null)
+            {
+                UnityEngine.Object.DestroyImmediate(staleBackground.gameObject);
+            }
+
+            if (chargesText != null)
+            {
+                RectTransform chargesRect = chargesText.rectTransform;
+                chargesRect.anchorMin = new Vector2(1f, 0f);
+                chargesRect.anchorMax = new Vector2(1f, 0f);
+                chargesRect.pivot = new Vector2(1f, 0f);
+                chargesRect.sizeDelta = new Vector2(38f, 38f);
+                chargesRect.anchoredPosition = new Vector2(-2f, 2f);
+                chargesText.alignment = TextAnchor.MiddleCenter;
+                chargesText.fontSize = 26;
+                chargesRect.SetAsLastSibling();
+                EditorUtility.SetDirty(chargesText);
+            }
+
+            EditorUtility.SetDirty(layout);
+            EditorUtility.SetDirty(image);
+        }
+
+        private static Text GetOrCreateSkillBadgeText(RectTransform slotRoot)
+        {
+            RectTransform badgeRect = GetOrCreateUiChild(slotRoot, "Label");
+            Text badgeText = GetOrAddComponent<Text>(badgeRect.gameObject);
+            badgeText.font = LoadLegacyUiFontForSetup();
+            badgeText.fontStyle = FontStyle.Bold;
+            badgeText.color = Color.white;
+            badgeText.raycastTarget = false;
+            badgeText.text = string.Empty;
+            return badgeText;
         }
 
         private static void HideLegacyGameplayElement(
@@ -1818,6 +2410,20 @@ namespace Cutrium.Editor.Setup
 
             child.gameObject.SetActive(false);
             EditorUtility.SetDirty(child.gameObject);
+        }
+
+        // Unlike HideLegacyGameplayElement, this fully discards a direct
+        // child left behind by an earlier presentation-pass layout that has
+        // since been superseded -- used where merely deactivating it would
+        // still leave a stray duplicate component (e.g. a second
+        // SandProgressPresenter) or an unused extra layout-group child.
+        private static void DestroyLegacyChild(Transform parent, string childName)
+        {
+            Transform child = parent.Find(childName);
+            if (child != null)
+            {
+                UnityEngine.Object.DestroyImmediate(child.gameObject);
+            }
         }
 
         private static void RestyleHud(
@@ -2337,6 +2943,7 @@ namespace Cutrium.Editor.Setup
 
             LandmarkRevealPresenter landmarkPresenter = landmarkPresenters[0];
             ValidateBoardHierarchy(root);
+            ValidateGameplayBandVisualSeparation(root);
             if (themePresenter == null
                 || themePresenter.Current.BackgroundSprite != null
                 || themePresenter.Current.BackgroundColor != DarkBrownBackground
@@ -2381,12 +2988,13 @@ namespace Cutrium.Editor.Setup
                 || landmarkPresenter.CompletionTitleText == null
                 || landmarkPresenter.CompletionDescriptionText == null
                 || landmarkPresenter.CompletionSectorText == null
-                || landmarkPresenter.Landmarks.Count != 3)
+                || landmarkPresenter.Landmarks.Count
+                    != FirstTwelveGameplayProgression.LevelCount)
             {
                 throw new InvalidOperationException(
                     "LandmarkRevealPresenter has a missing or mismatched " +
-                    "serialized reference, or is not wired to exactly " +
-                    "three landmarks.");
+                    "serialized reference, or is not wired to the complete " +
+                    "first-twelve landmark catalog.");
             }
 
             for (int index = 0; index < landmarks.Length; index++)
@@ -2406,8 +3014,6 @@ namespace Cutrium.Editor.Setup
                 || progressPresenters[0].BackgroundImage == null
                 || progressPresenters[0].FillMaskRect == null
                 || progressPresenters[0].FillImage == null
-                || progressPresenters[0].FrameImage == null
-                || progressPresenters[0].StartStarImage == null
                 || progressPresenters[0].ProgressText == null
                 || progressPresenters[0].FillStartTarget == null
                 || !ReferenceEquals(
@@ -2424,29 +3030,14 @@ namespace Cutrium.Editor.Setup
             }
 
             if (AssetDatabase.GetAssetPath(
-                    progressPresenters[0].FrameImage.sprite) != ProgressFramePath
-                || AssetDatabase.GetAssetPath(
                     progressPresenters[0].BackgroundImage.sprite)
                     != ProgressBackgroundPath
                 || AssetDatabase.GetAssetPath(
-                    progressPresenters[0].FillImage.sprite) != ProgressFillPath
-                || AssetDatabase.GetAssetPath(
-                    progressPresenters[0].StartStarImage.sprite)
-                    != ProgressStartStarPath)
+                    progressPresenters[0].FillImage.sprite) != ProgressFillPath)
             {
                 throw new InvalidOperationException(
                     "The target-progress bar is not wired to its imported " +
-                    "progress UI assets and start star.");
-            }
-
-            if (Vector3.Distance(
-                    progressPresenters[0].StartStarImage.rectTransform
-                        .TransformPoint(Vector3.zero),
-                    progressPresenters[0].FillStartTarget
-                        .TransformPoint(Vector3.zero)) > 0.01f)
-            {
-                throw new InvalidOperationException(
-                    "The progress star center must match the sand target.");
+                    "progress UI assets.");
             }
 
             if (landmarkPresenter.Landmarks[0].LandmarkId != "galata-kulesi")
@@ -2507,7 +3098,10 @@ namespace Cutrium.Editor.Setup
             Transform topHud = RequireChild(safeArea, "TopHUD");
             ValidateGameplayTopHud(topHud);
 
-            Transform progressBar = RequireChild(bottomHud, "ProgressBar");
+            Transform bottomRow = RequireChild(bottomHud, "BottomHudRow");
+            Transform progressBar = RequireChild(
+                bottomRow,
+                "ProgressSlot/ProgressBar");
             if (!progressBar.gameObject.activeSelf
                 || progressBar.GetComponent<Image>() == null
                 || !progressBar.GetComponent<Image>().raycastTarget)
@@ -2520,8 +3114,10 @@ namespace Cutrium.Editor.Setup
             RequireChild(progressBar, "Background");
             RequireChild(progressBar, "FillMask/Fill");
             RequireChild(progressBar, "FillMask/FillStartTarget");
-            RequireChild(progressBar, "Frame");
             RequireChild(progressBar, "ProgressText");
+
+            ValidateBottomHudSkillRow(
+                (RectTransform)RequireChild(bottomRow, "SkillRow"));
 
             Transform retryButtonTransform = RequireChild(
                 bottomHud,
@@ -2600,22 +3196,36 @@ namespace Cutrium.Editor.Setup
                 }
             }
 
-            ValidateTopHudPanel(
-                RequireChild(hudRow, "HealthColumn/HealthHUD"),
-                HealthHudPath,
-                "10x");
-            ValidateTopHudPanel(
-                RequireChild(hudRow, "ScoreColumn/ScoreHUD"),
-                ScoreHudPath,
-                "4200");
-            ValidateTopHudPanel(
-                RequireChild(hudRow, "CoinColumn/CoinHUD"),
-                CoinHudPath,
-                "10x");
+            Transform bar = RequireChild(hudRow, "TopHudBar");
+            Image barImage = bar.GetComponent<Image>();
+            if (!bar.gameObject.activeSelf
+                || barImage == null
+                || AssetDatabase.GetAssetPath(barImage.sprite)
+                    != BigHudBackgroundPath
+                || barImage.type != Image.Type.Sliced)
+            {
+                throw new InvalidOperationException(
+                    "TopHudBar must be the single active, correctly " +
+                    "sprited full-width HUD background.");
+            }
+
+            ValidateHealthRegion(RequireChild(bar, "HealthHUD"));
+            ValidateTopHudRegion(
+                RequireChild(bar, "CutHUD"),
+                null,
+                null);
+            // Speed, like Cut, is dynamically owned by
+            // GameplayIdentityHudPresenter (the real per-level
+            // BarrierGrowthSpeed), so no fixed placeholder string holds
+            // once GameplayProgressionSetup wires it.
+            ValidateTopHudRegion(
+                RequireChild(bar, "SpeedHUD"),
+                null,
+                SpeedIconPath);
 
             Transform settings = RequireChild(
                 hudRow,
-                "CoinColumn/SettingsSlot/SettingsButton");
+                "SettingsSlot/SettingsButton");
             Image settingsImage = settings.GetComponent<Image>();
             Button settingsButton = settings.GetComponent<Button>();
             if (!settings.gameObject.activeSelf
@@ -2627,40 +3237,109 @@ namespace Cutrium.Editor.Setup
             {
                 throw new InvalidOperationException(
                     "The settings artwork must remain a visible, inactive " +
-                    "future-control placeholder above CoinHUD.");
+                    "future-control placeholder above the HUD bar.");
             }
         }
 
-        private static void ValidateTopHudPanel(
-            Transform panel,
-            string expectedSpritePath,
-            string expectedValue)
+        // Health no longer has a fixed placeholder to compare against --
+        // HealthHudPresenter rebuilds a variable number of hearts per level
+        // at runtime -- so this only checks the row container itself is
+        // wired for that (an active HorizontalLayoutGroup, no leftover
+        // icon+text pair from the pre-heart-row layout).
+        private static void ValidateHealthRegion(Transform region)
         {
-            Image image = panel.GetComponent<Image>();
-            TextMeshProUGUI text = RequireChild(panel, "ValueText")
-                .GetComponent<TextMeshProUGUI>();
-            TextMeshProUGUI shadow = RequireChild(panel, "ShadowText")
-                .GetComponent<TextMeshProUGUI>();
-            if (!panel.gameObject.activeSelf
-                || image == null
-                || AssetDatabase.GetAssetPath(image.sprite)
-                    != expectedSpritePath
-                || !image.preserveAspect
-                || text == null
-                || text.text != expectedValue
-                || AssetDatabase.GetAssetPath(text.font) != TopHudFontPath
-                || text.alignment != TextAlignmentOptions.Center
-                || text.color != TopHudTextBrown
-                || shadow == null
-                || shadow.text != expectedValue
-                || shadow.font != text.font
-                || shadow.color != Color.white
-                || shadow.rectTransform.anchoredPosition
-                    != new Vector2(2f, -2f))
+            Transform heartRow = RequireChild(region, "HeartRow");
+            HorizontalLayoutGroup layout =
+                heartRow.GetComponent<HorizontalLayoutGroup>();
+            if (!region.gameObject.activeSelf
+                || !heartRow.gameObject.activeSelf
+                || layout == null)
             {
                 throw new InvalidOperationException(
-                    $"TopHUD panel '{panel.name}' is not wired to its exact " +
-                    "sprite, font, centered brown text, and white shadow.");
+                    "HealthHUD must contain an active HeartRow with a " +
+                    "HorizontalLayoutGroup for HealthHudPresenter to " +
+                    "populate.");
+            }
+
+            if (region.Find("Icon") != null
+                || region.Find("ValueText") != null
+                || region.Find("ShadowText") != null)
+            {
+                throw new InvalidOperationException(
+                    "HealthHUD must not keep its old icon+text pair " +
+                    "alongside the live heart row.");
+            }
+        }
+
+        // No shadow copy anymore (removed by hand for a flatter look, see
+        // ConfigureTopHudRegion) -- this only checks the value text itself.
+        private static void ValidateTopHudRegion(
+            Transform region,
+            string expectedValue,
+            string expectedIconPath)
+        {
+            TextMeshProUGUI text = RequireChild(region, "ValueText")
+                .GetComponent<TextMeshProUGUI>();
+            if (!region.gameObject.activeSelf
+                || text == null
+                || (expectedValue != null && text.text != expectedValue)
+                || AssetDatabase.GetAssetPath(text.font) != TopHudFontPath
+                || text.alignment != TextAlignmentOptions.Center
+                || text.color != TopHudTextBrown)
+            {
+                throw new InvalidOperationException(
+                    $"TopHUD region '{region.name}' is not wired to its " +
+                    "exact font and centered brown text.");
+            }
+
+            if (expectedIconPath != null)
+            {
+                Transform icon = RequireChild(region, "Icon");
+                Image iconImage = icon.GetComponent<Image>();
+                if (!icon.gameObject.activeSelf
+                    || iconImage == null
+                    || AssetDatabase.GetAssetPath(iconImage.sprite)
+                        != expectedIconPath)
+                {
+                    throw new InvalidOperationException(
+                        $"TopHUD region '{region.name}' is missing its " +
+                        "expected icon.");
+                }
+            }
+        }
+
+        private static void ValidateBottomHudSkillRow(RectTransform skillRow)
+        {
+            Transform freeze = RequireChild(skillRow, "FreezePulseButton");
+            Transform instant = RequireChild(skillRow, "InstantBarrierButton");
+            Transform mock = RequireChild(skillRow, "MockSkillButton");
+            if (!freeze.gameObject.activeSelf
+                || !instant.gameObject.activeSelf
+                || !mock.gameObject.activeSelf)
+            {
+                throw new InvalidOperationException(
+                    "SkillRow must show all three skill slots by default.");
+            }
+
+            if (AssetDatabase.GetAssetPath(
+                    freeze.GetComponent<Image>()?.sprite) != FreezeSkillPath
+                || AssetDatabase.GetAssetPath(
+                    instant.GetComponent<Image>()?.sprite)
+                    != InstantBarrierSkillPath
+                || AssetDatabase.GetAssetPath(
+                    mock.GetComponent<Image>()?.sprite) != MockSkillPath)
+            {
+                throw new InvalidOperationException(
+                    "SkillRow slots are not wired to their imported skill " +
+                    "artwork.");
+            }
+
+            Button mockButton = mock.GetComponent<Button>();
+            if (mockButton == null || mockButton.interactable)
+            {
+                throw new InvalidOperationException(
+                    "The placeholder third skill slot must stay disabled " +
+                    "until a real skill is assigned to it.");
             }
         }
 
@@ -2728,6 +3407,13 @@ namespace Cutrium.Editor.Setup
             if (safeLayout == null
                 || !safeLayout.childControlHeight
                 || safeLayout.childForceExpandHeight
+                || safeLayout.padding.left != SafeAreaHorizontalPadding
+                || safeLayout.padding.right != SafeAreaHorizontalPadding
+                || safeLayout.padding.top != SafeAreaVerticalPadding
+                || safeLayout.padding.bottom != SafeAreaVerticalPadding
+                || !Mathf.Approximately(
+                    safeLayout.spacing,
+                    SafeAreaSectionSpacing)
                 || topLayout == null
                 || !Mathf.Approximately(
                     topLayout.preferredHeight,
@@ -2737,7 +3423,9 @@ namespace Cutrium.Editor.Setup
                 || !Mathf.Approximately(stageLayout.preferredHeight, 0f)
                 || !Mathf.Approximately(stageLayout.flexibleHeight, 1f)
                 || bottomLayout == null
-                || !Mathf.Approximately(bottomLayout.preferredHeight, 98f)
+                || !Mathf.Approximately(
+                    bottomLayout.preferredHeight,
+                    BottomHudPreferredHeight)
                 || !Mathf.Approximately(bottomLayout.flexibleHeight, 0f)
                 || topHud.GetSiblingIndex() >= boardStage.GetSiblingIndex()
                 || boardStage.GetSiblingIndex() >= bottomHud.GetSiblingIndex())
@@ -2817,9 +3505,231 @@ namespace Cutrium.Editor.Setup
             }
         }
 
+        private static void ValidateGameplayBandVisualSeparation(
+            GameObject root)
+        {
+            Transform safeArea = RequireChild(
+                root.transform,
+                "Canvas/SafeAreaRoot");
+            RectTransform topHud = (RectTransform)RequireChild(
+                safeArea,
+                "TopHUD");
+            RectTransform boardViewport = (RectTransform)RequireChild(
+                safeArea,
+                "BoardStage/BoardViewport");
+            RectTransform bottomHud = (RectTransform)RequireChild(
+                safeArea,
+                "BottomHUD");
+            RectTransform progressSlot = (RectTransform)RequireChild(
+                bottomHud,
+                "BottomHudRow/ProgressSlot");
+            RectTransform progress = (RectTransform)RequireChild(
+                progressSlot,
+                "ProgressBar");
+
+            var topCorners = new Vector3[4];
+            var boardCorners = new Vector3[4];
+            var bottomCorners = new Vector3[4];
+            var progressCorners = new Vector3[4];
+            var progressSlotCorners = new Vector3[4];
+            topHud.GetWorldCorners(topCorners);
+            boardViewport.GetWorldCorners(boardCorners);
+            bottomHud.GetWorldCorners(bottomCorners);
+            progress.GetWorldCorners(progressCorners);
+            progressSlot.GetWorldCorners(progressSlotCorners);
+
+            // The bar now sits flush against its own left-half ProgressSlot's
+            // leading (left) and trailing (right) edges, with only a small
+            // left inset for breathing room (see SandProgressPresenter.
+            // RefreshLayoutNow's ParentSidePadding) -- not centered -- while
+            // still staying fully inside BottomHUD's bounds and vertically
+            // centered within the slot.
+            if (topCorners[0].y < boardCorners[2].y - 0.01f
+                || boardCorners[0].y < bottomCorners[2].y - 0.01f
+                || progressCorners[0].x < bottomCorners[0].x - 0.01f
+                || progressCorners[2].x > bottomCorners[2].x + 0.01f
+                || progressCorners[0].y < bottomCorners[0].y - 0.01f
+                || progressCorners[2].y > bottomCorners[2].y + 0.01f
+                || progressCorners[0].x <= progressSlotCorners[0].x + 0.01f
+                || !Mathf.Approximately(
+                    progressCorners[2].x,
+                    progressSlotCorners[2].x)
+                || !Mathf.Approximately(
+                    (progressCorners[0].y + progressCorners[2].y) * 0.5f,
+                    (progressSlotCorners[0].y + progressSlotCorners[2].y)
+                        * 0.5f))
+            {
+                throw new InvalidOperationException(
+                    "TopHUD, fitted 10x16 board, and the BottomHUD " +
+                    "progress bar (flush against its left ProgressSlot " +
+                    "half's leading and trailing edges) must remain " +
+                    "separate and fully contained.");
+            }
+        }
+
         // ------------------------------------------------------------
         // Shared helpers
         // ------------------------------------------------------------
+
+        public static Font LoadLegacyUiFontForSetup()
+        {
+            Font font = AssetDatabase.LoadAssetAtPath<Font>(
+                CompletionFontPath);
+            return font ?? throw new InvalidOperationException(
+                $"Legacy UI font is missing at '{CompletionFontPath}'.");
+        }
+
+        public static TMP_FontAsset LoadTmpUiFontForSetup()
+        {
+            TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
+                TopHudFontPath);
+            return font ?? throw new InvalidOperationException(
+                $"TMP UI font is missing at '{TopHudFontPath}'.");
+        }
+
+        private static Font LoadCompletionFont()
+        {
+            return LoadLegacyUiFontForSetup();
+        }
+
+        private static void ApplyCompletionReadability(
+            Transform completionOverlay,
+            Font font)
+        {
+            Transform content = RequireChild(
+                completionOverlay,
+                "CompletionContent");
+            VerticalLayoutGroup column =
+                GetOrAddComponent<VerticalLayoutGroup>(content.gameObject);
+            column.padding = new RectOffset(0, 0, 0, 0);
+            column.spacing = 4f;
+            column.childAlignment = TextAnchor.UpperCenter;
+            column.childControlWidth = true;
+            column.childControlHeight = true;
+            column.childForceExpandWidth = true;
+            column.childForceExpandHeight = false;
+
+            Text title = RequireText(content, "Title");
+            ConfigureCompletionText(
+                title,
+                font,
+                50,
+                28,
+                TextAnchor.MiddleCenter,
+                1f);
+            title.fontStyle = FontStyle.Bold;
+            ConfigureCompletionLayoutElement(
+                title.rectTransform,
+                68f,
+                68f,
+                0f);
+
+            Text sector = RequireText(content, "Sector");
+            ConfigureCompletionText(
+                sector,
+                font,
+                26,
+                18,
+                TextAnchor.MiddleCenter,
+                1f);
+            ConfigureCompletionLayoutElement(
+                sector.rectTransform,
+                36f,
+                36f,
+                0f);
+
+            Text description = RequireText(content, "Description");
+            ConfigureCompletionText(
+                description,
+                font,
+                28,
+                18,
+                TextAnchor.UpperCenter,
+                1f);
+            description.horizontalOverflow = HorizontalWrapMode.Wrap;
+            description.verticalOverflow = VerticalWrapMode.Truncate;
+            ConfigureCompletionLayoutElement(
+                description.rectTransform,
+                140f,
+                180f,
+                1f);
+
+            Text summary = RequireChild(completionOverlay, "CompleteText")
+                .GetComponent<Text>()
+                ?? throw new InvalidOperationException(
+                    "CompleteText requires a Text component.");
+            ConfigureCompletionText(
+                summary,
+                font,
+                26,
+                18,
+                TextAnchor.MiddleCenter,
+                0.9f);
+
+            Text retryLabel = RequireText(
+                completionOverlay,
+                "RetryButton/Label");
+            ConfigureCompletionText(
+                retryLabel,
+                font,
+                26,
+                18,
+                TextAnchor.MiddleCenter,
+                1f);
+            Text nextLabel = RequireText(
+                completionOverlay,
+                "NextButton/Label");
+            ConfigureCompletionText(
+                nextLabel,
+                font,
+                26,
+                18,
+                TextAnchor.MiddleCenter,
+                1f);
+
+            EditorUtility.SetDirty(column);
+        }
+
+        private static Text RequireText(Transform parent, string path)
+        {
+            Transform transform = RequireChild(parent, path);
+            return transform.GetComponent<Text>()
+                ?? throw new InvalidOperationException(
+                    $"'{parent.name}/{path}' requires a Text component.");
+        }
+
+        private static void ConfigureCompletionText(
+            Text text,
+            Font font,
+            int maximumSize,
+            int minimumSize,
+            TextAnchor alignment,
+            float lineSpacing)
+        {
+            text.font = font;
+            text.fontSize = maximumSize;
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = minimumSize;
+            text.resizeTextMaxSize = maximumSize;
+            text.alignment = alignment;
+            text.lineSpacing = lineSpacing;
+            text.raycastTarget = false;
+            EditorUtility.SetDirty(text);
+        }
+
+        private static void ConfigureCompletionLayoutElement(
+            RectTransform rect,
+            float minimumHeight,
+            float preferredHeight,
+            float flexibleHeight)
+        {
+            LayoutElement layout = GetOrAddComponent<LayoutElement>(
+                rect.gameObject);
+            layout.minHeight = minimumHeight;
+            layout.preferredHeight = preferredHeight;
+            layout.flexibleHeight = flexibleHeight;
+            EditorUtility.SetDirty(layout);
+        }
 
         private static Text ConfigureText(
             RectTransform rect,
@@ -2829,7 +3739,7 @@ namespace Cutrium.Editor.Setup
             Color color)
         {
             Text text = GetOrAddComponent<Text>(rect.gameObject);
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = LoadLegacyUiFontForSetup();
             text.text = value;
             text.fontSize = fontSize;
             text.alignment = alignment;
@@ -2925,44 +3835,52 @@ namespace Cutrium.Editor.Setup
         private readonly struct ProgressSprites
         {
             public ProgressSprites(
-                Sprite frame,
                 Sprite background,
-                Sprite fill,
-                Sprite startStar)
+                Sprite fill)
             {
-                Frame = frame;
                 Background = background;
                 Fill = fill;
-                StartStar = startStar;
             }
 
-            public Sprite Frame { get; }
             public Sprite Background { get; }
             public Sprite Fill { get; }
-            public Sprite StartStar { get; }
         }
 
         private readonly struct TopHudAssets
         {
             public TopHudAssets(
-                Sprite health,
-                Sprite score,
-                Sprite coin,
+                Sprite background,
+                Sprite healthIcon,
+                Sprite speedIcon,
                 Sprite settings,
                 TMP_FontAsset font)
             {
-                Health = health;
-                Score = score;
-                Coin = coin;
+                Background = background;
+                HealthIcon = healthIcon;
+                SpeedIcon = speedIcon;
                 Settings = settings;
                 Font = font;
             }
 
-            public Sprite Health { get; }
-            public Sprite Score { get; }
-            public Sprite Coin { get; }
+            public Sprite Background { get; }
+            public Sprite HealthIcon { get; }
+            public Sprite SpeedIcon { get; }
             public Sprite Settings { get; }
             public TMP_FontAsset Font { get; }
+        }
+
+        private readonly struct SkillAssets
+        {
+            public SkillAssets(Sprite freeze, Sprite instant, Sprite mock)
+            {
+                Freeze = freeze;
+                Instant = instant;
+                Mock = mock;
+            }
+
+            public Sprite Freeze { get; }
+            public Sprite Instant { get; }
+            public Sprite Mock { get; }
         }
 
         private enum GeneratedPattern

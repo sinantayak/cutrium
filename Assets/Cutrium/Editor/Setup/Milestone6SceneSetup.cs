@@ -183,7 +183,8 @@ namespace Cutrium.Editor.Setup
             RectTransform labelRect = GetOrCreateUiChild(rect, "Label");
             StretchToParent(labelRect);
             label = GetOrAddComponent<Text>(labelRect.gameObject);
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.font =
+                LandmarkRevealPresentationSetup.LoadLegacyUiFontForSetup();
             label.fontSize = 13;
             label.fontStyle = FontStyle.Bold;
             label.alignment = TextAnchor.MiddleCenter;

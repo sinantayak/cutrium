@@ -211,7 +211,7 @@ namespace Cutrium.PlayModeTests
             _testMouse = InputSystem.AddDevice<Mouse>();
             InputSystem.EnableDevice(_testMouse);
             RectTransform hudBlocker = _compositionRoot.transform.parent
-                .Find("Canvas/SafeAreaRoot/BottomHUD/ProgressBar")
+                .Find("Canvas/SafeAreaRoot/BottomHUD/BottomHudRow/ProgressSlot/ProgressBar")
                 .GetComponent<RectTransform>();
             Vector2 hudCenter = GetScreenCenter(hudBlocker);
             Vector2 boardCenter = _compositionRoot.BoardCameraFitter.BoardScreenRect.center;

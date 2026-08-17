@@ -1,6 +1,7 @@
 using System;
 using Cutrium.Gameplay.Session;
 using Cutrium.Unity.Simulation;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,31 +11,27 @@ namespace Cutrium.Presentation.HUD
     public sealed class GameplayIdentityHudPresenter : MonoBehaviour
     {
         [SerializeField] private FirstPlayableController _controller;
-        [SerializeField] private Text _cutCounterText;
-        [SerializeField] private CanvasGroup _introCanvasGroup;
-        [SerializeField] private Text _introTitleText;
-        [SerializeField] private Text _introMessageText;
+        [SerializeField] private TMP_Text _cutCounterText;
+        [SerializeField] private TMP_Text _speedText;
+        [SerializeField] private Image _speedIconImage;
+        [SerializeField] private Sprite[] _speedTierSprites = new Sprite[0];
         [SerializeField] private CanvasGroup _failureCanvasGroup;
         [SerializeField] private Text _failureText;
         [SerializeField] private Button _retryButton;
-        [SerializeField] private float _introFadeInSeconds = 0.18f;
-        [SerializeField] private float _introHoldSeconds = 1.45f;
-        [SerializeField] private float _introFadeOutSeconds = 0.35f;
 
-        private ThreatMotionSession _observedSession;
-        private float _introElapsed;
         private bool _retrySubscribed;
 
-        public Text CutCounterText => _cutCounterText;
-        public CanvasGroup IntroCanvasGroup => _introCanvasGroup;
+        public TMP_Text CutCounterText => _cutCounterText;
+        public TMP_Text SpeedText => _speedText;
+        public Image SpeedIconImage => _speedIconImage;
         public CanvasGroup FailureCanvasGroup => _failureCanvasGroup;
 
         public void Configure(
             FirstPlayableController controller,
-            Text cutCounterText,
-            CanvasGroup introCanvasGroup,
-            Text introTitleText,
-            Text introMessageText,
+            TMP_Text cutCounterText,
+            TMP_Text speedText,
+            Image speedIconImage,
+            Sprite[] speedTierSprites,
             CanvasGroup failureCanvasGroup,
             Text failureText,
             Button retryButton)
@@ -42,9 +39,9 @@ namespace Cutrium.Presentation.HUD
             ConfigureForSetup(
                 controller,
                 cutCounterText,
-                introCanvasGroup,
-                introTitleText,
-                introMessageText,
+                speedText,
+                speedIconImage,
+                speedTierSprites,
                 failureCanvasGroup,
                 failureText,
                 retryButton);
@@ -52,10 +49,10 @@ namespace Cutrium.Presentation.HUD
 
         public void ConfigureForSetup(
             FirstPlayableController controller,
-            Text cutCounterText,
-            CanvasGroup introCanvasGroup,
-            Text introTitleText,
-            Text introMessageText,
+            TMP_Text cutCounterText,
+            TMP_Text speedText,
+            Image speedIconImage,
+            Sprite[] speedTierSprites,
             CanvasGroup failureCanvasGroup,
             Text failureText,
             Button retryButton)
@@ -63,21 +60,15 @@ namespace Cutrium.Presentation.HUD
             UnsubscribeRetry();
             _controller = controller;
             _cutCounterText = cutCounterText;
-            _introCanvasGroup = introCanvasGroup;
-            _introTitleText = introTitleText;
-            _introMessageText = introMessageText;
+            _speedText = speedText;
+            _speedIconImage = speedIconImage;
+            _speedTierSprites = speedTierSprites ?? new Sprite[0];
             _failureCanvasGroup = failureCanvasGroup;
             _failureText = failureText;
             _retryButton = retryButton;
-            _observedSession = null;
-            if (_introCanvasGroup != null)
-            {
-                _introCanvasGroup.blocksRaycasts = false;
-                _introCanvasGroup.interactable = false;
-            }
-
             if (_failureCanvasGroup != null)
             {
+                EnsureFailureOverlayIgnoresLayout();
                 _failureCanvasGroup.alpha = 0f;
                 _failureCanvasGroup.interactable = false;
                 _failureCanvasGroup.blocksRaycasts = false;
@@ -88,6 +79,32 @@ namespace Cutrium.Presentation.HUD
             }
 
             RefreshNow(0f);
+        }
+
+        // The speedometer needle position is meaningful only relative to
+        // the catalog's own floor/ceiling barrier speed. This is
+        // recomputed on every call rather than cached on Configure: caching
+        // here previously broke at runtime because ConfigureForSetup only
+        // ever runs once, in the Editor at setup time -- plain (non-
+        // [SerializeField]) fields computed then do not survive the
+        // scene-save/Play-mode-load round trip, so the cached range read
+        // back as (0, 0) during actual play and the icon never left tier 0.
+        private void BarrierGrowthSpeedRange(out float minimum, out float maximum)
+        {
+            minimum = float.PositiveInfinity;
+            maximum = float.NegativeInfinity;
+            if (_controller == null)
+            {
+                return;
+            }
+
+            var definitions = _controller.LevelDefinitions;
+            for (int index = 0; index < definitions.Count; index++)
+            {
+                float speed = definitions[index].BarrierGrowthSpeed;
+                minimum = Mathf.Min(minimum, speed);
+                maximum = Mathf.Max(maximum, speed);
+            }
         }
 
         public void RefreshNow(float elapsedTime)
@@ -101,23 +118,8 @@ namespace Cutrium.Presentation.HUD
 
             if (_controller == null || _controller.Session == null)
             {
-                SetGroup(_introCanvasGroup, false, 0f, false);
                 SetGroup(_failureCanvasGroup, false, 0f, true);
                 return;
-            }
-
-            bool sessionChanged = !ReferenceEquals(
-                _observedSession,
-                _controller.Session);
-            if (sessionChanged)
-            {
-                _observedSession = _controller.Session;
-                _introElapsed = 0f;
-                ApplyIntroCopy();
-            }
-            else
-            {
-                _introElapsed += elapsedTime;
             }
 
             bool limited = _controller.Session.HasCutLimit;
@@ -126,21 +128,69 @@ namespace Cutrium.Presentation.HUD
                 _cutCounterText.gameObject.SetActive(limited);
                 if (limited)
                 {
-                    _cutCounterText.text =
-                        $"CUTS {_controller.Session.CutsRemaining}/" +
-                        _controller.Session.MaximumAcceptedCuts;
+                    int maximum = _controller.Session.MaximumAcceptedCuts;
+                    int used = maximum - _controller.Session.CutsRemaining;
+                    _cutCounterText.text = $"CUT: {used}/{maximum}";
+                }
+
+                // ShadowText is a decorative sibling, not wired to this
+                // presenter -- it needs the same visibility toggle or an
+                // unlimited level would leave its last baked placeholder
+                // text floating in the TopHUD with nothing to back it.
+                Transform shadow = _cutCounterText.transform.parent != null
+                    ? _cutCounterText.transform.parent.Find("ShadowText")
+                    : null;
+                if (shadow != null)
+                {
+                    shadow.gameObject.SetActive(limited);
                 }
             }
 
-            bool failed = _controller.Session.LevelStatus
-                == CaptureLevelStatus.OutOfCuts;
+            // The growing-barrier speed is set per level (see
+            // FirstTwelveGameplayProgression), not a fixed constant, so a
+            // static placeholder here would silently disagree with what
+            // the player actually sees while drawing a cut.
+            if (_speedText != null)
+            {
+                _speedText.text = _controller.BarrierGrowthSpeed.ToString(
+                    "0.0",
+                    System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            // The speedometer icon reads like a car's needle: as this
+            // level's barrier growth speed climbs toward the catalog's own
+            // fastest level, the icon steps through faster-looking stages.
+            if (_speedIconImage != null && _speedTierSprites.Length > 0)
+            {
+                BarrierGrowthSpeedRange(
+                    out float minSpeed,
+                    out float maxSpeed);
+                float range = maxSpeed - minSpeed;
+                float t = range > 0f
+                    ? Mathf.Clamp01(
+                        (_controller.BarrierGrowthSpeed - minSpeed) / range)
+                    : 0f;
+                int tier = Mathf.Clamp(
+                    Mathf.FloorToInt(t * _speedTierSprites.Length),
+                    0,
+                    _speedTierSprites.Length - 1);
+                Sprite tierSprite = _speedTierSprites[tier];
+                if (tierSprite != null)
+                {
+                    _speedIconImage.sprite = tierSprite;
+                }
+            }
+
+            CaptureLevelStatus status = _controller.Session.LevelStatus;
+            bool failed = status == CaptureLevelStatus.OutOfCuts
+                || status == CaptureLevelStatus.OutOfLives;
             SetGroup(_failureCanvasGroup, failed, failed ? 1f : 0f, true);
             if (_failureText != null && failed)
             {
-                _failureText.text = "OUT OF CUTS\nTRY A BOLDER ROUTE";
+                _failureText.text = status == CaptureLevelStatus.OutOfLives
+                    ? "OUT OF LIVES\nTOO MANY BROKEN CUTS"
+                    : "OUT OF CUTS\nTRY A BOLDER ROUTE";
             }
-
-            UpdateIntroAlpha(failed);
         }
 
         private void LateUpdate()
@@ -150,6 +200,7 @@ namespace Cutrium.Presentation.HUD
 
         private void OnEnable()
         {
+            EnsureFailureOverlayIgnoresLayout();
             if (Application.isPlaying)
             {
                 SubscribeRetry();
@@ -159,75 +210,6 @@ namespace Cutrium.Presentation.HUD
         private void OnDisable()
         {
             UnsubscribeRetry();
-        }
-
-        private void ApplyIntroCopy()
-        {
-            if (_controller.CurrentLevelIndex < 0
-                || _controller.CurrentLevelIndex
-                    >= _controller.LevelDefinitions.Count)
-            {
-                return;
-            }
-
-            CoreFunLevelDefinition definition =
-                _controller.LevelDefinitions[_controller.CurrentLevelIndex];
-            if (_introTitleText != null)
-            {
-                _introTitleText.text = definition.IntroTitle;
-            }
-
-            if (_introMessageText != null)
-            {
-                _introMessageText.text = definition.IntroMessage;
-            }
-        }
-
-        private void UpdateIntroAlpha(bool failed)
-        {
-            if (_introCanvasGroup == null)
-            {
-                return;
-            }
-
-            bool hasIntro = _introTitleText != null
-                && !string.IsNullOrWhiteSpace(_introTitleText.text);
-            if (!hasIntro
-                || failed
-                || _controller.Session.LevelStatus
-                    == CaptureLevelStatus.Completed)
-            {
-                SetGroup(_introCanvasGroup, false, 0f, false);
-                return;
-            }
-
-            float fadeInEnd = _introFadeInSeconds;
-            float holdEnd = fadeInEnd + _introHoldSeconds;
-            float end = holdEnd + _introFadeOutSeconds;
-            float alpha;
-            if (_introElapsed < fadeInEnd)
-            {
-                alpha = fadeInEnd <= 0f
-                    ? 1f
-                    : Mathf.Clamp01(_introElapsed / fadeInEnd);
-            }
-            else if (_introElapsed < holdEnd)
-            {
-                alpha = 1f;
-            }
-            else if (_introElapsed < end)
-            {
-                alpha = _introFadeOutSeconds <= 0f
-                    ? 0f
-                    : 1f - Mathf.Clamp01(
-                        (_introElapsed - holdEnd) / _introFadeOutSeconds);
-            }
-            else
-            {
-                alpha = 0f;
-            }
-
-            SetGroup(_introCanvasGroup, alpha > 0f, alpha, false);
         }
 
         private void SubscribeRetry()
@@ -256,6 +238,31 @@ namespace Cutrium.Presentation.HUD
             _controller.NotifyUiFeedback();
             _controller.RetryLevel();
             RefreshNow(0f);
+        }
+
+        private void EnsureFailureOverlayIgnoresLayout()
+        {
+            if (_failureCanvasGroup == null)
+            {
+                return;
+            }
+
+            LayoutElement layout =
+                _failureCanvasGroup.GetComponent<LayoutElement>();
+            if (layout == null)
+            {
+                layout = _failureCanvasGroup.gameObject
+                    .AddComponent<LayoutElement>();
+            }
+
+            layout.ignoreLayout = true;
+            if (_failureCanvasGroup.transform is RectTransform rect)
+            {
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+            }
         }
 
         private static void SetGroup(

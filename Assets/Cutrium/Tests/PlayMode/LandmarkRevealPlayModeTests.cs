@@ -49,7 +49,7 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void Scene_HasOneLandmarkRevealPresenterWithThreeLandmarksAndTunedBarrier()
+        public void Scene_HasOneLandmarkRevealPresenterWithFirstTwelveLandmarksAndTunedBarrier()
         {
             Assert.That(
                 _root.GetComponentsInChildren<LandmarkRevealPresenter>(true),
@@ -62,14 +62,23 @@ namespace Cutrium.PlayModeTests
                 _landmarkPresenter.CompletionDescriptionText,
                 Is.Not.Null);
             Assert.That(_landmarkPresenter.CompletionSectorText, Is.Not.Null);
-            Assert.That(_landmarkPresenter.Landmarks.Count, Is.EqualTo(3));
+            Assert.That(_landmarkPresenter.Landmarks.Count, Is.EqualTo(12));
             Assert.That(
                 _landmarkPresenter.Landmarks.Select(l => l.LandmarkId),
                 Is.EqualTo(new[]
                 {
                     "galata-kulesi",
-                    "coastal-lagoon",
-                    "desert-dunes",
+                    "misis-antik-kenti",
+                    "yilankale",
+                    "aspendos-antik-tiyatrosu",
+                    "myra-antik-kenti",
+                    "patara-antik-kenti",
+                    "xanthos-antik-kenti",
+                    "sagalassos-antik-kenti",
+                    "oludeniz",
+                    "truva-antik-kenti",
+                    "zeugma-antik-kenti",
+                    "topkapi-sarayi",
                 }));
             foreach (LandmarkDefinition landmark in _landmarkPresenter.Landmarks)
             {
@@ -81,17 +90,180 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void PowerButtons_AreHiddenFromTheDefaultGameplayHud()
+        public void Scene_AllUiTextUsesLapsusProBold()
         {
-            // The default level catalog grants zero Freeze Pulse/Instant
-            // Barrier charges, which left these buttons permanently
-            // non-interactable (visible but dead) in real play; see
-            // Milestone6ThreatsAndPowersPlayModeTests for the matching
-            // reference-still-valid check.
+            Text[] legacyTexts = _root.GetComponentsInChildren<Text>(true);
+            TMP_Text[] tmpTexts = _root.GetComponentsInChildren<TMP_Text>(true);
+
+            Assert.That(legacyTexts, Is.Not.Empty);
+            Assert.That(tmpTexts, Is.Not.Empty);
+            foreach (Text text in legacyTexts)
+            {
+                Assert.That(
+                    text.font,
+                    Is.Not.Null,
+                    $"Legacy Text '{text.name}' has no font.");
+                Assert.That(
+                    text.font.name,
+                    Is.EqualTo("LapsusPro-Bold"),
+                    $"Legacy Text '{text.name}' uses the wrong font.");
+            }
+
+            foreach (TMP_Text text in tmpTexts)
+            {
+                Assert.That(
+                    text.font,
+                    Is.Not.Null,
+                    $"TMP text '{text.name}' has no font.");
+                Assert.That(
+                    text.font.name,
+                    Is.EqualTo("LapsusPro-Bold SDF"),
+                    $"TMP text '{text.name}' uses the wrong font.");
+            }
+        }
+
+        [Test]
+        public void CompletionPopup_UsesLapsusProBoldAndAllocatesReadableTextSpace()
+        {
+            Transform overlay = _root.transform.Find(
+                "Canvas/SafeAreaRoot/LevelCompleteOverlay");
+            Transform content = overlay.Find("CompletionContent");
+            Text title = content.Find("Title").GetComponent<Text>();
+            Text sector = content.Find("Sector").GetComponent<Text>();
+            Text description = content.Find("Description").GetComponent<Text>();
+            Text summary = overlay.Find("CompleteText").GetComponent<Text>();
+            Text retry = overlay.Find("RetryButton/Label").GetComponent<Text>();
+            Text next = overlay.Find("NextButton/Label").GetComponent<Text>();
+            Font font = title.font;
+
+            Assert.That(font, Is.Not.Null);
+            Assert.That(font.name, Is.EqualTo("LapsusPro-Bold"));
+            Assert.That(new[] { sector, description, summary, retry, next }
+                .All(text => text.font == font), Is.True);
+            Assert.That(description.resizeTextForBestFit, Is.True);
+            Assert.That(description.resizeTextMinSize,
+                Is.GreaterThanOrEqualTo(18));
+            Assert.That(description.resizeTextMaxSize, Is.EqualTo(28));
+            Assert.That(title.resizeTextMaxSize, Is.EqualTo(50));
+            Assert.That(sector.resizeTextMaxSize, Is.EqualTo(26));
+            Assert.That(summary.resizeTextMaxSize, Is.EqualTo(26));
+            Assert.That(retry.resizeTextMaxSize, Is.EqualTo(26));
+            Assert.That(next.resizeTextMaxSize, Is.EqualTo(26));
+            Assert.That(description.rectTransform.rect.height,
+                Is.GreaterThanOrEqualTo(140f));
+            Assert.That(description.rectTransform
+                .GetComponent<LayoutElement>().flexibleHeight,
+                Is.EqualTo(1f));
+            Assert.That(content.GetComponent<VerticalLayoutGroup>().spacing,
+                Is.EqualTo(4f));
+
+            RectTransform retryRect = (RectTransform)retry.transform.parent;
+            RectTransform nextRect = (RectTransform)next.transform.parent;
+            Assert.That(retryRect.rect.height, Is.InRange(58f, 76f));
+            Assert.That(nextRect.rect.height,
+                Is.EqualTo(retryRect.rect.height).Within(0.01f));
+        }
+
+        [TestCase(1080f, 1920f)]
+        [TestCase(1080f, 2400f)]
+        [TestCase(1536f, 2048f)]
+        public void CompletionLayout_KeepsPhotoTextAndButtonsCompactAtTargetAspects(
+            float width,
+            float height)
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                rig.SetCompletionLayoutSize(width, height);
+                RectTransform summary = (RectTransform)rig.Presenter
+                    .StatsCanvasGroup.transform;
+                RectTransform hero = (RectTransform)rig.Presenter
+                    .ScrimCanvasGroup.transform;
+                RectTransform content = (RectTransform)rig.Presenter
+                    .ContentCanvasGroup.transform;
+                RectTransform retry = (RectTransform)rig.Presenter
+                    .RetryCanvasGroup.transform;
+                RectTransform next = (RectTransform)rig.Presenter
+                    .NextCanvasGroup.transform;
+
+                Assert.That(hero.rect.width,
+                    Is.EqualTo(hero.rect.height).Within(0.01f));
+                float expectedHeroSize = Mathf.Min(
+                    width * 0.92f,
+                    height * 0.53f);
+                Assert.That(hero.rect.width,
+                    Is.EqualTo(expectedHeroSize).Within(0.01f));
+                Assert.That(content.rect.height,
+                    Is.GreaterThanOrEqualTo(180f));
+                Assert.That(retry.rect.height, Is.InRange(58f, 76f));
+                Assert.That(next.rect.height,
+                    Is.EqualTo(retry.rect.height).Within(0.01f));
+                Assert.That(Bottom(summary) - Top(hero),
+                    Is.EqualTo(8f).Within(0.01f));
+                Assert.That(Bottom(hero) - Top(content),
+                    Is.EqualTo(8f).Within(0.01f));
+                Assert.That(Bottom(content) - Top(retry),
+                    Is.EqualTo(12f).Within(0.01f));
+                Assert.That(Left(retry), Is.GreaterThan(-width * 0.5f));
+                Assert.That(Right(next), Is.LessThan(width * 0.5f));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [Test]
+        public void PowerControls_StaysInactiveWhileBottomHudOwnsItsOwnSkillRow()
+        {
+            // Milestone6SceneSetup still creates its own Freeze/Instant
+            // buttons inside a standalone "PowerControls" overlay so that
+            // setup stays usable on its own -- those stay put and inert.
+            // BottomHUD/BottomHudRow/SkillRow (see
+            // GameplayDefaultHud_ShowsThreeSkillSlotsInBottomHudSkillRow)
+            // builds and owns its own separate Freeze/Instant/Mock
+            // GameObjects rather than reparenting Milestone6's, so
+            // PowerHudPresenter's active wiring points at the SkillRow
+            // copies while PowerControls' copies sit inactive and unused.
             Transform powerControls = _root.transform.Find(
                 "Canvas/SafeAreaRoot/PowerControls");
             Assert.That(powerControls, Is.Not.Null);
             Assert.That(powerControls.gameObject.activeSelf, Is.False);
+        }
+
+        [Test]
+        public void GameplayDefaultHud_ShowsThreeSkillSlotsInBottomHudSkillRow()
+        {
+            Transform safeArea = _root.transform.Find("Canvas/SafeAreaRoot");
+            Transform skillRow = safeArea.Find(
+                "BottomHUD/BottomHudRow/SkillRow");
+            Assert.That(skillRow, Is.Not.Null);
+            Assert.That(skillRow.gameObject.activeSelf, Is.True);
+
+            Transform freeze = skillRow.Find("FreezePulseButton");
+            Transform instant = skillRow.Find("InstantBarrierButton");
+            Transform mock = skillRow.Find("MockSkillButton");
+            Assert.That(freeze, Is.Not.Null);
+            Assert.That(instant, Is.Not.Null);
+            Assert.That(mock, Is.Not.Null);
+            Assert.That(freeze.gameObject.activeSelf, Is.True);
+            Assert.That(instant.gameObject.activeSelf, Is.True);
+            Assert.That(mock.gameObject.activeSelf, Is.True);
+
+            Assert.That(freeze.GetComponent<Image>().sprite.name,
+                Is.EqualTo("FreezeSkill"));
+            Assert.That(instant.GetComponent<Image>().sprite.name,
+                Is.EqualTo("InstantBarrierSkill"));
+            Assert.That(mock.GetComponent<Image>().sprite.name,
+                Is.EqualTo("MockSkill"));
+            Assert.That(mock.GetComponent<Button>().interactable, Is.False);
+
+            PowerHudPresenter powerHud = _root
+                .GetComponentInChildren<PowerHudPresenter>(true);
+            Assert.That(powerHud.FreezePulseRoot,
+                Is.SameAs(freeze.gameObject));
+            Assert.That(powerHud.InstantBarrierRoot,
+                Is.SameAs(instant.gameObject));
         }
 
         [Test]
@@ -103,7 +275,8 @@ namespace Cutrium.PlayModeTests
             Transform retryTransform = bottomHud.Find("QuickRetryButton");
             Transform bowl = bottomHud.Find("SandBowl");
             Transform bowlText = bottomHud.Find("BowlTargetText");
-            Transform progress = bottomHud.Find("ProgressBar");
+            Transform progress = bottomHud.Find(
+                "BottomHudRow/ProgressSlot/ProgressBar");
 
             Assert.That(topHud, Is.Not.Null);
             Assert.That(topHud.gameObject.activeSelf, Is.True);
@@ -111,6 +284,16 @@ namespace Cutrium.PlayModeTests
             Assert.That(topLayout, Is.Not.Null);
             Assert.That(topLayout.preferredHeight, Is.EqualTo(150f));
             Assert.That(topLayout.flexibleHeight, Is.Zero);
+            LayoutElement bottomLayout = bottomHud.GetComponent<LayoutElement>();
+            Assert.That(bottomLayout, Is.Not.Null);
+            Assert.That(bottomLayout.minHeight, Is.EqualTo(112f));
+            Assert.That(bottomLayout.preferredHeight, Is.EqualTo(116f));
+            Assert.That(bottomLayout.flexibleHeight, Is.Zero);
+            VerticalLayoutGroup safeLayout =
+                safeArea.GetComponent<VerticalLayoutGroup>();
+            Assert.That(safeLayout.padding.top, Is.EqualTo(10));
+            Assert.That(safeLayout.padding.bottom, Is.EqualTo(10));
+            Assert.That(safeLayout.spacing, Is.EqualTo(12f));
             Transform gameplayRow = topHud.Find("GameplayHudRow");
             Assert.That(gameplayRow, Is.Not.Null);
             Assert.That(gameplayRow.gameObject.activeSelf, Is.True);
@@ -122,38 +305,42 @@ namespace Cutrium.PlayModeTests
                     child.name);
             }
 
-            AssertTopHudPanel(
-                gameplayRow.Find("HealthColumn/HealthHUD"),
-                "Health_HUD_0",
-                "10x");
-            AssertTopHudPanel(
-                gameplayRow.Find("ScoreColumn/ScoreHUD"),
-                "Score_HUD_0",
-                "4200");
-            AssertTopHudPanel(
-                gameplayRow.Find("CoinColumn/CoinHUD"),
-                "Coin_HUD_0",
-                "10x");
+            Transform bar = gameplayRow.Find("TopHudBar");
+            Assert.That(bar, Is.Not.Null);
+            Assert.That(bar.gameObject.activeSelf, Is.True);
+            Image barImage = bar.GetComponent<Image>();
+            Assert.That(barImage, Is.Not.Null);
+            Assert.That(barImage.sprite.name, Is.EqualTo("BigHUDBackground"));
+            Assert.That(barImage.type, Is.EqualTo(Image.Type.Sliced));
+
+            AssertTopHudRegion(bar.Find("HealthHUD"), "9X");
+            AssertTopHudRegion(bar.Find("CutHUD"), null);
+            // Speed, like Cut, is now dynamically owned by
+            // GameplayIdentityHudPresenter (driven by the level's real
+            // BarrierGrowthSpeed), so no fixed placeholder string holds
+            // once the scene's controller/session start running.
+            AssertTopHudRegion(bar.Find("SpeedHUD"), null);
             Transform settings = gameplayRow.Find(
-                "CoinColumn/SettingsSlot/SettingsButton");
+                "SettingsSlot/SettingsButton");
             Assert.That(settings, Is.Not.Null);
             Assert.That(settings.GetComponent<Image>().sprite.name,
                 Is.EqualTo("Settings_Button_0"));
             Assert.That(settings.GetComponent<Button>().interactable, Is.False);
-            RectTransform healthPanel = (RectTransform)gameplayRow.Find(
-                "HealthColumn/HealthHUD");
-            RectTransform scorePanel = (RectTransform)gameplayRow.Find(
-                "ScoreColumn/ScoreHUD");
-            RectTransform coinPanel = (RectTransform)gameplayRow.Find(
-                "CoinColumn/CoinHUD");
+            RectTransform healthPanel = (RectTransform)bar.Find("HealthHUD");
+            RectTransform cutPanel = (RectTransform)bar.Find("CutHUD");
+            RectTransform speedPanel = (RectTransform)bar.Find("SpeedHUD");
             RectTransform settingsRect = (RectTransform)settings;
             Canvas.ForceUpdateCanvases();
             Assert.That(WorldCenter(healthPanel).x,
-                Is.LessThan(WorldCenter(scorePanel).x));
-            Assert.That(WorldCenter(scorePanel).x,
-                Is.LessThan(WorldCenter(coinPanel).x));
+                Is.LessThan(WorldCenter(cutPanel).x));
+            Assert.That(WorldCenter(cutPanel).x,
+                Is.LessThan(WorldCenter(speedPanel).x));
+            Assert.That(healthPanel.rect.height,
+                Is.EqualTo(cutPanel.rect.height).Within(0.01f));
+            Assert.That(healthPanel.rect.height,
+                Is.EqualTo(speedPanel.rect.height).Within(0.01f));
             Assert.That(WorldBottom(settingsRect),
-                Is.GreaterThanOrEqualTo(WorldTop(coinPanel) - 0.01f));
+                Is.GreaterThanOrEqualTo(WorldTop((RectTransform)bar) - 0.01f));
             Assert.That(retryTransform, Is.Not.Null);
             Assert.That(retryTransform.gameObject.activeSelf, Is.False);
             Assert.That(bowl, Is.Not.Null);
@@ -174,15 +361,10 @@ namespace Cutrium.PlayModeTests
             SandProgressPresenter progressPresenter = progress
                 .GetComponent<SandProgressPresenter>();
             Assert.That(progressPresenter, Is.Not.Null);
-            Assert.That(progressPresenter.FrameImage.sprite.name,
-                Is.EqualTo("Progress_Frame_0"));
             Assert.That(progressPresenter.BackgroundImage.sprite.name,
-                Is.EqualTo("Progress_Background_0"));
+                Is.EqualTo("ProgressBackground"));
             Assert.That(progressPresenter.FillImage.sprite.name,
-                Is.EqualTo("Progress_Fill_0"));
-            Assert.That(progressPresenter.StartStarImage, Is.Not.Null);
-            Assert.That(progressPresenter.StartStarImage.sprite.name,
-                Is.EqualTo("Yellow_Star_0"));
+                Is.EqualTo("ProgressFill"));
             Assert.That(progressPresenter.FillMaskRect
                 .GetComponent<RectMask2D>(), Is.Not.Null);
             Assert.That(progressPresenter.FillStartTarget, Is.Not.Null);
@@ -192,20 +374,6 @@ namespace Cutrium.PlayModeTests
                 Is.Zero);
             Assert.That(_landmarkPresenter.SandDestination,
                 Is.SameAs(progressPresenter.FillStartTarget));
-            Assert.That(
-                Vector3.Distance(
-                    progressPresenter.StartStarImage.rectTransform
-                        .TransformPoint(Vector3.zero),
-                    progressPresenter.FillStartTarget
-                        .TransformPoint(Vector3.zero)),
-                Is.LessThan(0.01f));
-            var starCorners = new Vector3[4];
-            var progressCorners = new Vector3[4];
-            progressPresenter.StartStarImage.rectTransform.GetWorldCorners(
-                starCorners);
-            progressPresenter.ProgressBarRect.GetWorldCorners(progressCorners);
-            Assert.That(starCorners[0].x,
-                Is.EqualTo(progressCorners[0].x).Within(0.01f));
             Assert.That(_landmarkPresenter.SandProgressPresenter,
                 Is.SameAs(progressPresenter));
 
@@ -214,21 +382,23 @@ namespace Cutrium.PlayModeTests
             Assert.That(hits[0], Is.SameAs(progress.gameObject));
         }
 
-        private static void AssertTopHudPanel(
+        // A null value skips the exact-text check: the Cut region's text is
+        // dynamically owned by GameplayIdentityHudPresenter (driven by the
+        // wired level catalog's cut limit), so no fixed placeholder string
+        // holds once the scene's controller/session start running.
+        private static void AssertTopHudRegion(
             Transform panel,
-            string spriteName,
             string value)
         {
             Assert.That(panel, Is.Not.Null);
             Assert.That(panel.gameObject.activeSelf, Is.True);
-            Image image = panel.GetComponent<Image>();
-            Assert.That(image, Is.Not.Null);
-            Assert.That(image.sprite.name, Is.EqualTo(spriteName));
-            Assert.That(image.preserveAspect, Is.True);
             TextMeshProUGUI text = panel.Find("ValueText")
                 .GetComponent<TextMeshProUGUI>();
-            Assert.That(text.text, Is.EqualTo(value));
-            Assert.That(text.font.name, Is.EqualTo("gomarice_rocks SDF"));
+            if (value != null)
+            {
+                Assert.That(text.text, Is.EqualTo(value));
+            }
+            Assert.That(text.font.name, Is.EqualTo("LapsusPro-Bold SDF"));
             Assert.That(text.alignment,
                 Is.EqualTo(TextAlignmentOptions.Center));
             Assert.That(text.color,
@@ -236,11 +406,22 @@ namespace Cutrium.PlayModeTests
             TextMeshProUGUI shadow = panel.Find("ShadowText")
                 .GetComponent<TextMeshProUGUI>();
             Assert.That(shadow, Is.Not.Null);
-            Assert.That(shadow.text, Is.EqualTo(value));
+            if (value != null)
+            {
+                Assert.That(shadow.text, Is.EqualTo(value));
+            }
             Assert.That(shadow.font, Is.SameAs(text.font));
             Assert.That(shadow.color, Is.EqualTo(Color.white));
-            Assert.That(shadow.rectTransform.anchoredPosition,
-                Is.EqualTo(new Vector2(2f, -2f)));
+            // Component-wise with a tolerance, not exact Vector2 equality:
+            // on the much wider full-width bar, a real Canvas layout pass
+            // can leave anchoredPosition a hair off the literal (2,-2) it
+            // was assigned, from float rounding in the wider anchor-
+            // fraction math -- invisible on screen, but an exact `==`
+            // check treats it as a mismatch.
+            Assert.That(shadow.rectTransform.anchoredPosition.x,
+                Is.EqualTo(2f).Within(0.01f));
+            Assert.That(shadow.rectTransform.anchoredPosition.y,
+                Is.EqualTo(-2f).Within(0.01f));
         }
 
         private static Vector3 WorldCenter(RectTransform rect)
@@ -254,6 +435,18 @@ namespace Cutrium.PlayModeTests
             rect.GetWorldCorners(corners);
             return corners[2].y;
         }
+
+        private static float Top(RectTransform rect) =>
+            rect.anchoredPosition.y + (rect.rect.height * 0.5f);
+
+        private static float Bottom(RectTransform rect) =>
+            rect.anchoredPosition.y - (rect.rect.height * 0.5f);
+
+        private static float Left(RectTransform rect) =>
+            rect.anchoredPosition.x - (rect.rect.width * 0.5f);
+
+        private static float Right(RectTransform rect) =>
+            rect.anchoredPosition.x + (rect.rect.width * 0.5f);
 
         private static float WorldBottom(RectTransform rect)
         {
@@ -755,6 +948,102 @@ namespace Cutrium.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator CompletionPopupWaitsForFinalCapturePresentation()
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+
+                Assert.That(rig.Controller.Session.LevelStatus,
+                    Is.EqualTo(CaptureLevelStatus.Completed));
+                Assert.That(rig.Presenter.InFlightWipeCount,
+                    Is.GreaterThan(0));
+                Assert.That(rig.Presenter.CompletionPresentationReady,
+                    Is.False);
+                Assert.That(rig.Presenter.ScrimCanvasGroup.alpha, Is.Zero);
+
+                float waited = 0f;
+                while (!rig.Presenter.CompletionPresentationReady
+                    && waited < 2f)
+                {
+                    yield return null;
+                    rig.Presenter.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                Assert.That(rig.Presenter.AllVeilsFullyRevealed, Is.True);
+                Assert.That(rig.Presenter.CompletionPresentationReady,
+                    Is.True);
+                Assert.That(waited,
+                    Is.GreaterThanOrEqualTo(rig.Presenter.RevealFadeSeconds));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator CaptureHudKeepsCompletionOverlayHiddenUntilGateIsReady()
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                var overlayObject = new GameObject(
+                    "CompletionGateOverlay",
+                    typeof(RectTransform),
+                    typeof(CanvasGroup));
+                overlayObject.transform.SetParent(rig.Root, false);
+                CanvasGroup overlayGroup =
+                    overlayObject.GetComponent<CanvasGroup>();
+                var hudObject = new GameObject("CaptureHudGate");
+                hudObject.transform.SetParent(rig.Root, false);
+                CaptureHudPresenter hud =
+                    hudObject.AddComponent<CaptureHudPresenter>();
+                hud.Configure(
+                    rig.Controller,
+                    null,
+                    null,
+                    overlayObject,
+                    overlayGroup,
+                    null,
+                    null);
+                hud.ConfigureCompletionRevealGateForSetup(rig.Presenter);
+
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+                hud.RefreshNow();
+
+                Assert.That(rig.Controller.Session.LevelStatus,
+                    Is.EqualTo(CaptureLevelStatus.Completed));
+                Assert.That(overlayGroup.alpha, Is.Zero);
+                Assert.That(overlayGroup.blocksRaycasts, Is.False);
+
+                float waited = 0f;
+                while (!rig.Presenter.CompletionPresentationReady
+                    && waited < 2f)
+                {
+                    yield return null;
+                    rig.Presenter.RefreshNow();
+                    hud.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                hud.RefreshNow();
+                Assert.That(overlayGroup.alpha, Is.EqualTo(1f));
+                Assert.That(overlayGroup.interactable, Is.True);
+                Assert.That(overlayGroup.blocksRaycasts, Is.True);
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [UnityTest]
         public IEnumerator CompletionSequenceStagesScrimThenContentThenButtons()
         {
             var timing = new LandmarkCompletionTiming(
@@ -821,7 +1110,11 @@ namespace Cutrium.PlayModeTests
                 LandmarkCompletionTiming? timing = null,
                 IReadOnlyList<CoreFunLevelDefinition> explicitLevels = null)
             {
-                _simulationObject = new GameObject("LandmarkRevealTestRig");
+                _simulationObject = new GameObject(
+                    "LandmarkRevealTestRig",
+                    typeof(RectTransform));
+                ((RectTransform)_simulationObject.transform).sizeDelta =
+                    new Vector2(1080f, 1920f);
                 _simulationObject.SetActive(false);
                 Controller =
                     _simulationObject.AddComponent<FirstPlayableController>();
@@ -972,6 +1265,14 @@ namespace Cutrium.PlayModeTests
             public LandmarkRevealPresenter Presenter { get; }
             public LandmarkDefinition[] Landmarks { get; }
             public RectTransform SandDestination { get; }
+            public Transform Root => _simulationObject.transform;
+
+            public void SetCompletionLayoutSize(float width, float height)
+            {
+                ((RectTransform)_simulationObject.transform).sizeDelta =
+                    new Vector2(width, height);
+                Presenter.RefreshCompletionLayoutNow();
+            }
 
             public bool CompleteWithoutAdvancing()
             {

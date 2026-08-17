@@ -5,6 +5,7 @@ using Cutrium.Gameplay.Session;
 using Cutrium.Presentation.HUD;
 using Cutrium.Unity.Simulation;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -26,19 +27,17 @@ namespace Cutrium.PlayModeTests
             });
             GameplayIdentityHudPresenter presenter =
                 root.AddComponent<GameplayIdentityHudPresenter>();
-            Text counter = Text(root.transform, "Counter");
-            CanvasGroup intro = Group(root.transform, "Intro");
-            Text introTitle = Text(intro.transform, "Title");
-            Text introMessage = Text(intro.transform, "Message");
+            TMP_Text counter = TmpText(root.transform, "Counter");
+            TMP_Text speed = TmpText(root.transform, "Speed");
             CanvasGroup failure = Group(root.transform, "Failure");
             Text failureText = Text(failure.transform, "Text");
             Button retry = Button(failure.transform, "Retry");
             presenter.Configure(
                 controller,
                 counter,
-                intro,
-                introTitle,
-                introMessage,
+                speed,
+                null,
+                null,
                 failure,
                 failureText,
                 retry);
@@ -47,8 +46,15 @@ namespace Cutrium.PlayModeTests
 
             presenter.RefreshNow(0f);
             Assert.That(counter.gameObject.activeSelf, Is.True);
-            Assert.That(counter.text, Is.EqualTo("CUTS 1/1"));
-            Assert.That(introTitle.text, Is.EqualTo("1 CUT"));
+            Assert.That(counter.text, Is.EqualTo("CUT: 0/1"));
+            Assert.That(speed.text, Is.EqualTo("8.0"));
+            LayoutElement failureLayout =
+                failure.GetComponent<LayoutElement>();
+            Assert.That(failureLayout, Is.Not.Null);
+            Assert.That(failureLayout.ignoreLayout, Is.True);
+            var failureRect = (RectTransform)failure.transform;
+            Assert.That(failureRect.anchorMin, Is.EqualTo(Vector2.zero));
+            Assert.That(failureRect.anchorMax, Is.EqualTo(Vector2.one));
 
             controller.SubmitBarrierIntent(new BarrierIntent(
                 new LogicalPoint(5f, 8f),
@@ -57,7 +63,7 @@ namespace Cutrium.PlayModeTests
             presenter.RefreshNow(0f);
             Assert.That(controller.Session.LevelStatus,
                 Is.EqualTo(CaptureLevelStatus.OutOfCuts));
-            Assert.That(counter.text, Is.EqualTo("CUTS 0/1"));
+            Assert.That(counter.text, Is.EqualTo("CUT: 1/1"));
             Assert.That(failure.alpha, Is.EqualTo(1f));
             Assert.That(failure.blocksRaycasts, Is.True);
 
@@ -65,7 +71,7 @@ namespace Cutrium.PlayModeTests
             presenter.RefreshNow(0f);
             Assert.That(controller.Session.LevelStatus,
                 Is.EqualTo(CaptureLevelStatus.Playing));
-            Assert.That(counter.text, Is.EqualTo("CUTS 1/1"));
+            Assert.That(counter.text, Is.EqualTo("CUT: 0/1"));
             Assert.That(failure.alpha, Is.Zero);
             Assert.That(failure.blocksRaycasts, Is.False);
             Object.Destroy(root);
@@ -84,15 +90,15 @@ namespace Cutrium.PlayModeTests
             });
             GameplayIdentityHudPresenter presenter =
                 root.AddComponent<GameplayIdentityHudPresenter>();
-            Text counter = Text(root.transform, "Counter");
-            CanvasGroup intro = Group(root.transform, "Intro");
+            TMP_Text counter = TmpText(root.transform, "Counter");
+            TMP_Text speed = TmpText(root.transform, "Speed");
             CanvasGroup failure = Group(root.transform, "Failure");
             presenter.Configure(
                 controller,
                 counter,
-                intro,
-                Text(intro.transform, "Title"),
-                Text(intro.transform, "Message"),
+                speed,
+                null,
+                null,
                 failure,
                 Text(failure.transform, "Text"),
                 Button(failure.transform, "Retry"));
@@ -101,6 +107,7 @@ namespace Cutrium.PlayModeTests
 
             presenter.RefreshNow(0f);
             Assert.That(counter.gameObject.activeSelf, Is.False);
+            Assert.That(speed.text, Is.EqualTo("3.0"));
             Object.Destroy(root);
         }
 
@@ -164,6 +171,16 @@ namespace Cutrium.PlayModeTests
             var gameObject = new GameObject(name, typeof(RectTransform), typeof(Text));
             gameObject.transform.SetParent(parent, false);
             return gameObject.GetComponent<Text>();
+        }
+
+        private static TMP_Text TmpText(Transform parent, string name)
+        {
+            var gameObject = new GameObject(
+                name,
+                typeof(RectTransform),
+                typeof(TextMeshProUGUI));
+            gameObject.transform.SetParent(parent, false);
+            return gameObject.GetComponent<TextMeshProUGUI>();
         }
 
         private static CanvasGroup Group(Transform parent, string name)

@@ -73,6 +73,8 @@ The focused Editor setup materializes gameplay and landmark ScriptableObject cat
 
 ## Decision Log
 
+- 2026-08-12: Standardize the persistent gameplay scene on the owner-provided `LapsusPro-Bold.otf` for Legacy UI Text and `LapsusPro-Bold SDF.asset` for TMP. Every setup path now resolves the same pair so rerunning an earlier milestone cannot restore Gomarice or Unity's built-in font.
+- 2026-08-12: Keep logical completion immediate but delay the full-screen completion overlay until the final board reveal and sand-fed progress presentation settle. Allocate completion layout from the live safe-area rect, with the flexible remainder assigned to landmark description copy.
 - 2026-08-12: A successfully started barrier consumes one cut whether it later locks or breaks; rejected/cancelled/UI-blocked input consumes none.
 - 2026-08-12: The final available barrier is allowed to resolve before exhaustion failure is declared.
 - 2026-08-12: Hunter steering uses a fractional turn plus an explicit angular cap, not a speed increase or continuous homing.
@@ -81,6 +83,7 @@ The focused Editor setup materializes gameplay and landmark ScriptableObject cat
 
 ## Discoveries
 
+- 2026-08-12: The completion popup used a fixed 92-unit truncated description slot, 7.5%-height action buttons, and an outer CanvasGroup that became visible on the logical completion frame. The landmark presenter already had the exact final-reveal and progress-settle signals needed to gate presentation without delaying gameplay.
 - The current three-landmark setup still contains invented Coastal Lagoon and Desert Dunes entries; the focused content pipeline must replace catalog membership without deleting legacy assets.
 - `LandmarkRevealPresenter` already renders artwork, title, description, sector, and completion Next; only catalog content/wiring needs expansion.
 - Existing owner setup already preserves `threat_trail.png` when present.
@@ -88,6 +91,9 @@ The focused Editor setup materializes gameplay and landmark ScriptableObject cat
 
 ## Validation Record
 
+- 2026-08-12: All 26 serialized Legacy UI Text references, all 6 TMP font references, all 6 TMP shared-material references, and the completion-presenter font reference resolve to Lapsus-Pro Bold in the only persistent scene. All six Bee response-file assemblies compile with zero errors. The focused Unity font setup was attempted but could not enter the method because `LicenseClient-sinan` disconnected; serialized GUID/reference validation was completed directly and the idempotent Editor menu remains available.
+- 2026-08-12: Completion readability/gating changes compile in Presentation, Editor, and Play Mode test assemblies with zero errors. The focused scene-serialization command was attempted but Unity lost `LicenseClient-sinan` before invoking it; the font reference has since been migrated to Lapsus-Pro Bold, while licensed Editor validation remains pending for the completion gate.
+- 2026-08-12: Final Bee response-file compilation passes all six assemblies (Gameplay, Unity, Presentation, Editor, Edit Mode tests, Play Mode tests). Responsive completion-layout math yields description regions of 681/1146/726 units and 76-unit buttons at 1080x1920, 1080x2400, and 1536x2048 respectively. Static discovery finds 257 Edit Mode and 136 Play Mode test attributes; Test Runner execution remains license-blocked and no suite pass is claimed.
 - 2026-08-12: After replacing the identity-HUD setup's null-coalescing component lookups with the Undo-aware helper, `Cutrium.Editor` compiled through Unity's current Bee response file with zero errors. A batch rerun was attempted, but Unity timed out before invoking the setup method while waiting for `LicenseClient-sinan`; the log contains no `MissingComponentException` or compiler error. The same menu command still requires a licensed interactive Editor rerun.
 - Unity/Bee response-file compilation passes for Gameplay, Unity, Presentation,
   Editor, Edit Mode tests, and Play Mode tests with zero compiler errors.

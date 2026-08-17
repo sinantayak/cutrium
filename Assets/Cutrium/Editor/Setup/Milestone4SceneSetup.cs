@@ -129,20 +129,30 @@ namespace Cutrium.Editor.Setup
             cueCanvas.alpha = 0f;
             cueCanvas.interactable = false;
             cueCanvas.blocksRaycasts = false;
+            // Big and dead-centered on screen -- this used to sit in a
+            // small, off-center upper band (30pt) where it read as barely
+            // visible; feedback cues ("LOCKED", "COMBO x2", ...) need to
+            // land like a real pop, not a caption.
             RectTransform cueRect = GetOrCreateUiChild(overlay, "CueLabel");
-            cueRect.anchorMin = new Vector2(0.16f, 0.58f);
-            cueRect.anchorMax = new Vector2(0.84f, 0.7f);
+            cueRect.anchorMin = new Vector2(0.08f, 0.4f);
+            cueRect.anchorMax = new Vector2(0.92f, 0.6f);
             cueRect.offsetMin = Vector2.zero;
             cueRect.offsetMax = Vector2.zero;
             Text cueLabel = GetOrAddComponent<Text>(cueRect.gameObject);
-            cueLabel.font = Resources.GetBuiltinResource<Font>(
-                "LegacyRuntime.ttf");
+            cueLabel.font =
+                LandmarkRevealPresentationSetup.LoadLegacyUiFontForSetup();
             cueLabel.text = string.Empty;
-            cueLabel.fontSize = 30;
+            cueLabel.fontSize = 64;
             cueLabel.fontStyle = FontStyle.Bold;
             cueLabel.alignment = TextAnchor.MiddleCenter;
             cueLabel.color = Color.white;
             cueLabel.raycastTarget = false;
+            cueLabel.resizeTextForBestFit = true;
+            cueLabel.resizeTextMinSize = 30;
+            cueLabel.resizeTextMaxSize = 64;
+            Shadow cueShadow = GetOrAddComponent<Shadow>(cueRect.gameObject);
+            cueShadow.effectColor = new Color(0f, 0f, 0f, 0.65f);
+            cueShadow.effectDistance = new Vector2(3f, -3f);
 
             Image boardFrameGraphic = boardPresenter.BoardFrame
                 .GetComponent<Image>();

@@ -93,8 +93,8 @@ namespace Cutrium.PlayModeTests
                 .gameObject.activeSelf, Is.True);
         }
 
-        [Test]
-        public void Completion_BlocksNewBarrierAndRetryRestoresInitialState()
+        [UnityTest]
+        public IEnumerator Completion_BlocksImmediatelyThenShowsRetryAfterReveal()
         {
             CompleteLevel();
             _boardPresenter.RefreshNow();
@@ -106,14 +106,31 @@ namespace Cutrium.PlayModeTests
                 Is.GreaterThanOrEqualTo(
                     _controller.TargetCapturedFraction - 0.0001f));
             Assert.That(_hudPresenter.CompleteOverlay.activeSelf, Is.True);
-            Assert.That(_hudPresenter.CompletionCanvasGroup.alpha,
-                Is.EqualTo(1f));
-            Assert.That(_hudPresenter.CompletionCanvasGroup.interactable, Is.True);
-            Assert.That(_hudPresenter.CompletionCanvasGroup.blocksRaycasts, Is.True);
             Assert.That(_controller.SubmitBarrierIntent(new BarrierIntent(
                 new LogicalPoint(8f, 12f),
                 BarrierOrientation.Vertical)).RejectionReason,
                 Is.EqualTo(BarrierRejectionReason.LevelCompleted));
+
+            if (_hudPresenter.CompletionRevealGate != null)
+            {
+                Assert.That(_hudPresenter.CompletionCanvasGroup.alpha,
+                    Is.Zero);
+                float waited = 0f;
+                while (!_hudPresenter.CompletionRevealGate
+                        .CompletionPresentationReady
+                    && waited < 3f)
+                {
+                    yield return null;
+                    _hudPresenter.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+            }
+
+            _hudPresenter.RefreshNow();
+            Assert.That(_hudPresenter.CompletionCanvasGroup.alpha,
+                Is.EqualTo(1f));
+            Assert.That(_hudPresenter.CompletionCanvasGroup.interactable, Is.True);
+            Assert.That(_hudPresenter.CompletionCanvasGroup.blocksRaycasts, Is.True);
 
             _hudPresenter.RetryButton.onClick.Invoke();
             _boardPresenter.RefreshNow();
@@ -146,7 +163,17 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Session.LevelStatus,
                 Is.EqualTo(CaptureLevelStatus.Completed));
 
-            yield return null;
+            float waited = 0f;
+            while (_hudPresenter.CompletionRevealGate != null
+                && !_hudPresenter.CompletionRevealGate
+                    .CompletionPresentationReady
+                && waited < 3f)
+            {
+                yield return null;
+                waited += Time.unscaledDeltaTime;
+            }
+
+            _hudPresenter.RefreshNow();
 
             CanvasGroup group = _hudPresenter.CompletionCanvasGroup;
             Assert.That(_hudPresenter.PercentageText.text,
@@ -209,7 +236,8 @@ namespace Cutrium.PlayModeTests
                 .GetComponent<RectTransform>();
             RectTransform legacyProgress = safeArea.Find("TopHUD/ProgressArea")
                 .GetComponent<RectTransform>();
-            RectTransform progress = safeArea.Find("BottomHUD/ProgressBar")
+            RectTransform progress = safeArea.Find(
+                    "BottomHUD/BottomHudRow/ProgressSlot/ProgressBar")
                 .GetComponent<RectTransform>();
             LayoutElement overlayLayout = _hudPresenter.CompleteOverlay
                 .GetComponent<LayoutElement>();
@@ -232,12 +260,18 @@ namespace Cutrium.PlayModeTests
             Assert.That(topLayout.minHeight, Is.EqualTo(146f));
             Assert.That(topLayout.preferredHeight, Is.EqualTo(150f));
             Assert.That(topLayout.flexibleHeight, Is.Zero);
-            Assert.That(bottomLayout.preferredHeight, Is.EqualTo(98f));
+            Assert.That(bottomLayout.minHeight, Is.EqualTo(112f));
+            Assert.That(bottomLayout.preferredHeight, Is.EqualTo(116f));
             Assert.That(bottomLayout.flexibleHeight, Is.Zero);
             Assert.That(boardLayout.preferredHeight, Is.Zero);
             Assert.That(boardLayout.flexibleHeight, Is.EqualTo(1f));
             Assert.That(safeLayout.childControlHeight, Is.True);
             Assert.That(safeLayout.childForceExpandHeight, Is.False);
+            Assert.That(safeLayout.padding.left, Is.EqualTo(12));
+            Assert.That(safeLayout.padding.right, Is.EqualTo(12));
+            Assert.That(safeLayout.padding.top, Is.EqualTo(10));
+            Assert.That(safeLayout.padding.bottom, Is.EqualTo(10));
+            Assert.That(safeLayout.spacing, Is.EqualTo(12f));
             Assert.That(topRow.childControlHeight, Is.True);
             Assert.That(topRow.childForceExpandHeight, Is.False);
             Assert.That(topRow.childForceExpandWidth, Is.False);
@@ -253,6 +287,11 @@ namespace Cutrium.PlayModeTests
             AssertChildrenHaveNonFlexibleHeight(legacyProgress);
             AssertChildrenHaveNonFlexibleHeight(bottom);
             Assert.That(overlayLayout.ignoreLayout, Is.True);
+            LayoutElement failureLayout = safeArea.Find(
+                    "CutLimitFailureOverlay")
+                .GetComponent<LayoutElement>();
+            Assert.That(failureLayout, Is.Not.Null);
+            Assert.That(failureLayout.ignoreLayout, Is.True);
             Assert.That(_hudPresenter.CompleteOverlay.transform.GetSiblingIndex(),
                 Is.EqualTo(safeArea.childCount - 1));
             Assert.That(safeArea.Find("TopHUD/Title").GetComponent<Text>().text,
@@ -268,14 +307,15 @@ namespace Cutrium.PlayModeTests
                     Is.EqualTo(child == gameplayHudRow),
                     child.name);
             }
-            Assert.That(gameplayHudRow.Find("HealthColumn/HealthHUD"),
+            Assert.That(gameplayHudRow.Find("TopHudBar"), Is.Not.Null);
+            Assert.That(gameplayHudRow.Find("TopHudBar/HealthHUD"),
                 Is.Not.Null);
-            Assert.That(gameplayHudRow.Find("ScoreColumn/ScoreHUD"),
+            Assert.That(gameplayHudRow.Find("TopHudBar/CutHUD"),
                 Is.Not.Null);
-            Assert.That(gameplayHudRow.Find("CoinColumn/CoinHUD"),
+            Assert.That(gameplayHudRow.Find("TopHudBar/SpeedHUD"),
                 Is.Not.Null);
             Assert.That(gameplayHudRow.Find(
-                "CoinColumn/SettingsSlot/SettingsButton"), Is.Not.Null);
+                "SettingsSlot/SettingsButton"), Is.Not.Null);
             Assert.That(safeArea.Find(
                     "BoardStage/BoardViewport/BoardFrame/BoardLabel")
                 .gameObject.activeSelf, Is.False);
@@ -324,10 +364,12 @@ namespace Cutrium.PlayModeTests
                 Is.GreaterThanOrEqualTo(layout.SafeSize.y * 0.7f));
             Assert.That(layout.BoardRect.width / layout.BoardRect.height,
                 Is.EqualTo(10f / 16f).Within(0.00001f));
+            // The progress bar now shares BottomHUD 50/50 with SkillRow
+            // (left half), instead of spanning most of the board width.
             Assert.That(layout.ProgressRect.width,
-                Is.InRange(
-                    layout.BoardRect.width * 0.75f,
-                    layout.BoardRect.width * 0.9f));
+                Is.LessThanOrEqualTo(layout.BottomRect.width * 0.55f));
+            Assert.That(layout.ProgressRect.xMax,
+                Is.LessThanOrEqualTo(layout.BottomRect.center.x + 0.5f));
             Assert.That(layout.ProgressRect.yMax,
                 Is.LessThanOrEqualTo(layout.BoardRect.yMin + 0.01f));
             Assert.That(layout.TopRect.yMin,
@@ -356,6 +398,9 @@ namespace Cutrium.PlayModeTests
                 Is.LessThanOrEqualTo(layout.BottomRect.yMax + 0.01f));
             Assert.That(layout.ProgressRect.center.y,
                 Is.EqualTo(layout.BottomRect.center.y).Within(0.01f));
+            Assert.That(
+                layout.BoardRect.yMin - layout.ProgressRect.yMax,
+                Is.GreaterThanOrEqualTo(12f));
             Assert.That(layout.GameplayHudRect.xMin,
                 Is.GreaterThanOrEqualTo(layout.TopRect.xMin - 0.01f));
             Assert.That(layout.GameplayHudRect.xMax,
@@ -745,6 +790,13 @@ namespace Cutrium.PlayModeTests
                 .GetComponentInChildren<CaptureBoardPresenter>(true);
             _hudPresenter = _root
                 .GetComponentInChildren<CaptureHudPresenter>(true);
+            // These tests drive capture/retry flows directly and don't
+            // exercise the pre-level cinematic (see PreLevelIntroPresenter),
+            // which would otherwise hold the simulation and disable barrier
+            // input for several seconds after every fresh scene load.
+            _root.GetComponentInChildren<
+                    Cutrium.Presentation.HUD.PreLevelIntroPresenter>(true)
+                ?.SkipForTesting();
             Canvas.ForceUpdateCanvases();
             _boardPresenter.RefreshNow();
             _hudPresenter.RefreshNow();
@@ -816,7 +868,7 @@ namespace Cutrium.PlayModeTests
                 "TopHUD/GameplayHudRow");
             RectTransform bottom = (RectTransform)clone.Find("BottomHUD");
             RectTransform progress = (RectTransform)clone.Find(
-                "BottomHUD/ProgressBar");
+                "BottomHUD/BottomHudRow/ProgressSlot/ProgressBar");
             RectTransform overlay = (RectTransform)clone.Find(
                 "LevelCompleteOverlay");
             Rect fittedBoardLocal = BoardViewportLayout.CalculateAspectFitRect(

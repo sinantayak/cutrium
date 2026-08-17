@@ -14,31 +14,32 @@ namespace Cutrium.Presentation.HUD
     [DisallowMultipleComponent]
     public sealed class SandProgressPresenter : MonoBehaviour
     {
-        private const float AuthoredWidth = 838f;
-        private const float AuthoredHeight = 55f;
-        private const float AuthoredHorizontalInset = 11f;
-        private const float AuthoredVerticalInset = 10f;
-        private const float TextHeight = 26f;
-        private const float TextGap = 4f;
-        private const float MinimumBarWidth = 280f;
+        // Fixed, not proportional to the bar's own (now flexible) width or
+        // height: Background/Fill render as Image.Type.Sliced (see
+        // EnsureUiSpriteImportSettings' sliced9Slice option), whose border
+        // -- the visible plaque frame thickness -- stays a fixed pixel
+        // size regardless of how far the flat middle stretches, so the
+        // fill's inset from that frame should too.
+        private const float FillInsetHorizontal = 12f;
+        private const float FillInsetVertical = 10f;
+        // Matches SkillRow's fixed icon cell size
+        // (LandmarkRevealPresentationSetup.SkillCellSize) so the bar and
+        // the skill icons -- BottomHudRow's other 50% half -- line up at
+        // the same height. The percentage text overlays the bar itself
+        // (last sibling, rendered on top) instead of reserving a second
+        // row underneath it.
+        private const float TargetVisualHeight = 100f;
         private const float ParentSidePadding = 18f;
-        private const float StartStarHeightMultiplier = 1.1f;
+        private const float ParentVerticalPadding = 8f;
         private const float ComparisonEpsilon = 0.00001f;
 
-        private readonly Vector3[] _boardWorldCorners = new Vector3[4];
-
         [SerializeField] private FirstPlayableController _controller;
-        [SerializeField] private RectTransform _boardFrame;
         [SerializeField] private RectTransform _progressBarRect;
         [SerializeField] private Image _backgroundImage;
         [SerializeField] private RectTransform _fillMaskRect;
         [SerializeField] private Image _fillImage;
-        [SerializeField] private Image _frameImage;
-        [SerializeField] private Image _startStarImage;
         [SerializeField] private Text _progressText;
         [SerializeField] private RectTransform _fillStartTarget;
-        [SerializeField] [Range(0.5f, 1f)]
-        private float _boardWidthFraction = 0.86f;
         [SerializeField] [Min(0f)]
         private float _animationSeconds = 0.48f;
         [SerializeField] [Min(0f)]
@@ -55,13 +56,10 @@ namespace Cutrium.Presentation.HUD
         private float _animationElapsed;
 
         public FirstPlayableController Controller => _controller;
-        public RectTransform BoardFrame => _boardFrame;
         public RectTransform ProgressBarRect => _progressBarRect;
         public Image BackgroundImage => _backgroundImage;
         public RectTransform FillMaskRect => _fillMaskRect;
         public Image FillImage => _fillImage;
-        public Image FrameImage => _frameImage;
-        public Image StartStarImage => _startStarImage;
         public Text ProgressText => _progressText;
         public RectTransform FillStartTarget => _fillStartTarget;
         public float DisplayedCapturedFraction =>
@@ -72,6 +70,26 @@ namespace Cutrium.Presentation.HUD
         public float AnimationSeconds => _animationSeconds;
         public float ArrivalFallbackSeconds => _arrivalFallbackSeconds;
         public bool WaitingForSandArrival => _waitingForArrival;
+        public bool IsSettledAtLatestLogicalValue
+        {
+            get
+            {
+                if (_controller == null || _controller.Session == null)
+                {
+                    return true;
+                }
+
+                float logical = _controller.Session.CapturedFraction;
+                return !_waitingForArrival
+                    && Mathf.Abs(
+                        _latestLogicalCapturedFraction - logical)
+                        <= ComparisonEpsilon
+                    && Mathf.Abs(_animationTarget - logical)
+                        <= ComparisonEpsilon
+                    && Mathf.Abs(_displayedCapturedFraction - logical)
+                        <= ComparisonEpsilon;
+            }
+        }
 
         public float CurrentFillRatio
         {
@@ -97,56 +115,35 @@ namespace Cutrium.Presentation.HUD
 
         public void Configure(
             FirstPlayableController controller,
-            RectTransform boardFrame,
             RectTransform progressBarRect,
             Image backgroundImage,
             RectTransform fillMaskRect,
             Image fillImage,
-            Image frameImage,
             Text progressText,
-            RectTransform fillStartTarget,
-            Image startStarImage = null)
+            RectTransform fillStartTarget)
         {
             _controller = controller;
-            _boardFrame = boardFrame;
             _progressBarRect = progressBarRect;
             _backgroundImage = backgroundImage;
             _fillMaskRect = fillMaskRect;
             _fillImage = fillImage;
-            _frameImage = frameImage;
-            _startStarImage = startStarImage;
             _progressText = progressText;
             _fillStartTarget = fillStartTarget;
             ResetForCurrentSession();
             RefreshLayoutNow();
         }
 
-        public void ConfigureStartStarForSetup(Image startStarImage)
-        {
-            _startStarImage = startStarImage;
-            RefreshLayoutNow();
-        }
-
         public void ConfigureAnimationForSetup(
             float animationSeconds,
-            float arrivalFallbackSeconds,
-            float boardWidthFraction)
+            float arrivalFallbackSeconds)
         {
             ValidateNonNegative(animationSeconds, nameof(animationSeconds));
             ValidateNonNegative(
                 arrivalFallbackSeconds,
                 nameof(arrivalFallbackSeconds));
-            if (!IsFinite(boardWidthFraction)
-                || boardWidthFraction < 0.5f
-                || boardWidthFraction > 1f)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(boardWidthFraction));
-            }
 
             _animationSeconds = animationSeconds;
             _arrivalFallbackSeconds = arrivalFallbackSeconds;
-            _boardWidthFraction = boardWidthFraction;
             RefreshLayoutNow();
         }
 
@@ -228,51 +225,54 @@ namespace Cutrium.Presentation.HUD
 
         public void RefreshLayoutNow()
         {
-            if (_boardFrame == null
-                || _progressBarRect == null
+            if (_progressBarRect == null
                 || !(_progressBarRect.parent is RectTransform parent))
             {
                 return;
             }
 
-            _boardFrame.GetWorldCorners(_boardWorldCorners);
-            Vector3 leftLocal = parent.InverseTransformPoint(
-                _boardWorldCorners[0]);
-            Vector3 rightLocal = parent.InverseTransformPoint(
-                _boardWorldCorners[3]);
-            float boardWidth = Mathf.Abs(rightLocal.x - leftLocal.x);
-            float availableWidth = Mathf.Max(
+            // Flush left (mirrors SkillRow's flush-right skills on the
+            // other BottomHudRow half) instead of centered with unused
+            // margin on both sides. Background/Fill render as
+            // Image.Type.Sliced (see EnsureUiSpriteImportSettings'
+            // sliced9Slice option), so width no longer needs to stay
+            // aspect-locked to fill the slot -- only a single left inset
+            // is needed, not a symmetric pair.
+            float barWidth = Mathf.Max(
                 0f,
-                parent.rect.width - (ParentSidePadding * 2f));
-            float preferredWidth = boardWidth * _boardWidthFraction;
-            float barWidth = Mathf.Min(
-                availableWidth,
-                Mathf.Max(MinimumBarWidth, preferredWidth));
-            if (barWidth <= 0f)
+                parent.rect.width - ParentSidePadding);
+            float availableVisualFootprintHeight = Mathf.Max(
+                0f,
+                parent.rect.height - (ParentVerticalPadding * 2f));
+            float visualHeight = Mathf.Min(
+                TargetVisualHeight,
+                availableVisualFootprintHeight);
+            if (barWidth <= 0f || visualHeight <= 0f)
             {
                 return;
             }
 
-            float visualHeight = barWidth * AuthoredHeight / AuthoredWidth;
-            float rootHeight = visualHeight + TextGap + TextHeight;
-            float startStarSize = visualHeight * StartStarHeightMultiplier;
-            _progressBarRect.sizeDelta = new Vector2(barWidth, rootHeight);
+            _progressBarRect.anchorMin = new Vector2(0f, 0.5f);
+            _progressBarRect.anchorMax = new Vector2(0f, 0.5f);
+            _progressBarRect.pivot = new Vector2(0f, 0.5f);
+            _progressBarRect.anchoredPosition = new Vector2(
+                ParentSidePadding,
+                0f);
+            _progressBarRect.sizeDelta = new Vector2(barWidth, visualHeight);
 
-            ConfigureTopVisualRect(_backgroundImage?.rectTransform, visualHeight);
-            ConfigureTopVisualRect(_frameImage?.rectTransform, visualHeight);
+            StretchFull(_backgroundImage?.rectTransform);
 
             if (_fillMaskRect != null)
             {
-                float horizontalInset =
-                    barWidth * AuthoredHorizontalInset / AuthoredWidth;
-                float leadingInset = _startStarImage != null
-                    ? startStarSize * 0.5f
-                    : horizontalInset;
-                float verticalInset =
-                    visualHeight * AuthoredVerticalInset / AuthoredHeight;
+                float horizontalInset = Mathf.Min(
+                    FillInsetHorizontal,
+                    barWidth * 0.5f);
+                float verticalInset = Mathf.Min(
+                    FillInsetVertical,
+                    visualHeight * 0.5f);
                 float innerWidth = Mathf.Max(
                     0f,
-                    barWidth - leadingInset - horizontalInset);
+                    barWidth - (horizontalInset * 2f));
                 float innerHeight = Mathf.Max(
                     0f,
                     visualHeight - (verticalInset * 2f));
@@ -280,7 +280,7 @@ namespace Cutrium.Presentation.HUD
                 _fillMaskRect.anchorMax = new Vector2(0f, 1f);
                 _fillMaskRect.pivot = new Vector2(0f, 1f);
                 _fillMaskRect.anchoredPosition = new Vector2(
-                    leadingInset,
+                    horizontalInset,
                     -verticalInset);
                 _fillMaskRect.sizeDelta = new Vector2(
                     innerWidth * CurrentFillRatio,
@@ -306,28 +306,11 @@ namespace Cutrium.Presentation.HUD
                 }
             }
 
-            if (_startStarImage != null && _fillStartTarget != null)
-            {
-                RectTransform starRect = _startStarImage.rectTransform;
-                starRect.anchorMin = new Vector2(0.5f, 0.5f);
-                starRect.anchorMax = new Vector2(0.5f, 0.5f);
-                starRect.pivot = new Vector2(0.5f, 0.5f);
-                starRect.anchoredPosition = _progressBarRect.InverseTransformPoint(
-                    _fillStartTarget.TransformPoint(Vector3.zero));
-                starRect.sizeDelta = new Vector2(
-                    startStarSize,
-                    startStarSize);
-            }
-
-            if (_progressText != null)
-            {
-                RectTransform textRect = _progressText.rectTransform;
-                textRect.anchorMin = new Vector2(0f, 0f);
-                textRect.anchorMax = new Vector2(1f, 0f);
-                textRect.pivot = new Vector2(0.5f, 0f);
-                textRect.anchoredPosition = Vector2.zero;
-                textRect.sizeDelta = new Vector2(0f, TextHeight);
-            }
+            // Overlays the bar itself (the text component is already the
+            // last sibling, see LandmarkRevealPresentationSetup) instead of
+            // reserving a separate row underneath it, so the bar can use
+            // BottomHudRow's full shared height.
+            StretchFull(_progressText?.rectTransform);
         }
 
         private void Awake()
@@ -444,20 +427,18 @@ namespace Cutrium.Presentation.HUD
             }
         }
 
-        private static void ConfigureTopVisualRect(
-            RectTransform rect,
-            float height)
+        private static void StretchFull(RectTransform rect)
         {
             if (rect == null)
             {
                 return;
             }
 
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = new Vector2(0f, height);
+            rect.sizeDelta = Vector2.zero;
         }
 
         private static int RoundedPercent(float fraction) =>
