@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L11_KurtariciIsaHeykeli
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: kurtarici-isa-heykeli
+  _displayTitle: "Kurtar\u0131c\u0131 \u0130sa Heykeli"
+  _shortDescription: "Corcovado Da\u011F\u0131\u2019n\u0131n zirvesinde kollar\u0131n\u0131
+    \u015Fehre a\xE7an Art Deco heykel, Rio de Janeiro\u2019nun simgesidir. 30 metre
+    y\xFCksekli\u011Findeki fig\xFCr, da\u011F ve deniz manzaras\u0131yla birlikte
+    d\xFCnyan\u0131n en tan\u0131nan sil\xFCetlerinden birini olu\u015Fturur. 1931\u2019de
+    tamamlanan heykelin betonarme g\xF6vdesi, \u0131\u015F\u0131\u011F\u0131 yumu\u015Fak
+    bi\xE7imde yans\u0131tan milyonlarca k\xFC\xE7\xFCk sabunta\u015F\u0131 karoyla
+    kapl\u0131d\u0131r."
+  _sector: "Rio de Janeiro / BREZ\u0130LYA"
+  _artwork: {fileID: -3289387426310549503, guid: 2c028dbcfb6d86b42803d42a98913800, type: 3}

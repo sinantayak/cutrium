@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L07_BurjAlArab
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: burj-al-arab
+  _displayTitle: "Bur\xE7 el-Arab"
+  _shortDescription: "Yelken bi\xE7imli Burj Al Arab, Dubai k\u0131y\u0131s\u0131ndaki
+    yapay bir ada \xFCzerinde y\xFCkselir. Cesur sil\xFCeti ve g\xF6steri\u015Fli
+    i\xE7 mek\xE2nlar\u0131, yap\u0131y\u0131 modern Dubai\u2019nin en tan\u0131nan
+    simgelerinden biri yapm\u0131\u015Ft\u0131r. Yakla\u015F\u0131k 180 metre y\xFCksekli\u011Findeki
+    dev atriyumu ve denizin \xFCzerinde uzanan helikopter pisti, otelin mimarisine
+    beklenmedik bir \xF6l\xE7ek duygusu katar."
+  _sector: "Dubai / B\u0130RLE\u015E\u0130K ARAP EM\u0130RL\u0130KLER\u0130"
+  _artwork: {fileID: 9055853470648467927, guid: 16365c12bf240cb4e9d882fba27d3b95, type: 3}

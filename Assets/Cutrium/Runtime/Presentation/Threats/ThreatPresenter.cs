@@ -13,6 +13,8 @@ namespace Cutrium.Presentation.Threats
     public sealed class ThreatPresenter : MonoBehaviour
     {
         private const float HunterReactionEmphasisSeconds = 0.34f;
+        private const string HunterTrailShaderResource =
+            "Presentation/ThreatTrailDetailTint";
 
         [SerializeField]
         private FirstPlayableController _controller;
@@ -42,6 +44,7 @@ namespace Cutrium.Presentation.Threats
         private bool _hasThemeStyle;
         private bool _feedbackSubscribed;
         private float _hunterReactionEmphasisUntil;
+        private Material _hunterTrailMaterial;
         private bool _visible = true;
 
         public FirstPlayableController Controller => _controller;
@@ -121,9 +124,11 @@ namespace Cutrium.Presentation.Threats
             _themeStyle = style;
             _hasThemeStyle = true;
             EnsurePrimaryView();
-            foreach (ThreatView view in _activeViews.Values)
+            foreach (KeyValuePair<ThreatId, ThreatView> pair in _activeViews)
             {
-                ApplyStyle(view);
+                ApplyStyle(
+                    pair.Value,
+                    _controller.Session.BehaviorFor(pair.Key).Kind);
             }
         }
 
@@ -195,6 +200,14 @@ namespace Cutrium.Presentation.Threats
             UnsubscribeFeedback();
         }
 
+        private void OnDestroy()
+        {
+            if (_hunterTrailMaterial != null)
+            {
+                Destroy(_hunterTrailMaterial);
+            }
+        }
+
         private void SynchronizeViews()
         {
             EnsurePrimaryView();
@@ -227,7 +240,8 @@ namespace Cutrium.Presentation.Threats
                  index < _controller.Session.Threats.Count;
                  index++)
             {
-                ThreatId id = _controller.Session.Threats[index].Id;
+                ThreatState threat = _controller.Session.Threats[index];
+                ThreatId id = threat.Id;
                 if (_activeViews.ContainsKey(id))
                 {
                     continue;
@@ -240,7 +254,9 @@ namespace Cutrium.Presentation.Threats
                     ? "ThreatVisual"
                     : $"ThreatVisual_{id.Value}";
                 view.RectTransform.gameObject.SetActive(_visible);
-                ApplyStyle(view);
+                ApplyStyle(
+                    view,
+                    _controller.Session.BehaviorFor(id).Kind);
                 _activeViews.Add(id, view);
             }
         }
@@ -318,9 +334,9 @@ namespace Cutrium.Presentation.Threats
             rect.sizeDelta = new Vector2(
                 diameter * visualScale.x,
                 diameter * visualScale.y);
-            ApplyStyle(view);
             ThreatBehaviorConfiguration behavior =
                 _controller.Session.BehaviorFor(threat.Id);
+            ApplyStyle(view, behavior.Kind);
             float pulseMultiplier =
                 _controller.Session.PulsePhaseMultiplierFor(threat.Id);
             bool hunterEmphasized =
@@ -333,7 +349,7 @@ namespace Cutrium.Presentation.Threats
                 hunterEmphasized);
             PositionDecorations(view, threat, diameter, treatment);
             Color baseTrailColor = _hasThemeStyle
-                ? _themeStyle.TrailColor
+                ? _themeStyle.TrailColorFor(behavior.Kind)
                 : view.TrailImage.color;
             view.TrailImage.color = new Color(
                 baseTrailColor.r,
@@ -342,12 +358,14 @@ namespace Cutrium.Presentation.Threats
                 Mathf.Clamp01(baseTrailColor.a * treatment.Intensity));
         }
 
-        private void ApplyStyle(ThreatView view)
+        private void ApplyStyle(
+            ThreatView view,
+            ThreatBehaviorKind behaviorKind)
         {
             EnsureDecorations(view);
             view.TrailImage.gameObject.SetActive(_visible);
             view.Image.sprite = _hasThemeStyle
-                ? _themeStyle.Sprite ?? _optionalSprite
+                ? _themeStyle.SpriteFor(behaviorKind) ?? _optionalSprite
                 : _optionalSprite;
             if (_hasThemeStyle)
             {
@@ -355,8 +373,13 @@ namespace Cutrium.Presentation.Threats
                 view.ShadowImage.sprite = _themeStyle.ShadowSprite;
                 view.ShadowImage.color = _themeStyle.ShadowColor;
                 view.TrailImage.sprite = _themeStyle.TrailSprite;
-                view.TrailImage.color = _themeStyle.TrailColor;
+                view.TrailImage.color =
+                    _themeStyle.TrailColorFor(behaviorKind);
             }
+            view.TrailImage.material = behaviorKind
+                == ThreatBehaviorKind.Hunter
+                    ? ResolveHunterTrailMaterial()
+                    : null;
 
             view.Image.preserveAspect = false;
             // The authored meteor trail includes transparent padding around
@@ -412,6 +435,27 @@ namespace Cutrium.Presentation.Threats
                     view.RectTransform.GetSiblingIndex());
             }
             view.ShadowImage.transform.SetSiblingIndex(1);
+        }
+
+        private Material ResolveHunterTrailMaterial()
+        {
+            if (_hunterTrailMaterial != null)
+            {
+                return _hunterTrailMaterial;
+            }
+
+            Shader shader = Resources.Load<Shader>(HunterTrailShaderResource);
+            if (shader == null)
+            {
+                return null;
+            }
+
+            _hunterTrailMaterial = new Material(shader)
+            {
+                name = "Hunter Trail Detail Tint (Runtime)",
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            return _hunterTrailMaterial;
         }
 
         private static Image GetOrCreateDecoration(
@@ -548,8 +592,9 @@ namespace Cutrium.Presentation.Threats
         }
     }
 
-    /// Presentation-only geometry/intensity treatment for the existing blue
-    /// trail. Uniform scaling preserves the authored meteor silhouette.
+    /// Presentation-only geometry/intensity treatment for the shared trail.
+    /// Uniform scaling preserves the authored meteor silhouette while the
+    /// theme independently tints it for each threat behavior.
     public readonly struct ThreatTrailTreatment
     {
         private ThreatTrailTreatment(

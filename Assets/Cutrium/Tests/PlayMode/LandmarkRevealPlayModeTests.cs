@@ -67,18 +67,18 @@ namespace Cutrium.PlayModeTests
                 _landmarkPresenter.Landmarks.Select(l => l.LandmarkId),
                 Is.EqualTo(new[]
                 {
-                    "galata-kulesi",
-                    "misis-antik-kenti",
-                    "yilankale",
-                    "aspendos-antik-tiyatrosu",
-                    "myra-antik-kenti",
-                    "patara-antik-kenti",
-                    "xanthos-antik-kenti",
-                    "sagalassos-antik-kenti",
-                    "oludeniz",
-                    "truva-antik-kenti",
-                    "zeugma-antik-kenti",
-                    "topkapi-sarayi",
+                    "angkor-wat",
+                    "aspendos-tiyatrosu",
+                    "aziz-vasil-katedrali",
+                    "big-ben-westminster",
+                    "borobudur-tapinagi",
+                    "brandenburg-kapisi",
+                    "burj-al-arab",
+                    "burj-khalifa",
+                    "buyuk-kanyon",
+                    "chichen-itza",
+                    "kurtarici-isa-heykeli",
+                    "cn-kulesi",
                 }));
             foreach (LandmarkDefinition landmark in _landmarkPresenter.Landmarks)
             {

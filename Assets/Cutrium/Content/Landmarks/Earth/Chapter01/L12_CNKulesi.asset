@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L12_CNKulesi
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: cn-kulesi
+  _displayTitle: CN Kulesi
+  _shortDescription: "553,3 metrelik CN Kulesi, bir d\xF6nem d\xFCnyan\u0131n en
+    y\xFCksek ba\u011F\u0131ms\u0131z yap\u0131s\u0131yd\u0131. Cam zeminli seyir
+    alanlar\u0131 ve d\u0131\u015Far\u0131da yap\u0131lan EdgeWalk deneyimi, Toronto
+    manzaras\u0131na g\xFC\xE7l\xFC bir y\xFCkseklik hissi katar. 1976\u2019da a\xE7\u0131lan
+    kule asl\u0131nda ileti\u015Fim sinyallerini \u015Fehrin h\u0131zla y\xFCkselen
+    g\xF6kdelenlerinin \xFCzerinden iletmek i\xE7in tasarlanm\u0131\u015Ft\u0131."
+  _sector: Toronto / KANADA
+  _artwork: {fileID: 6557355943830332546, guid: 0d774b5354df2514684a42eda8419be8, type: 3}

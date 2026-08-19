@@ -1409,3 +1409,82 @@ while gameplay dimensions, capture percentages, input mapping, solver state,
 and difficulty stay unchanged. Progress and both HUD bands remain outside the
 board input rect. A focused idempotent Editor menu can reapply only these
 layout values without touching colors, artwork, sand, trails, or gameplay.
+
+## ADR-034 — Earth Landmark Prefix Starts with Chapter 1
+
+**Status:** Accepted; supersedes ADR-031 only for the active landmark mapping.
+
+**Context:**
+The game has moved from a Türkiye-only landmark collection to a sixty-entry
+Earth collection. Chapter 1 gameplay already exists, but its active landmark
+catalog still points to the former Türkiye content. Waiting until Chapter 2 to
+begin the Earth mapping would make the Chapter 1 acceptance build inconsistent
+with the new product identity.
+
+**Decision:**
+Map Levels 1–12 to the first twelve entries in the alphabetical order recorded
+by `earth-landmarks.md`: Angkor Wat through CN Kulesi. Serialize the Turkish
+title, description, and sector into the current single-language
+`LandmarkDefinition`; keep the English text in Markdown as the future
+localization source. Materialize definitions under
+`Assets/Cutrium/Content/Landmarks/Earth/Chapter01/` through an idempotent,
+focused Editor setup and keep the existing `LandmarkCatalog.asset` path and
+GUID so scene wiring remains stable. Preserve the former Türkiye definitions
+as unreferenced legacy content until cleanup is explicitly approved.
+
+**Reasoning:**
+Using the source order is deterministic, immediately provides geographic and
+architectural variety, and scales naturally to later twelve-entry chapter
+prefixes. Reusing the active catalog asset avoids a scene-reference migration,
+while separate presentation definitions preserve the gameplay/content boundary.
+
+**Consequences:**
+Chapter 1 must be materialized and validated in a licensed Unity Editor before
+owner playtesting. The focused setup checks one exact Earth definition and
+artwork per playable level without changing scenes or gameplay. Chapter 2 will
+extend this exact-prefix policy to 24 entries rather than performing the first
+Earth migration.
+
+## ADR-035 — Behavior-Specific Threat Body Sprites and Trail Tints
+
+**Status:** Accepted.
+
+**Context:**
+Normal, Hunter, and Pulse already have different deterministic behavior and
+trail treatments, but all three used one shared body sprite and trail tint.
+The project owner provided three body color variants and requested matching
+blue, red, and green trails so behavior can be recognized more quickly without
+changing threat geometry or rules.
+
+**Decision:**
+Keep the existing serialized normal threat sprite as the compatibility default
+and add optional Hunter and Pulse sprite fields to `ThemeDefinition`. Resolve
+each field through selected theme then fallback theme, finally falling back to
+the resolved normal sprite. `ThreatPresenter` selects the resolved body sprite
+from the session's existing `ThreatBehaviorKind` for each `ThreatId`, including
+mixed multi-threat levels. Add a focused idempotent Editor setup that wires the
+three owner-provided PNG Sprite subassets into the selected cleanup theme
+without editing the scene. Reuse the existing trail Sprite for all behaviors;
+store Normal, Hunter, and Pulse trail colors in the theme and tint each trail
+from the same behavior lookup. Preserve the successful standard UI tint path
+for Normal and Pulse. Because the authored trail texture contains almost no red
+channel, use a Hunter-only detail-tint UI shader that rotates the texture's blue
+palette channels toward red before applying the same theme color. This retains
+the original pixel-level contrast and markings. Themes without behavior-
+specific trail colors continue to use their existing single trail color for all
+threat kinds.
+
+**Reasoning:**
+The theme remains the replaceable visual source while the presenter already has
+read-only access to behavior for trail treatment. Reusing that same behavior
+read avoids duplicated state and makes the visual distinction available to
+every active threat, including cloned views.
+
+**Consequences:**
+No gameplay configuration, collision radius, solver state, speed, capture rule,
+or scene geometry changes. Themes that define only the legacy normal sprite and
+trail color continue to render every behavior with those values. No additional
+trail texture is required. The Hunter material is created and released by
+`ThreatPresenter` from a project-owned Resources shader; no scene object or
+extra UI layer is created. A future Hunter+Pulse kind must make an explicit
+visual choice when that behavior is implemented.

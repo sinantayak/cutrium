@@ -127,17 +127,34 @@ namespace Cutrium.Editor.Setup
                     "The first-twelve gameplay catalog is invalid.");
             }
 
-            if (landmarkCatalog == null
-                || landmarkCatalog.Count
-                    != FirstTwelveGameplayProgression.LevelCount)
+            if (landmarkCatalog == null)
             {
                 throw new InvalidOperationException(
                     "The first-twelve landmark catalog is not materialized. " +
-                    "Run First 12 Gameplay Progression setup in a licensed Editor.");
+                    "Run Chapter 1 Earth Landmarks setup in a licensed Editor.");
             }
 
-            landmarkCatalog.Validate();
-            Debug.Log("First 12 gameplay and landmark catalogs are valid.");
+            ValidateChapterOneEarthLandmarks(landmarkCatalog);
+            Debug.Log(
+                "First 12 gameplay and Chapter 1 Earth landmark catalogs " +
+                "are valid.");
+        }
+
+        [MenuItem("Cutrium/Setup/Chapter 1 Earth Landmarks")]
+        public static void ApplyChapterOneEarthLandmarks()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "Exit Play Mode before configuring landmark assets.");
+            }
+
+            LandmarkCatalog landmarkCatalog = ConfigureChapterOneEarthLandmarks();
+            ValidateChapterOneEarthLandmarks(landmarkCatalog);
+            AssetDatabase.SaveAssets();
+            Debug.Log(
+                "Chapter 1 Earth landmarks configured without changing " +
+                "gameplay or scene presentation.");
         }
 
         [MenuItem("Cutrium/Setup/First 12 Gameplay Progression")]
@@ -173,12 +190,7 @@ namespace Cutrium.Editor.Setup
 
             LandmarkRevealPresenter landmarkPresenter = root
                 .GetComponentInChildren<LandmarkRevealPresenter>(true);
-            LandmarkDefinition[] landmarks =
-                FirstTwelveLandmarkContent.CreateOrUpdateAssets();
-            LandmarkCatalog landmarkCatalog =
-                GetOrCreateAsset<LandmarkCatalog>(LandmarkCatalogPath);
-            landmarkCatalog.ConfigureForSetup(landmarks);
-            EditorUtility.SetDirty(landmarkCatalog);
+            LandmarkCatalog landmarkCatalog = ConfigureChapterOneEarthLandmarks();
             if (landmarkPresenter != null)
             {
                 Undo.RecordObject(
@@ -207,6 +219,50 @@ namespace Cutrium.Editor.Setup
                 "First 12 gameplay progression configured. Gameplay and " +
                 "landmark catalogs remain separate; no presentation setup " +
                 "was run.");
+        }
+
+        private static LandmarkCatalog ConfigureChapterOneEarthLandmarks()
+        {
+            LandmarkDefinition[] landmarks =
+                FirstTwelveLandmarkContent.CreateOrUpdateAssets();
+            LandmarkCatalog landmarkCatalog =
+                GetOrCreateAsset<LandmarkCatalog>(LandmarkCatalogPath);
+            landmarkCatalog.ConfigureForSetup(landmarks);
+            EditorUtility.SetDirty(landmarkCatalog);
+            return landmarkCatalog;
+        }
+
+        private static void ValidateChapterOneEarthLandmarks(
+            LandmarkCatalog landmarkCatalog)
+        {
+            landmarkCatalog.Validate();
+            FirstTwelveLandmarkContent.Entry[] entries =
+                FirstTwelveLandmarkContent.Entries;
+            if (landmarkCatalog.Count != entries.Length
+                || entries.Length != FirstTwelveGameplayProgression.LevelCount)
+            {
+                throw new InvalidOperationException(
+                    "Chapter 1 requires one Earth landmark per gameplay level.");
+            }
+
+            for (int index = 0; index < entries.Length; index++)
+            {
+                FirstTwelveLandmarkContent.Entry expected = entries[index];
+                LandmarkDefinition actual = landmarkCatalog.Landmarks[index];
+                if (actual.LandmarkId != expected.Id
+                    || actual.DisplayTitle != expected.Title
+                    || actual.ShortDescription != expected.Description
+                    || actual.Sector != expected.Sector
+                    || actual.Artwork == null
+                    || AssetDatabase.GetAssetPath(actual) != expected.DefinitionPath
+                    || AssetDatabase.GetAssetPath(actual.Artwork)
+                        != expected.ArtworkPath)
+                {
+                    throw new InvalidOperationException(
+                        $"Chapter 1 Earth landmark {index + 1} does not " +
+                        "match its authored source.");
+                }
+            }
         }
 
         private static Scene OpenVerticalSliceWithoutDiscardingDirtyScenes()

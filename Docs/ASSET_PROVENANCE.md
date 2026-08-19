@@ -84,9 +84,38 @@ progress is not baked into the textures: the full Fill image stays fixed and
 a `RectMask2D` clips it from left to right. No external download or generated
 derivative was added by the HUD pass.
 
-## Threat visual asset
+## Threat visual assets
 
-The project owner supplied
-`Assets/Cutrium/Content/Gui/Threat_Visual.png` directly. Its imported Sprite
-subasset is `Threat_Visual_0`; the selected gameplay theme uses it unchanged
-for every moving threat view. No generated derivative was added.
+The project owner replaced the original shared threat PNG with three directly
+supplied color variants under `Assets/Cutrium/Content/Gui/`:
+
+- `Threat_Visual_Normal.png` (`Threat_Visual_Normal_0`)
+- `Threat_Visual_Hunter.png` (`Threat_Visual_Hunter_0`)
+- `Threat_Visual_Pulse.png` (`Threat_Visual_Pulse_0`)
+
+The selected gameplay theme maps these imported Sprite subassets to Normal,
+Hunter, and Pulse presentation respectively. The variants change only the
+rendered image; motion, behavior, speed, radius, and collision remain defined
+by gameplay content. External source/license details were not specified, so the
+project owner should retain the release-clearance record.
+
+All three behaviors reuse the existing threat-trail Sprite. Normal and Pulse
+retain standard UI tinting. A project-owned Hunter-only UI shader preserves the
+source RGB detail while rotating its blue palette channels toward the runtime
+red theme color, because direct multiplication with the blue source appears
+black. No new trail artwork or generated derivative was added.
+
+## Earth landmark artwork
+
+The project owner supplied the sixty PNG files under
+`Assets/Cutrium/Content/Earth Landmarks/` directly and imported them through
+Unity on 2026-08-18. Their `.meta` files are owner-created and must be preserved;
+Chapter setup reads the imported Sprite subassets without rewriting image bytes
+or regenerating metadata.
+
+- Source: supplied directly by the project owner.
+- External downloads / third-party source / license: not specified; the project
+  owner should retain the source and license record for release clearance.
+- Intended use: one ordered Earth landmark reveal per playable progression
+  level, beginning with the twelve-entry Chapter 1 prefix.
+- Generated derivatives: none.

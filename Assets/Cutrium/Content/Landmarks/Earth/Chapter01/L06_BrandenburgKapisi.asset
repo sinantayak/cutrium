@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L06_BrandenburgKapisi
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: brandenburg-kapisi
+  _displayTitle: "Brandenburg Kap\u0131s\u0131"
+  _shortDescription: "18. y\xFCzy\u0131l\u0131n sonunda yap\u0131lan Brandenburg
+    Kap\u0131s\u0131, Berlin\u2019in en g\xFC\xE7l\xFC simgelerinden biridir. So\u011Fuk
+    Sava\u015F y\u0131llar\u0131nda b\xF6l\xFCnmenin s\u0131n\u0131r\u0131nda kald\u0131;
+    1989\u2019dan sonra Almanya\u2019n\u0131n yeniden birle\u015Fmesini temsil etmeye
+    ba\u015Flad\u0131. Kap\u0131n\u0131n tepesindeki d\xF6rt atl\u0131 Quadriga heykeli,
+    zafer tanr\u0131\xE7as\u0131n\u0131 \u015Fehre do\u011Fru ilerlerken g\xF6sterir."
+  _sector: Berlin / ALMANYA
+  _artwork: {fileID: -6606637857269559732, guid: 7451781f19388244fae36606e4ba28f1, type: 3}

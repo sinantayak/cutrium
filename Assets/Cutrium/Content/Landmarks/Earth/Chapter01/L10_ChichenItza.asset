@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L10_ChichenItza
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: chichen-itza
+  _displayTitle: "Chich\xE9n Itz\xE1"
+  _shortDescription: "Chich\xE9n Itz\xE1, Maya d\xFCnyas\u0131n\u0131n en \xF6nemli
+    kentlerinden biriydi. Kukulk\xE1n Piramidi\u2019nin basamaklar\u0131 ve g\xF6lgeleri,
+    \xF6zellikle ekinoks g\xFCnlerinde y\u0131lan\u0131 and\u0131ran etkileyici bir
+    \u0131\u015F\u0131k oyunu olu\u015Fturur. Dev Top Oyunu Sahas\u0131 ve kurban
+    t\xF6renleriyle ili\u015Fkilendirilen Kutsal Kuyu, kentin spor, inan\xE7 ve g\xF6ky\xFCz\xFC
+    g\xF6zlemlerini ayn\u0131 merkezde bulu\u015Fturdu\u011Funu g\xF6sterir."
+  _sector: "Yucat\xE1n / MEKS\u0130KA"
+  _artwork: {fileID: 8264955966141097663, guid: d036b210ef3f4b842b7b07dd9589b8a9, type: 3}

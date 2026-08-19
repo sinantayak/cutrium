@@ -5,76 +5,90 @@ using UnityEngine;
 
 namespace Cutrium.Editor.Setup
 {
-    /// Editor content source copied from repository-root landmarks.md. The
-    /// gameplay catalog never references this type or its generated assets.
+    /// Chapter 1 Earth content copied from repository-root
+    /// earth-landmarks.md. The gameplay catalog never references this type or
+    /// its generated assets.
     public static class FirstTwelveLandmarkContent
     {
         public const string ContentFolder =
             "Assets/Cutrium/Content/Landmarks";
-        public const string FirstTwelveFolder = ContentFolder + "/First12";
+        public const string EarthArtworkFolder =
+            "Assets/Cutrium/Content/Earth Landmarks";
+        public const string FirstTwelveFolder =
+            ContentFolder + "/Earth/Chapter01";
 
         public static readonly Entry[] Entries =
         {
             new Entry(
-                "galata-kulesi", "Galata Kulesi", "İstanbul",
-                "Galata Kulesi, İstanbul’un en tanınan simgelerinden biri ve şehrin yüzyıllara yayılan silüetinin önemli parçalarındandır. Günümüzdeki kulenin temelleri, 14. yüzyılda Galata’daki Ceneviz kolonisi döneminde atılmış ve yapı zaman içinde farklı amaçlarla kullanılmıştır. Yaklaşık 67 metre yüksekliğindeki kule, bulunduğu konum sayesinde İstanbul Boğazı, Haliç ve tarihî yarımadaya hâkim geniş bir manzara sunar. Galata Kulesi bugün İstanbul’un Bizans, Ceneviz ve Osmanlı dönemlerini bir arada hatırlatan en güçlü tarihî yapılardan biridir.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Istanbul-Galata_Kulesi.png",
-                ContentFolder + "/GalataKulesi.asset"),
+                "angkor-wat", "Angkor Wat", "Siem Reap / KAMBOÇYA",
+                "12. yüzyılda dev bir Hindu tapınağı olarak kurulan Angkor Wat, zamanla Budist bir kutsal alana dönüştü. Beş kuleli silüeti ve bir kilometreyi aşan kabartmalarıyla dünyanın en büyük dinî anıt komplekslerinden biridir. Batıya dönük sıra dışı planı ve taşlara işlenen savaş, saray yaşamı ve destan sahneleri, Khmer İmparatorluğu’nun gücünü ayrıntılarıyla anlatır.",
+                EarthArtworkFolder + "/Angkor Wat — Kamboçya  Siem Reap.png",
+                FirstTwelveFolder + "/L01_AngkorWat.asset"),
             new Entry(
-                "misis-antik-kenti", "Misis Antik Kenti", "Adana",
-                "Misis, Çukurova’nın doğusunda binlerce yıllık yerleşim izleri taşıyan ve tarihî ticaret yolları üzerinde gelişen önemli bir antik merkezdir. Roma döneminden kalma köprüsü ve mozaikleri, kentin farklı çağlarda taşıdığı önemi gösterir. Bölgedeki kazılar, Misis’in Anadolu ile Mezopotamya arasındaki geçiş yollarında uzun süre yaşayan bir kent olduğunu ortaya koyuyor.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Adana-Misis_Antik_Kenti.png",
-                FirstTwelveFolder + "/L02_MisisAntikKenti.asset"),
+                "aspendos-tiyatrosu", "Aspendos Antik Tiyatrosu",
+                "Antalya / TÜRKİYE",
+                "MS 2. yüzyılda inşa edilen Aspendos, Roma dünyasından günümüze ulaşan en iyi korunmuş tiyatrolardan biridir. Anıtsal sahne binası ve güçlü akustiği, Roma mühendisliğinin etkileyici bir göstergesidir. Yaklaşık 15 bin kişilik seyirci düzeni sesi uzak sıralara taşırken, yapının bugün de gösteriler için kullanılabilmesi olağanüstü bütünlüğünü kanıtlar.",
+                EarthArtworkFolder + "/Aspendos Antik Tiyatrosu - Antalya.png",
+                FirstTwelveFolder + "/L02_AspendosTiyatrosu.asset"),
             new Entry(
-                "yilankale", "Yılankale", "Adana",
-                "Ceyhan Ovası’na hâkim sarp bir kayalık üzerine kurulan Yılankale, Orta Çağ Çukurova’sının en etkileyici savunma yapılarından biridir. Kale, özellikle Kilikya Ermeni Krallığı dönemine ait mimarisi ve vadiden görülen güçlü silüetiyle dikkat çeker. Türk halk anlatılarında Şahmeran efsanesiyle de ilişkilendirilmesi, yapıya tarih kadar güçlü bir mitolojik kimlik kazandırır.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Adana-Yılankale.png",
-                FirstTwelveFolder + "/L03_Yilankale.asset"),
+                "aziz-vasil-katedrali", "Aziz Vasil Katedrali",
+                "Moskova / RUSYA",
+                "16. yüzyılda Kızıl Meydan’da inşa edilen katedral, birbirinden farklı renk ve desenlere sahip soğan kubbeleriyle tanınır. Yapı aslında tek bir salon değil, birbirine bağlanan dokuz şapelden oluşur. Korkunç İvan’ın Kazan zaferini anmak için yaptırdığı yapının bugün ikonik olan canlı renkleri, ilk inşasından sonraki yüzyıllarda geliştirilmiştir.",
+                EarthArtworkFolder + "/Aziz Basil Katedrali — Rusya  Moskova.png",
+                FirstTwelveFolder + "/L03_AzizVasilKatedrali.asset"),
             new Entry(
-                "aspendos-antik-tiyatrosu", "Aspendos Antik Tiyatrosu", "Antalya",
-                "MS 2. yüzyılda inşa edilen Aspendos Tiyatrosu, Roma dünyasından günümüze ulaşan en iyi korunmuş tiyatrolardan biri kabul edilir. Yaklaşık 15 bin kişilik kapasitesi, anıtsal sahne binası ve güçlü akustiği Roma mühendisliğinin ulaştığı seviyeyi gösterir. Yapı bugün bile konser ve gösterilere ev sahipliği yapabilecek kadar etkileyici bir bütünlüğe sahiptir.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Antalya-Aspendos_Antik_Tiyatrosu.png",
-                FirstTwelveFolder + "/L04_AspendosAntikTiyatrosu.asset"),
+                "big-ben-westminster", "Big Ben ve Westminster Sarayı",
+                "Londra / BİRLEŞİK KRALLIK",
+                "“Big Ben” aslında saat kulesinin değil, Elizabeth Kulesi içindeki Büyük Çan’ın takma adıdır. Yanındaki Westminster Sarayı, Birleşik Krallık Parlamentosuna ev sahipliği yapar. Eski sarayın büyük bölümünü yok eden 1834 yangınından sonra Gotik Canlanma üslubunda yeniden kurulan kompleksin ünlü saati 1859’dan beri Londra’nın ritmini belirler.",
+                EarthArtworkFolder + "/Big Ben ve Westminster Sarayı — Birleşik Krallık  Londra.png",
+                FirstTwelveFolder + "/L04_BigBenWestminster.asset"),
             new Entry(
-                "myra-antik-kenti", "Myra Antik Kenti", "Antalya",
-                "Myra, Likya Birliği’nin en güçlü kentlerinden biriydi ve özellikle kayalara oyulmuş görkemli mezarlarıyla tanınır. Roma döneminden kalan büyük tiyatro, kentin antik çağdaki zenginliğini bugün de hissettirir. Yakındaki Demre, Aziz Nikolaos geleneğiyle de dünya çapında bilinen önemli bir tarih ve inanç merkezidir.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Antalya-Myra_Antik_Kenti.png",
-                FirstTwelveFolder + "/L05_MyraAntikKenti.asset"),
+                "borobudur-tapinagi", "Borobudur Tapınağı",
+                "Cava / ENDONEZYA",
+                "9. yüzyılda inşa edilen Borobudur, basamaklı terasları dev bir Budist mandalası gibi yükselen anıtsal bir tapınaktır. Yüzlerce Buda heykeli ve anlatı kabartması, ziyaretçiyi sembolik bir aydınlanma yolculuğuna çıkarır. Zirveye yakın üç dairesel terasta, içlerinde Buda heykelleri bulunan 72 delikli stupa ana kubbeyi çevreler.",
+                EarthArtworkFolder + "/Borobudur Tapınağı — Endonezya  Cava.png",
+                FirstTwelveFolder + "/L05_BorobudurTapinagi.asset"),
             new Entry(
-                "patara-antik-kenti", "Patara Antik Kenti", "Antalya",
-                "Patara, Likya’nın en önemli liman ve yönetim merkezlerinden biriydi. Kentteki meclis yapısı, Likya Birliği’nin gelişmiş temsil sisteminin en güçlü mimari izlerinden biridir. Antik kalıntıların hemen yanında uzanan geniş Patara sahili, burayı tarih ile doğal peyzajın aynı karede buluştuğu özel yerlerden biri yapar.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Antalya-Patara_Antik_Kenti.png",
-                FirstTwelveFolder + "/L06_PataraAntikKenti.asset"),
+                "brandenburg-kapisi", "Brandenburg Kapısı",
+                "Berlin / ALMANYA",
+                "18. yüzyılın sonunda yapılan Brandenburg Kapısı, Berlin’in en güçlü simgelerinden biridir. Soğuk Savaş yıllarında bölünmenin sınırında kaldı; 1989’dan sonra Almanya’nın yeniden birleşmesini temsil etmeye başladı. Kapının tepesindeki dört atlı Quadriga heykeli, zafer tanrıçasını şehre doğru ilerlerken gösterir.",
+                EarthArtworkFolder + "/Brandenburg Kapısı — Almanya  Berlin.png",
+                FirstTwelveFolder + "/L06_BrandenburgKapisi.asset"),
             new Entry(
-                "xanthos-antik-kenti", "Xanthos Antik Kenti", "Antalya",
-                "Xanthos, antik Likya’nın başkentlerinden ve en güçlü siyasi merkezlerinden biriydi. Kaya mezarları, anıtları ve özgün Likya mezar mimarisi, bölgenin kendine özgü kültürünü yansıtır. Xanthos, kutsal alan Letoon ile birlikte UNESCO Dünya Mirası Listesi’nde yer alır.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Antalya-Xanthos_Antik_Kenti.png",
-                FirstTwelveFolder + "/L07_XanthosAntikKenti.asset"),
+                "burj-al-arab", "Burç el-Arab",
+                "Dubai / BİRLEŞİK ARAP EMİRLİKLERİ",
+                "Yelken biçimli Burj Al Arab, Dubai kıyısındaki yapay bir ada üzerinde yükselir. Cesur silüeti ve gösterişli iç mekânları, yapıyı modern Dubai’nin en tanınan simgelerinden biri yapmıştır. Yaklaşık 180 metre yüksekliğindeki dev atriyumu ve denizin üzerinde uzanan helikopter pisti, otelin mimarisine beklenmedik bir ölçek duygusu katar.",
+                EarthArtworkFolder + "/Burç el-Arap (Burj Al Arab) — BAE  Dubai.png",
+                FirstTwelveFolder + "/L07_BurjAlArab.asset"),
             new Entry(
-                "sagalassos-antik-kenti", "Sagalassos Antik Kenti", "Burdur",
-                "Batı Toroslar’ın yükseklerinde kurulan Sagalassos, Pisidia bölgesinin en zengin antik kentlerinden biriydi. Restore edilen Antoninler Çeşmesi’nden bugün bile su akması, kenti benzersiz bir deneyime dönüştürür. Tiyatro, agoralar ve anıtsal yapılar, özellikle Roma dönemindeki refahını güçlü biçimde ortaya koyar.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Burdur-Sagalassos_Antik_Kenti.png",
-                FirstTwelveFolder + "/L08_SagalassosAntikKenti.asset"),
+                "burj-khalifa", "Burj Khalifa",
+                "Dubai / BİRLEŞİK ARAP EMİRLİKLERİ",
+                "828 metre yüksekliğindeki Burj Khalifa, dünyanın en yüksek binasıdır. Çöl çiçeğinden esinlenen üç kollu planı, dev yapının rüzgâra karşı dengeli kalmasına yardımcı olur. Otel, konut, ofis ve seyir teraslarını aynı çatı altında bir araya getiren 160’tan fazla katıyla adeta dikey bir şehir gibi çalışır.",
+                EarthArtworkFolder + "/Burj Khalifa — BAE  Dubai.png",
+                FirstTwelveFolder + "/L08_BurjKhalifa.asset"),
             new Entry(
-                "oludeniz", "Ölüdeniz", "Fethiye",
-                "Ölüdeniz, turkuaz lagünü ve Kumburnu’nun oluşturduğu benzersiz kıyı şekliyle Türkiye’nin en tanınan doğal manzaralarından biridir. Sakin lagün ile açık denizin yan yana oluşturduğu renk geçişi, bölgenin ikonik görüntüsünü yaratır. Babadağ’dan yapılan yamaç paraşütleri de bu manzarayı dünyaca ünlü hâle getirmiştir.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Mugla-Oludeniz.png",
-                FirstTwelveFolder + "/L09_Oludeniz.asset"),
+                "buyuk-kanyon", "Büyük Kanyon",
+                "Arizona / ABD",
+                "Colorado Nehri’nin milyonlarca yılda aşındırdığı Büyük Kanyon, Dünya’nın jeolojik geçmişini renkli kaya katmanları hâlinde sergiler. En eski katmanlarından bazıları yaklaşık iki milyar yıllıktır. Yaklaşık 446 kilometre boyunca uzanan kanyon, bazı noktalarda 1,6 kilometreden daha derine inerek boyutlarını tek bakışta kavramayı neredeyse imkânsızlaştırır.",
+                EarthArtworkFolder + "/Büyük Kanyon (Grand Canyon) — ABD  Arizona.png",
+                FirstTwelveFolder + "/L09_BuyukKanyon.asset"),
             new Entry(
-                "truva-antik-kenti", "Truva Antik Kenti", "Çanakkale",
-                "Truva, yaklaşık 4 bin yıllık yerleşim katmanlarıyla Anadolu ve Akdeniz uygarlıkları arasındaki erken temasları gösteren en önemli arkeolojik alanlardan biridir. Homeros’un İlyada destanındaki Troya Savaşı anlatısı, kenti dünya kültürünün en güçlü efsanelerinden biri hâline getirmiştir. UNESCO Dünya Mirası olan alandaki üst üste kurulmuş kent katmanları, binlerce yıllık değişimi aynı yerde görmeyi mümkün kılar.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Canakkale-Truva_Antik_Kenti.png",
-                FirstTwelveFolder + "/L10_TruvaAntikKenti.asset"),
+                "chichen-itza", "Chichén Itzá",
+                "Yucatán / MEKSİKA",
+                "Chichén Itzá, Maya dünyasının en önemli kentlerinden biriydi. Kukulkán Piramidi’nin basamakları ve gölgeleri, özellikle ekinoks günlerinde yılanı andıran etkileyici bir ışık oyunu oluşturur. Dev Top Oyunu Sahası ve kurban törenleriyle ilişkilendirilen Kutsal Kuyu, kentin spor, inanç ve gökyüzü gözlemlerini aynı merkezde buluşturduğunu gösterir.",
+                EarthArtworkFolder + "/Chichén Itzá — Meksika  Yucatán.png",
+                FirstTwelveFolder + "/L10_ChichenItza.asset"),
             new Entry(
-                "zeugma-antik-kenti", "Zeugma Antik Kenti", "Gaziantep",
-                "Fırat kıyısındaki Zeugma, Helenistik ve Roma dönemlerinde doğu ile batı arasındaki ticaret yollarını kontrol eden zengin bir kentti. Kent özellikle villalarını süsleyen olağanüstü taban mozaikleriyle tanınır. Zeugma’dan çıkarılan eserlerin büyük bölümü, bugün dünyanın en önemli mozaik koleksiyonlarından birini barındıran Zeugma Mozaik Müzesi’nde sergilenir.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Gaziantep-Zeugma_Antik_Kenti.png",
-                FirstTwelveFolder + "/L11_ZeugmaAntikKenti.asset"),
+                "kurtarici-isa-heykeli", "Kurtarıcı İsa Heykeli",
+                "Rio de Janeiro / BREZİLYA",
+                "Corcovado Dağı’nın zirvesinde kollarını şehre açan Art Deco heykel, Rio de Janeiro’nun simgesidir. 30 metre yüksekliğindeki figür, dağ ve deniz manzarasıyla birlikte dünyanın en tanınan silüetlerinden birini oluşturur. 1931’de tamamlanan heykelin betonarme gövdesi, ışığı yumuşak biçimde yansıtan milyonlarca küçük sabuntaşı karoyla kaplıdır.",
+                EarthArtworkFolder + "/Christ the Redeemer — Brezilya  Riode Janeiro.png",
+                FirstTwelveFolder + "/L11_KurtariciIsaHeykeli.asset"),
             new Entry(
-                "topkapi-sarayi", "Topkapı Sarayı", "İstanbul",
-                "Fatih Sultan Mehmet döneminde yapımına başlanan Topkapı Sarayı, yaklaşık dört yüzyıl boyunca Osmanlı yönetiminin ve saray yaşamının merkezi oldu. Boğaz ve Haliç’e hâkim konumu, saraya İstanbul’un en güçlü panoramalarından birini kazandırır. Avluları, Harem’i, köşkleri ve imparatorluk koleksiyonları Osmanlı saray dünyasının farklı katmanlarını bir arada gösterir.",
-                "Assets/Cutrium/Content/Landmarks/Artwork/Istanbul-Topkapi_Sarayi.png",
-                FirstTwelveFolder + "/L12_TopkapiSarayi.asset"),
+                "cn-kulesi", "CN Kulesi", "Toronto / KANADA",
+                "553,3 metrelik CN Kulesi, bir dönem dünyanın en yüksek bağımsız yapısıydı. Cam zeminli seyir alanları ve dışarıda yapılan EdgeWalk deneyimi, Toronto manzarasına güçlü bir yükseklik hissi katar. 1976’da açılan kule aslında iletişim sinyallerini şehrin hızla yükselen gökdelenlerinin üzerinden iletmek için tasarlanmıştı.",
+                EarthArtworkFolder + "/CN Kulesi (CN Tower) — Kanada  Toronto.png",
+                FirstTwelveFolder + "/L12_CNKulesi.asset"),
         };
 
         public static LandmarkDefinition[] CreateOrUpdateAssets()
@@ -105,7 +119,7 @@ namespace Cutrium.Editor.Setup
                     entry.Id,
                     entry.Title,
                     entry.Description,
-                    $"{entry.City} / TÜRKİYE",
+                    entry.Sector,
                     artwork);
                 EditorUtility.SetDirty(definition);
                 definitions[index] = definition;
@@ -138,14 +152,14 @@ namespace Cutrium.Editor.Setup
             public Entry(
                 string id,
                 string title,
-                string city,
+                string sector,
                 string description,
                 string artworkPath,
                 string definitionPath)
             {
                 Id = id;
                 Title = title;
-                City = city;
+                Sector = sector;
                 Description = description;
                 ArtworkPath = artworkPath;
                 DefinitionPath = definitionPath;
@@ -153,7 +167,7 @@ namespace Cutrium.Editor.Setup
 
             public string Id { get; }
             public string Title { get; }
-            public string City { get; }
+            public string Sector { get; }
             public string Description { get; }
             public string ArtworkPath { get; }
             public string DefinitionPath { get; }

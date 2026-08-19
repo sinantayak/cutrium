@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L08_BurjKhalifa
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: burj-khalifa
+  _displayTitle: Burj Khalifa
+  _shortDescription: "828 metre y\xFCksekli\u011Findeki Burj Khalifa, d\xFCnyan\u0131n
+    en y\xFCksek binas\u0131d\u0131r. \xC7\xF6l \xE7i\xE7e\u011Finden esinlenen \xFC\xE7
+    kollu plan\u0131, dev yap\u0131n\u0131n r\xFCzg\xE2ra kar\u015F\u0131 dengeli
+    kalmas\u0131na yard\u0131mc\u0131 olur. Otel, konut, ofis ve seyir teraslar\u0131n\u0131
+    ayn\u0131 \xE7at\u0131 alt\u0131nda bir araya getiren 160\u2019tan fazla kat\u0131yla
+    adeta dikey bir \u015Fehir gibi \xE7al\u0131\u015F\u0131r."
+  _sector: "Dubai / B\u0130RLE\u015E\u0130K ARAP EM\u0130RL\u0130KLER\u0130"
+  _artwork: {fileID: -5216813662246978979, guid: 96fa30ca02f1e3f4790adfb248ab9ed8, type: 3}

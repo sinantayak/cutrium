@@ -1,4 +1,5 @@
 using System;
+using Cutrium.Gameplay.Threats;
 using UnityEngine;
 
 namespace Cutrium.Presentation.Theme
@@ -21,8 +22,10 @@ namespace Cutrium.Presentation.Theme
         [SerializeField] private Color _frameColor =
             new Color(0.25f, 0.92f, 0.79f, 1f);
 
-        [Header("Normal Threat")]
+        [Header("Threats")]
         [SerializeField] private Sprite _threatSprite;
+        [SerializeField] private Sprite _hunterThreatSprite;
+        [SerializeField] private Sprite _pulseThreatSprite;
         [SerializeField] private Color _threatColor =
             new Color(1f, 0.32f, 0.38f, 1f);
         [SerializeField] private Vector2 _threatScale = Vector2.one;
@@ -33,6 +36,11 @@ namespace Cutrium.Presentation.Theme
         [SerializeField] private Sprite _threatTrailSprite;
         [SerializeField] private Color _threatTrailColor =
             new Color(1f, 0.28f, 0.36f, 0.32f);
+        [SerializeField] private bool _useThreatBehaviorTrailColors;
+        [SerializeField] private Color _hunterThreatTrailColor =
+            new Color(1f, 0.16f, 0.22f, 0.86f);
+        [SerializeField] private Color _pulseThreatTrailColor =
+            new Color(0.12f, 0.9f, 0.28f, 0.86f);
 
         [Header("Barrier")]
         [SerializeField] private Sprite _barrierBodySprite;
@@ -73,6 +81,8 @@ namespace Cutrium.Presentation.Theme
         public Sprite FrameSprite => _frameSprite;
         public Color FrameColor => _frameColor;
         public Sprite ThreatSprite => _threatSprite;
+        public Sprite HunterThreatSprite => _hunterThreatSprite;
+        public Sprite PulseThreatSprite => _pulseThreatSprite;
         public Color ThreatColor => _threatColor;
         public Vector2 ThreatScale => _threatScale;
         public Vector2 ThreatOffset => _threatOffset;
@@ -80,6 +90,10 @@ namespace Cutrium.Presentation.Theme
         public Color ThreatShadowColor => _threatShadowColor;
         public Sprite ThreatTrailSprite => _threatTrailSprite;
         public Color ThreatTrailColor => _threatTrailColor;
+        public bool UseThreatBehaviorTrailColors =>
+            _useThreatBehaviorTrailColors;
+        public Color HunterThreatTrailColor => _hunterThreatTrailColor;
+        public Color PulseThreatTrailColor => _pulseThreatTrailColor;
         public Sprite BarrierBodySprite => _barrierBodySprite;
         public Sprite BarrierCapSprite => _barrierCapSprite;
         public Sprite BarrierPreviewSprite => _barrierPreviewSprite;
@@ -117,6 +131,27 @@ namespace Cutrium.Presentation.Theme
             _sandTexture = sandTexture;
             _bowlOutlineSprite = bowlOutlineSprite;
             _bowlInteriorMaskSprite = bowlInteriorMaskSprite;
+        }
+
+        public void ConfigureThreatSpritesForSetup(
+            Sprite normalThreatSprite,
+            Sprite hunterThreatSprite,
+            Sprite pulseThreatSprite)
+        {
+            _threatSprite = normalThreatSprite;
+            _hunterThreatSprite = hunterThreatSprite;
+            _pulseThreatSprite = pulseThreatSprite;
+        }
+
+        public void ConfigureThreatTrailColorsForSetup(
+            Color normalThreatTrailColor,
+            Color hunterThreatTrailColor,
+            Color pulseThreatTrailColor)
+        {
+            _threatTrailColor = normalThreatTrailColor;
+            _hunterThreatTrailColor = hunterThreatTrailColor;
+            _pulseThreatTrailColor = pulseThreatTrailColor;
+            _useThreatBehaviorTrailColors = true;
         }
 
         public void ConfigureForSetup(
@@ -173,6 +208,9 @@ namespace Cutrium.Presentation.Theme
             _threatShadowColor = threatShadowColor;
             _threatTrailSprite = threatTrailSprite;
             _threatTrailColor = threatTrailColor;
+            _hunterThreatTrailColor = threatTrailColor;
+            _pulseThreatTrailColor = threatTrailColor;
+            _useThreatBehaviorTrailColors = false;
             _barrierBodySprite = barrierBodySprite;
             _barrierCapSprite = barrierCapSprite;
             _barrierPreviewSprite = barrierPreviewSprite;
@@ -222,9 +260,15 @@ namespace Cutrium.Presentation.Theme
             Sprite shadowSprite,
             Color shadowColor,
             Sprite trailSprite,
-            Color trailColor)
+            Color trailColor,
+            Sprite hunterSprite = null,
+            Sprite pulseSprite = null,
+            Color? hunterTrailColor = null,
+            Color? pulseTrailColor = null)
         {
             Sprite = sprite;
+            HunterSprite = hunterSprite;
+            PulseSprite = pulseSprite;
             Color = color;
             Scale = scale;
             Offset = offset;
@@ -232,9 +276,13 @@ namespace Cutrium.Presentation.Theme
             ShadowColor = shadowColor;
             TrailSprite = trailSprite;
             TrailColor = trailColor;
+            HunterTrailColor = hunterTrailColor ?? trailColor;
+            PulseTrailColor = pulseTrailColor ?? trailColor;
         }
 
         public Sprite Sprite { get; }
+        public Sprite HunterSprite { get; }
+        public Sprite PulseSprite { get; }
         public Color Color { get; }
         public Vector2 Scale { get; }
         public Vector2 Offset { get; }
@@ -242,6 +290,34 @@ namespace Cutrium.Presentation.Theme
         public Color ShadowColor { get; }
         public Sprite TrailSprite { get; }
         public Color TrailColor { get; }
+        public Color HunterTrailColor { get; }
+        public Color PulseTrailColor { get; }
+
+        public Sprite SpriteFor(ThreatBehaviorKind behaviorKind)
+        {
+            switch (behaviorKind)
+            {
+                case ThreatBehaviorKind.Hunter:
+                    return HunterSprite ?? Sprite;
+                case ThreatBehaviorKind.Pulse:
+                    return PulseSprite ?? Sprite;
+                default:
+                    return Sprite;
+            }
+        }
+
+        public Color TrailColorFor(ThreatBehaviorKind behaviorKind)
+        {
+            switch (behaviorKind)
+            {
+                case ThreatBehaviorKind.Hunter:
+                    return HunterTrailColor;
+                case ThreatBehaviorKind.Pulse:
+                    return PulseTrailColor;
+                default:
+                    return TrailColor;
+            }
+        }
     }
 
     public readonly struct BarrierVisualStyle
@@ -399,10 +475,27 @@ namespace Cutrium.Presentation.Theme
             Vector2 offset = values != null
                 ? values.ThreatOffset
                 : Vector2.zero;
+            Sprite normalThreatSprite = ResolveSprite(
+                selected?.ThreatSprite,
+                fallback?.ThreatSprite);
+            Sprite hunterThreatSprite = ResolveSprite(
+                selected?.HunterThreatSprite,
+                fallback?.HunterThreatSprite) ?? normalThreatSprite;
+            Sprite pulseThreatSprite = ResolveSprite(
+                selected?.PulseThreatSprite,
+                fallback?.PulseThreatSprite) ?? normalThreatSprite;
+            Color normalThreatTrailColor = values != null
+                ? values.ThreatTrailColor
+                : new Color(1f, 0.28f, 0.36f, 0.32f);
+            ThemeDefinition behaviorTrailTheme = selected != null
+                && selected.UseThreatBehaviorTrailColors
+                    ? selected
+                    : fallback != null
+                        && fallback.UseThreatBehaviorTrailColors
+                            ? fallback
+                            : null;
             var threat = new ThreatVisualStyle(
-                ResolveSprite(
-                    selected?.ThreatSprite,
-                    fallback?.ThreatSprite),
+                normalThreatSprite,
                 values != null ? values.ThreatColor :
                     new Color(1f, 0.32f, 0.38f, 1f),
                 scale,
@@ -415,8 +508,15 @@ namespace Cutrium.Presentation.Theme
                 ResolveSprite(
                     selected?.ThreatTrailSprite,
                     fallback?.ThreatTrailSprite),
-                values != null ? values.ThreatTrailColor :
-                    new Color(1f, 0.28f, 0.36f, 0.32f));
+                normalThreatTrailColor,
+                hunterThreatSprite,
+                pulseThreatSprite,
+                behaviorTrailTheme != null
+                    ? behaviorTrailTheme.HunterThreatTrailColor
+                    : normalThreatTrailColor,
+                behaviorTrailTheme != null
+                    ? behaviorTrailTheme.PulseThreatTrailColor
+                    : normalThreatTrailColor);
             var barrier = new BarrierVisualStyle(
                 ResolveSprite(
                     selected?.BarrierBodySprite,

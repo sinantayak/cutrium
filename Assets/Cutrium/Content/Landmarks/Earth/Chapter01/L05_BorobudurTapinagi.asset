@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L05_BorobudurTapinagi
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: borobudur-tapinagi
+  _displayTitle: "Borobudur Tap\u0131na\u011F\u0131"
+  _shortDescription: "9. y\xFCzy\u0131lda in\u015Fa edilen Borobudur, basamakl\u0131
+    teraslar\u0131 dev bir Budist mandalas\u0131 gibi y\xFCkselen an\u0131tsal bir
+    tap\u0131nakt\u0131r. Y\xFCzlerce Buda heykeli ve anlat\u0131 kabartmas\u0131,
+    ziyaret\xE7iyi sembolik bir ayd\u0131nlanma yolculu\u011Funa \xE7\u0131kar\u0131r.
+    Zirveye yak\u0131n \xFC\xE7 dairesel terasta, i\xE7lerinde Buda heykelleri bulunan
+    72 delikli stupa ana kubbeyi \xE7evreler."
+  _sector: Cava / ENDONEZYA
+  _artwork: {fileID: 6941627646704273588, guid: 77db216725d2e1143b8a73fa50892ee8, type: 3}

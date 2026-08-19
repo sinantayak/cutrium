@@ -43,8 +43,12 @@ namespace Cutrium.Editor.Setup
             "Assets/Cutrium/Content/Gui/ProgressBackground.png";
         public const string ProgressFillPath =
             "Assets/Cutrium/Content/Gui/ProgressFill.png";
-        public const string ThreatVisualPath =
-            "Assets/Cutrium/Content/Gui/Threat_Visual.png";
+        public const string NormalThreatVisualPath =
+            "Assets/Cutrium/Content/Gui/Threat_Visual_Normal.png";
+        public const string HunterThreatVisualPath =
+            "Assets/Cutrium/Content/Gui/Threat_Visual_Hunter.png";
+        public const string PulseThreatVisualPath =
+            "Assets/Cutrium/Content/Gui/Threat_Visual_Pulse.png";
         // BigHUDBackground is now the single full-width TopHUD bar; the
         // earlier per-value SmallHUDBackground plaques are retired.
         public const string BigHudBackgroundPath =
@@ -99,8 +103,12 @@ namespace Cutrium.Editor.Setup
             new Color(0.38f, 0.15f, 0.055f, 1f);
         private static readonly Color BarrierPreviewBrown =
             new Color(0.38f, 0.15f, 0.055f, 0.9f);
-        private static readonly Color VisibleThreatTrailTint =
-            new Color(1f, 0.78f, 0.68f, 0.86f);
+        private static readonly Color NormalThreatTrailTint =
+            new Color(0.12f, 0.48f, 1f, 0.86f);
+        private static readonly Color HunterThreatTrailTint =
+            new Color(1f, 0.16f, 0.22f, 0.86f);
+        private static readonly Color PulseThreatTrailTint =
+            new Color(0.12f, 0.9f, 0.28f, 0.86f);
         private static readonly Color TopHudTextBrown =
             new Color(0.34f, 0.105f, 0.025f, 1f);
         private static readonly Color CompletionBackgroundBrown =
@@ -179,6 +187,26 @@ namespace Cutrium.Editor.Setup
             AssetDatabase.SaveAssets();
             Debug.Log(
                 "Barrier preview updated without changing other theme values.");
+        }
+
+        [MenuItem("Cutrium/Setup/Apply Threat Visual Variants Only")]
+        public static void ApplyThreatVisualVariantsOnly()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "Exit Play Mode before updating threat visuals.");
+            }
+
+            ThemeDefinition theme = LoadTheme(CleanupThemePath);
+            ConfigureThreatVisualVariants(theme);
+            ValidateThreatVisualVariants(theme);
+            EditorUtility.SetDirty(theme);
+            AssetDatabase.SaveAssets();
+            Debug.Log(
+                "Normal, Hunter, and Pulse threat visuals and shared-trail " +
+                "tints configured " +
+                "without changing gameplay or scene geometry.");
         }
 
         [MenuItem("Cutrium/Setup/Apply Completion Popup Readability Only")]
@@ -835,14 +863,14 @@ namespace Cutrium.Editor.Setup
                 Color.white,
                 sprites["frame_soft"],
                 Color.white,
-                LoadSingleSprite(ThreatVisualPath),
+                LoadSingleSprite(NormalThreatVisualPath),
                 Color.white,
                 Vector2.one,
                 Vector2.zero,
                 theme.ThreatShadowSprite,
                 new Color(0f, 0f, 0f, 0.26f),
                 theme.ThreatTrailSprite,
-                VisibleThreatTrailTint,
+                NormalThreatTrailTint,
                 sprites["barrier_body_soft"],
                 theme.BarrierCapSprite,
                 sprites["barrier_body_soft"],
@@ -860,7 +888,45 @@ namespace Cutrium.Editor.Setup
                 new Color(0.03f, 0.045f, 0.06f, 0f),
                 new Color(0.85f, 0.78f, 0.62f, 1f),
                 new Color(0.96f, 0.95f, 0.92f, 1f));
+            ConfigureThreatVisualVariants(theme);
             EditorUtility.SetDirty(theme);
+        }
+
+        private static void ConfigureThreatVisualVariants(ThemeDefinition theme)
+        {
+            theme.ConfigureThreatSpritesForSetup(
+                LoadSingleSprite(NormalThreatVisualPath),
+                LoadSingleSprite(HunterThreatVisualPath),
+                LoadSingleSprite(PulseThreatVisualPath));
+            theme.ConfigureThreatTrailColorsForSetup(
+                NormalThreatTrailTint,
+                HunterThreatTrailTint,
+                PulseThreatTrailTint);
+        }
+
+        private static void ValidateThreatVisualVariants(ThemeDefinition theme)
+        {
+            if (AssetDatabase.GetAssetPath(theme.ThreatSprite)
+                    != NormalThreatVisualPath
+                || AssetDatabase.GetAssetPath(theme.HunterThreatSprite)
+                    != HunterThreatVisualPath
+                || AssetDatabase.GetAssetPath(theme.PulseThreatSprite)
+                    != PulseThreatVisualPath)
+            {
+                throw new InvalidOperationException(
+                    "The cleanup theme must reference the imported Normal, " +
+                    "Hunter, and Pulse threat visuals.");
+            }
+
+            if (!theme.UseThreatBehaviorTrailColors
+                || theme.ThreatTrailColor != NormalThreatTrailTint
+                || theme.HunterThreatTrailColor != HunterThreatTrailTint
+                || theme.PulseThreatTrailColor != PulseThreatTrailTint)
+            {
+                throw new InvalidOperationException(
+                    "The cleanup theme must tint its shared trail blue for " +
+                    "Normal, red for Hunter, and green for Pulse threats.");
+            }
         }
 
         // ------------------------------------------------------------
@@ -2948,9 +3014,22 @@ namespace Cutrium.Editor.Setup
                 || themePresenter.Current.BackgroundSprite != null
                 || themePresenter.Current.BackgroundColor != DarkBrownBackground
                 || AssetDatabase.GetAssetPath(
-                    themePresenter.Current.Threat.Sprite) != ThreatVisualPath
+                    themePresenter.Current.Threat.Sprite)
+                    != NormalThreatVisualPath
+                || AssetDatabase.GetAssetPath(
+                    themePresenter.Current.Threat.HunterSprite)
+                    != HunterThreatVisualPath
+                || AssetDatabase.GetAssetPath(
+                    themePresenter.Current.Threat.PulseSprite)
+                    != PulseThreatVisualPath
                 || themePresenter.Current.Threat.TrailColor
-                    != VisibleThreatTrailTint
+                    != NormalThreatTrailTint
+                || themePresenter.Current.Threat.TrailColorFor(
+                    Cutrium.Gameplay.Threats.ThreatBehaviorKind.Hunter)
+                    != HunterThreatTrailTint
+                || themePresenter.Current.Threat.TrailColorFor(
+                    Cutrium.Gameplay.Threats.ThreatBehaviorKind.Pulse)
+                    != PulseThreatTrailTint
                 || themePresenter.Current.Barrier.GrowingColor
                     != GrowingBarrierBrown
                 || themePresenter.Current.Barrier.PreviewColor
@@ -3040,10 +3119,12 @@ namespace Cutrium.Editor.Setup
                     "progress UI assets.");
             }
 
-            if (landmarkPresenter.Landmarks[0].LandmarkId != "galata-kulesi")
+            if (landmarkPresenter.Landmarks[0].LandmarkId
+                != FirstTwelveLandmarkContent.Entries[0].Id)
             {
                 throw new InvalidOperationException(
-                    "The first landmark slot must be Galata Kulesi.");
+                    "The first landmark slot must match Chapter 1 Earth " +
+                    "content.");
             }
 
             Transform safeArea = RequireChild(

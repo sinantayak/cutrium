@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 90980d493340d4f4291be88e31fc331d
+guid: befee7d163194174e873734269df2e5c
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4945936441144831995
-    second: Threat_Visual_0
+      213: -8843891360071758188
+    second: Threat_Visual_Hunter_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,7 +126,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Threat_Visual_0
+      name: Threat_Visual_Hunter_0
       rect:
         serializedVersion: 2
         x: 0
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: bffe8101dfe73a440800000000000000
-      internalID: 4945936441144831995
+      spriteID: 49ec6ca3aaf244580800000000000000
+      internalID: -8843891360071758188
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Threat_Visual_0: 4945936441144831995
+      Threat_Visual_Hunter_0: -8843891360071758188
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

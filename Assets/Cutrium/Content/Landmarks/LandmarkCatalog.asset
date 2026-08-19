@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: LandmarkCatalog
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkCatalog
   _landmarks:
-  - {fileID: 11400000, guid: 2cf7acaa516c47344b5ed2bc4785e143, type: 2}
-  - {fileID: 11400000, guid: a110d86e0e6b49f9a1b15dad13166802, type: 2}
-  - {fileID: 11400000, guid: 3ecae4b2845d4609a378696b53e9c2bc, type: 2}
-  - {fileID: 11400000, guid: 1f41eecc024c4a3db61af81d6787df28, type: 2}
-  - {fileID: 11400000, guid: 524269897b564a03a7385165cd038b42, type: 2}
-  - {fileID: 11400000, guid: d79fac94b4b84447a42837cb2a32c26d, type: 2}
-  - {fileID: 11400000, guid: 8132dc43b6ca41698ea422f26abcb2ca, type: 2}
-  - {fileID: 11400000, guid: f3065388514748348f523d2f2d40b854, type: 2}
-  - {fileID: 11400000, guid: 62caa98c03d54567af77a8b370a8d43c, type: 2}
-  - {fileID: 11400000, guid: 18181c2ef42146429bcc3a0a8757a401, type: 2}
-  - {fileID: 11400000, guid: ad9f009ae6a4481d99860662fac5972a, type: 2}
-  - {fileID: 11400000, guid: e6d893b5a2084431940735549865034f, type: 2}
+  - {fileID: 11400000, guid: 0a8cbccf186d7f246a554836f33cab39, type: 2}
+  - {fileID: 11400000, guid: 991270c3c6e7bec48806262a9c98e014, type: 2}
+  - {fileID: 11400000, guid: 0202dc5c993cb684aaac4d56bf5454ce, type: 2}
+  - {fileID: 11400000, guid: 0ec21a57add0be74b9522b6a66169823, type: 2}
+  - {fileID: 11400000, guid: abe2ea5e1871e944b9627dde1a40a1e6, type: 2}
+  - {fileID: 11400000, guid: 4a2affc6925819d4c9f111e101c7e0ee, type: 2}
+  - {fileID: 11400000, guid: 554520fbb05677d4fada7517c60cddac, type: 2}
+  - {fileID: 11400000, guid: 8b1207644911a794e95dcab6011b1388, type: 2}
+  - {fileID: 11400000, guid: 05044b05925ee454b88f473caae9145a, type: 2}
+  - {fileID: 11400000, guid: 70bac7e7b6cde6945b15e972f84829be, type: 2}
+  - {fileID: 11400000, guid: b694fd5412e59e34ba229ba3f676ac21, type: 2}
+  - {fileID: 11400000, guid: 00ae1dd799a5b4c47841a12bc73254c9, type: 2}

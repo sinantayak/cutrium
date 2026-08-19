@@ -19,14 +19,19 @@ MonoBehaviour:
   _boardColor: {r: 1, g: 1, b: 1, a: 1}
   _frameSprite: {fileID: 21300000, guid: 99ab42d08a70d484db5132f5a1e578b2, type: 3}
   _frameColor: {r: 1, g: 1, b: 1, a: 1}
-  _threatSprite: {fileID: 4945936441144831995, guid: 90980d493340d4f4291be88e31fc331d, type: 3}
+  _threatSprite: {fileID: 5373653794658267743, guid: 735cfbae8269d8f42be885b24b2d814e, type: 3}
+  _hunterThreatSprite: {fileID: -8843891360071758188, guid: befee7d163194174e873734269df2e5c, type: 3}
+  _pulseThreatSprite: {fileID: -7321517200927103051, guid: 731c896ae02d5f14f94c1e25e4896105, type: 3}
   _threatColor: {r: 1, g: 1, b: 1, a: 1}
   _threatScale: {x: 1, y: 1}
   _threatOffset: {x: 0, y: 0}
   _threatShadowSprite: {fileID: 21300000, guid: f4316c81bf61bfc41bc2370676586b4f, type: 3}
   _threatShadowColor: {r: 0, g: 0, b: 0, a: 0.26}
   _threatTrailSprite: {fileID: 21300000, guid: 81982fe4838f19447831bd1c4af4de78, type: 3}
-  _threatTrailColor: {r: 1, g: 0.78, b: 0.68, a: 0.86}
+  _threatTrailColor: {r: 0.12, g: 0.48, b: 1, a: 0.86}
+  _useThreatBehaviorTrailColors: 1
+  _hunterThreatTrailColor: {r: 1, g: 0.16, b: 0.22, a: 0.86}
+  _pulseThreatTrailColor: {r: 0.12, g: 0.9, b: 0.28, a: 0.86}
   _barrierBodySprite: {fileID: 21300000, guid: 845fb07dcdf1f17478145971418bd684, type: 3}
   _barrierCapSprite: {fileID: 21300000, guid: 9bd38f5d3d448ea468d823f79635d0f3, type: 3}
   _barrierPreviewSprite: {fileID: 21300000, guid: 845fb07dcdf1f17478145971418bd684, type: 3}

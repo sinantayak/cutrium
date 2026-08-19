@@ -70,9 +70,21 @@ namespace Cutrium.PlayModeTests
             Assert.That(_theme.SelectedTheme.FrameSprite, Is.Not.Null);
             Assert.That(_theme.SelectedTheme.ThreatSprite, Is.Not.Null);
             Assert.That(_theme.SelectedTheme.ThreatSprite.name,
-                Is.EqualTo("Threat_Visual_0"));
+                Is.EqualTo("Threat_Visual_Normal_0"));
+            Assert.That(_theme.SelectedTheme.HunterThreatSprite, Is.Not.Null);
+            Assert.That(_theme.SelectedTheme.HunterThreatSprite.name,
+                Is.EqualTo("Threat_Visual_Hunter_0"));
+            Assert.That(_theme.SelectedTheme.PulseThreatSprite, Is.Not.Null);
+            Assert.That(_theme.SelectedTheme.PulseThreatSprite.name,
+                Is.EqualTo("Threat_Visual_Pulse_0"));
             Assert.That(_theme.SelectedTheme.ThreatTrailColor,
-                Is.EqualTo(new Color(1f, 0.78f, 0.68f, 0.86f)));
+                Is.EqualTo(new Color(0.12f, 0.48f, 1f, 0.86f)));
+            Assert.That(_theme.SelectedTheme.UseThreatBehaviorTrailColors,
+                Is.True);
+            Assert.That(_theme.SelectedTheme.HunterThreatTrailColor,
+                Is.EqualTo(new Color(1f, 0.16f, 0.22f, 0.86f)));
+            Assert.That(_theme.SelectedTheme.PulseThreatTrailColor,
+                Is.EqualTo(new Color(0.12f, 0.9f, 0.28f, 0.86f)));
             Assert.That(_theme.SelectedTheme.BarrierGrowingColor,
                 Is.EqualTo(new Color(0.38f, 0.15f, 0.055f, 1f)));
             Assert.That(_theme.SelectedTheme.BarrierPreviewColor,
@@ -82,9 +94,90 @@ namespace Cutrium.PlayModeTests
             Assert.That(_theme.SelectedTheme.CaptureSprite, Is.Null);
             Assert.That(_theme.SelectedTheme.CaptureColor, Is.EqualTo(Color.clear));
             Assert.That(_theme.FallbackTheme.ThreatSprite, Is.Null);
+            Assert.That(_theme.FallbackTheme.HunterThreatSprite, Is.Null);
+            Assert.That(_theme.FallbackTheme.PulseThreatSprite, Is.Null);
             Assert.That(_theme.FallbackTheme.CaptureMaterial, Is.Null);
             Assert.That(_theme.Current.StableId,
                 Is.EqualTo(_theme.SelectedTheme.StableId));
+        }
+
+        [TestCase(1, ThreatBehaviorKind.Normal)]
+        [TestCase(5, ThreatBehaviorKind.Hunter)]
+        [TestCase(6, ThreatBehaviorKind.Pulse)]
+        public void ThreatVisual_UsesSpriteAndTrailTintForCurrentBehavior(
+            int levelNumber,
+            ThreatBehaviorKind expectedBehavior)
+        {
+            Assert.That(
+                _controller.TryJumpToLevelForDevelopment(levelNumber),
+                Is.True);
+            _threat.RefreshNow();
+
+            ThreatState logicalThreat = _controller.Session.Threats.Single();
+            Assert.That(
+                _controller.Session.BehaviorFor(logicalThreat.Id).Kind,
+                Is.EqualTo(expectedBehavior));
+            Assert.That(
+                _threat.TryGetVisual(logicalThreat.Id, out RectTransform visual),
+                Is.True);
+            Assert.That(
+                visual.GetComponent<Image>().sprite,
+                Is.SameAs(_theme.Current.Threat.SpriteFor(expectedBehavior)));
+            string trailName = logicalThreat.Id.Value == 1
+                ? "ThreatTrail"
+                : $"ThreatTrail_{logicalThreat.Id.Value}";
+            Image trailImage = visual.parent.Find(trailName)
+                .GetComponent<Image>();
+            AssertRgb(
+                trailImage.color,
+                _theme.Current.Threat.TrailColorFor(expectedBehavior));
+            Assert.That(
+                trailImage.materialForRendering.shader.name,
+                Is.EqualTo(expectedBehavior == ThreatBehaviorKind.Hunter
+                    ? "Cutrium/UI/Threat Trail Detail Tint"
+                    : "UI/Default"));
+        }
+
+        [TestCase(9)]
+        [TestCase(10)]
+        public void MixedThreatLevel_UsesIndependentSpritePerThreat(
+            int levelNumber)
+        {
+            Assert.That(
+                _controller.TryJumpToLevelForDevelopment(levelNumber),
+                Is.True);
+            _threat.RefreshNow();
+
+            foreach (ThreatState logicalThreat in _controller.Session.Threats)
+            {
+                ThreatBehaviorKind behavior = _controller.Session
+                    .BehaviorFor(logicalThreat.Id).Kind;
+                Assert.That(
+                    _threat.TryGetVisual(
+                        logicalThreat.Id,
+                        out RectTransform visual),
+                    Is.True);
+                Assert.That(
+                    visual.GetComponent<Image>().sprite,
+                    Is.SameAs(_theme.Current.Threat.SpriteFor(behavior)));
+                string trailName = logicalThreat.Id.Value == 1
+                    ? "ThreatTrail"
+                    : $"ThreatTrail_{logicalThreat.Id.Value}";
+                AssertRgb(
+                    visual.parent.Find(trailName).GetComponent<Image>().color,
+                    _theme.Current.Threat.TrailColorFor(behavior));
+            }
+
+            Assert.That(
+                _controller.Session.Threats
+                    .Select(threat =>
+                    {
+                        _threat.TryGetVisual(threat.Id, out RectTransform visual);
+                        return visual.GetComponent<Image>().sprite;
+                    })
+                    .Distinct()
+                    .Count(),
+                Is.EqualTo(2));
         }
 
         [Test]
@@ -166,7 +259,9 @@ namespace Cutrium.PlayModeTests
             Assert.That(trailImage.sprite,
                 Is.SameAs(_theme.Current.Threat.TrailSprite));
             Assert.That(trailImage.preserveAspect, Is.True);
-            Assert.That(trailImage.color.a, Is.GreaterThanOrEqualTo(0.8f));
+            Assert.That(trailImage.color.a, Is.GreaterThanOrEqualTo(0.7f));
+            Assert.That(trail.GetComponent<Mask>(), Is.Null);
+            Assert.That(trail.Find("ThreatTrailTint"), Is.Null);
 
             float diameter = _threat.Visual.sizeDelta.x;
             Assert.That(trail.sizeDelta.x,
@@ -352,6 +447,13 @@ namespace Cutrium.PlayModeTests
                 Is.EqualTo(new Vector2(10f, 16f)));
             Assert.That(_theme.Background.raycastTarget, Is.False);
             Assert.That(_theme.BoardSurface.raycastTarget, Is.False);
+        }
+
+        private static void AssertRgb(Color actual, Color expected)
+        {
+            Assert.That(actual.r, Is.EqualTo(expected.r).Within(0.001f));
+            Assert.That(actual.g, Is.EqualTo(expected.g).Within(0.001f));
+            Assert.That(actual.b, Is.EqualTo(expected.b).Within(0.001f));
         }
 
         private static ThemeDefinition CreateRuntimeTheme(

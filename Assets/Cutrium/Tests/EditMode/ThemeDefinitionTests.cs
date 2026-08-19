@@ -4,6 +4,7 @@ using System.Reflection;
 using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
+using Cutrium.Gameplay.Threats;
 using Cutrium.Presentation.Theme;
 using NUnit.Framework;
 using UnityEngine;
@@ -14,14 +15,17 @@ namespace Cutrium.Gameplay.EditModeTests
     {
         private Texture2D _textureA;
         private Texture2D _textureB;
+        private Texture2D _textureC;
         private Sprite _spriteA;
         private Sprite _spriteB;
+        private Sprite _spriteC;
 
         [SetUp]
         public void SetUp()
         {
             _textureA = new Texture2D(2, 2);
             _textureB = new Texture2D(4, 1);
+            _textureC = new Texture2D(1, 4);
             _spriteA = Sprite.Create(
                 _textureA,
                 new Rect(0f, 0f, 2f, 2f),
@@ -30,6 +34,10 @@ namespace Cutrium.Gameplay.EditModeTests
                 _textureB,
                 new Rect(0f, 0f, 4f, 1f),
                 new Vector2(0.5f, 0.5f));
+            _spriteC = Sprite.Create(
+                _textureC,
+                new Rect(0f, 0f, 1f, 4f),
+                new Vector2(0.5f, 0.5f));
         }
 
         [TearDown]
@@ -37,8 +45,87 @@ namespace Cutrium.Gameplay.EditModeTests
         {
             UnityEngine.Object.DestroyImmediate(_spriteA);
             UnityEngine.Object.DestroyImmediate(_spriteB);
+            UnityEngine.Object.DestroyImmediate(_spriteC);
             UnityEngine.Object.DestroyImmediate(_textureA);
             UnityEngine.Object.DestroyImmediate(_textureB);
+            UnityEngine.Object.DestroyImmediate(_textureC);
+        }
+
+        [Test]
+        public void Resolver_MapsNormalHunterAndPulseSpritesByBehavior()
+        {
+            Color normalTrail = new Color(0.1f, 0.4f, 1f, 0.8f);
+            Color hunterTrail = new Color(1f, 0.1f, 0.2f, 0.8f);
+            Color pulseTrail = new Color(0.1f, 0.9f, 0.3f, 0.8f);
+            ThemeDefinition theme = CreateTheme(
+                "behavior-visuals",
+                threat: _spriteA);
+            theme.ConfigureThreatSpritesForSetup(
+                _spriteA,
+                _spriteB,
+                _spriteC);
+            theme.ConfigureThreatTrailColorsForSetup(
+                normalTrail,
+                hunterTrail,
+                pulseTrail);
+            try
+            {
+                ThreatVisualStyle resolved = ThemeResolver.Resolve(
+                    theme,
+                    null).Threat;
+
+                Assert.That(resolved.Sprite,
+                    Is.SameAs(_spriteA));
+                Assert.That(resolved.SpriteFor(ThreatBehaviorKind.Normal),
+                    Is.SameAs(_spriteA));
+                Assert.That(resolved.SpriteFor(ThreatBehaviorKind.Hunter),
+                    Is.SameAs(_spriteB));
+                Assert.That(resolved.SpriteFor(ThreatBehaviorKind.Pulse),
+                    Is.SameAs(_spriteC));
+                Assert.That(
+                    resolved.TrailColorFor(ThreatBehaviorKind.Normal),
+                    Is.EqualTo(normalTrail));
+                Assert.That(
+                    resolved.TrailColorFor(ThreatBehaviorKind.Hunter),
+                    Is.EqualTo(hunterTrail));
+                Assert.That(
+                    resolved.TrailColorFor(ThreatBehaviorKind.Pulse),
+                    Is.EqualTo(pulseTrail));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(theme);
+            }
+        }
+
+        [Test]
+        public void Resolver_MissingBehaviorSpriteFallsBackToNormalThreat()
+        {
+            ThemeDefinition theme = CreateTheme(
+                "behavior-fallback",
+                threat: _spriteA);
+            theme.ConfigureThreatSpritesForSetup(_spriteA, null, null);
+            try
+            {
+                ThreatVisualStyle resolved = ThemeResolver.Resolve(
+                    theme,
+                    null).Threat;
+
+                Assert.That(resolved.SpriteFor(ThreatBehaviorKind.Hunter),
+                    Is.SameAs(_spriteA));
+                Assert.That(resolved.SpriteFor(ThreatBehaviorKind.Pulse),
+                    Is.SameAs(_spriteA));
+                Assert.That(
+                    resolved.TrailColorFor(ThreatBehaviorKind.Hunter),
+                    Is.EqualTo(resolved.TrailColor));
+                Assert.That(
+                    resolved.TrailColorFor(ThreatBehaviorKind.Pulse),
+                    Is.EqualTo(resolved.TrailColor));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(theme);
+            }
         }
 
         [Test]
@@ -52,6 +139,17 @@ namespace Cutrium.Gameplay.EditModeTests
                 "fallback",
                 background: _spriteB,
                 threat: _spriteB);
+            fallback.ConfigureThreatSpritesForSetup(
+                _spriteB,
+                _spriteA,
+                _spriteC);
+            Color fallbackNormalTrail = new Color(0.1f, 0.4f, 1f, 0.8f);
+            Color fallbackHunterTrail = new Color(1f, 0.1f, 0.2f, 0.8f);
+            Color fallbackPulseTrail = new Color(0.1f, 0.9f, 0.3f, 0.8f);
+            fallback.ConfigureThreatTrailColorsForSetup(
+                fallbackNormalTrail,
+                fallbackHunterTrail,
+                fallbackPulseTrail);
             try
             {
                 ResolvedTheme resolved = ThemeResolver.Resolve(
@@ -59,6 +157,18 @@ namespace Cutrium.Gameplay.EditModeTests
                     fallback);
                 Assert.That(resolved.BackgroundSprite, Is.SameAs(_spriteA));
                 Assert.That(resolved.Threat.Sprite, Is.SameAs(_spriteB));
+                Assert.That(
+                    resolved.Threat.SpriteFor(ThreatBehaviorKind.Hunter),
+                    Is.SameAs(_spriteA));
+                Assert.That(
+                    resolved.Threat.SpriteFor(ThreatBehaviorKind.Pulse),
+                    Is.SameAs(_spriteC));
+                Assert.That(
+                    resolved.Threat.TrailColorFor(ThreatBehaviorKind.Hunter),
+                    Is.EqualTo(fallbackHunterTrail));
+                Assert.That(
+                    resolved.Threat.TrailColorFor(ThreatBehaviorKind.Pulse),
+                    Is.EqualTo(fallbackPulseTrail));
                 Assert.That(resolved.StableId, Is.EqualTo("selected"));
 
                 ResolvedTheme flat = ThemeResolver.Resolve(null, null);

@@ -343,14 +343,15 @@ namespace Cutrium.Gameplay.EditModeTests
         }
 
         [Test]
-        public void FirstTwelveLandmarks_MatchMarkdownAndImportedArtwork()
+        public void FirstTwelveEarthLandmarks_MatchMarkdownAndImportedArtwork()
         {
             FirstTwelveLandmarkContent.Entry[] entries =
                 FirstTwelveLandmarkContent.Entries;
-            string markdown = File.ReadAllText("landmarks.md");
+            string markdown = File.ReadAllText("earth-landmarks.md");
 
             Assert.That(entries, Has.Length.EqualTo(12));
-            Assert.That(entries[0].Title, Is.EqualTo("Galata Kulesi"));
+            Assert.That(entries[0].Title, Is.EqualTo("Angkor Wat"));
+            Assert.That(entries[11].Title, Is.EqualTo("CN Kulesi"));
             Assert.That(entries.Select(entry => entry.Id).Distinct().Count(),
                 Is.EqualTo(12));
             string plainMarkdown = markdown.Replace("*", string.Empty);
@@ -361,6 +362,9 @@ namespace Cutrium.Gameplay.EditModeTests
                     plainMarkdown,
                     Does.Contain(entry.Description),
                     entry.Title);
+                Assert.That(entry.Description.Length,
+                    Is.InRange(300, 400),
+                    entry.Title);
                 Assert.That(
                     AssetDatabase.LoadAssetAtPath<Sprite>(entry.ArtworkPath),
                     Is.Not.Null,
@@ -369,16 +373,19 @@ namespace Cutrium.Gameplay.EditModeTests
 
             LandmarkDefinition[] definitions =
                 FirstTwelveLandmarkContent.CreateOrUpdateAssets();
+            LandmarkDefinition[] repeatedDefinitions =
+                FirstTwelveLandmarkContent.CreateOrUpdateAssets();
             Assert.That(definitions, Has.Length.EqualTo(12));
             Assert.That(definitions.All(definition =>
                 definition != null
                 && definition.Artwork != null
                 && !string.IsNullOrWhiteSpace(definition.ShortDescription)),
                 Is.True);
+            Assert.That(repeatedDefinitions, Is.EqualTo(definitions));
         }
 
         [Test]
-        public void CheckedInLandmarkCatalog_HasTwelveRealOrderedEntries()
+        public void CheckedInLandmarkCatalog_HasTwelveOrderedEarthEntries()
         {
             LandmarkCatalog catalog = AssetDatabase.LoadAssetAtPath<LandmarkCatalog>(
                 GameplayProgressionSetup.LandmarkCatalogPath);
@@ -397,9 +404,15 @@ namespace Cutrium.Gameplay.EditModeTests
                 Assert.That(landmark.ShortDescription,
                     Is.EqualTo(source.Description));
                 Assert.That(landmark.Sector,
-                    Is.EqualTo($"{source.City} / TÜRKİYE"));
+                    Is.EqualTo(source.Sector));
                 Assert.That(landmark.Artwork, Is.Not.Null);
+                Assert.That(AssetDatabase.GetAssetPath(landmark),
+                    Is.EqualTo(source.DefinitionPath));
+                Assert.That(AssetDatabase.GetAssetPath(landmark.Artwork),
+                    Is.EqualTo(source.ArtworkPath));
             }
+
+            Assert.DoesNotThrow(GameplayProgressionSetup.ValidateExistingAssets);
         }
 
         [Test]
