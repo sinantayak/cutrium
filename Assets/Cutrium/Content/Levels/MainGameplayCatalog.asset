@@ -1,0 +1,1293 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 402f0d71b3bd47c3b08225cd477ed6cd, type: 3}
+  m_Name: MainGameplayCatalog
+  m_EditorClassIdentifier: Cutrium.Unity::Cutrium.Unity.Simulation.CoreFunLevelCatalogDefinition
+  _levels:
+  - _stableId: learn-the-cut
+    _displayNumber: 1
+    _threats:
+    - _initialPosition: {x: 5, y: 8}
+      _initialDirection: {x: 0.8, y: 0.6}
+      _speed: 1.6
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.75
+    _barrierGrowthSpeed: 3.4
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 3
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: A calm single threat teaches that the empty side is captured.
+    _purposeLine: LEARN THE CUT
+    _maximumExpectedCompletionSeconds: 15
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Read the threat position, then make two safe edge-biased cuts.
+    _difficultyRating: 1
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 3
+    _maximumAcceptedBarrierBreaks: 5
+    _introTitle: 
+    _introMessage: 
+  - _stableId: vulnerable-barrier-timing
+    _displayNumber: 2
+    _threats:
+    - _initialPosition: {x: 4.5, y: 3.5}
+      _initialDirection: {x: 0.45, y: 0.89}
+      _speed: 2.35
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.78
+    _barrierGrowthSpeed: 2.15
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.7
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: A crossing trajectory and longer exposure punish a repeated
+      blind rhythm.
+    _purposeLine: WATCH THE THREAT
+    _maximumExpectedCompletionSeconds: 24
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Wait until the threat is moving away before committing the
+      cut.
+    _difficultyRating: 2
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 5
+    _maximumAcceptedBarrierBreaks: 5
+    _introTitle: 
+    _introMessage: 
+  - _stableId: two-normal-threats
+    _displayNumber: 3
+    _threats:
+    - _initialPosition: {x: 3, y: 5}
+      _initialDirection: {x: 0.9, y: 0.44}
+      _speed: 2.05
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7, y: 11}
+      _initialDirection: {x: -0.82, y: -0.57}
+      _speed: 2.2
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.8
+    _barrierGrowthSpeed: 2.8
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.3
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Two predictable threats make grouping the strategic constraint.
+    _purposeLine: KEEP THEM TOGETHER
+    _maximumExpectedCompletionSeconds: 28
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Choose cuts that leave both threats in the same surviving
+      room.
+    _difficultyRating: 2
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 6
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: 
+    _introMessage: 
+  - _stableId: confident-large-capture
+    _displayNumber: 4
+    _threats:
+    - _initialPosition: {x: 7.6, y: 12.2}
+      _initialDirection: {x: -0.72, y: -0.69}
+      _speed: 2.25
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.84
+    _barrierGrowthSpeed: 3.2
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 1.8
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: A forgiving ten-cut budget rewards decisive captures over tiny
+      edge shaving.
+    _purposeLine: CUT WITH CONFIDENCE
+    _maximumExpectedCompletionSeconds: 30
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Plan larger empty regions and keep spare attempts for mistakes.
+    _difficultyRating: 2
+    _maximumAcceptedCuts: 10
+    _expectedReasonableCutUsage: 7
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: 10 CUTS
+    _introMessage: MAKE THEM COUNT
+  - _stableId: hunter-introduction
+    _displayNumber: 5
+    _threats:
+    - _initialPosition: {x: 5, y: 8}
+      _initialDirection: {x: 0.8, y: 0.6}
+      _speed: 2
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 1
+        _hunterSteerFactor: 0.72
+        _hunterMaximumTurnDegrees: 55
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.8
+    _barrierGrowthSpeed: 2.6
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.2
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: A lone Hunter makes its bounded steering reaction unmistakable.
+    _purposeLine: MEET THE HUNTER
+    _maximumExpectedCompletionSeconds: 30
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Bait the reaction, then commit where its limited turn cannot
+      recover in time.
+    _difficultyRating: 2
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 5
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: HUNTER
+    _introMessage: REACTS TO YOUR CUTS
+  - _stableId: pulse-introduction
+    _displayNumber: 6
+    _threats:
+    - _initialPosition: {x: 4, y: 10}
+      _initialDirection: {x: 0.65, y: -0.76}
+      _speed: 1.9
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 2
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.45
+        _pulseFastSpeedMultiplier: 1.65
+        _pulseSlowDurationSeconds: 1.35
+        _pulseFastDurationSeconds: 0.75
+    _targetCapturedFraction: 0.8
+    _barrierGrowthSpeed: 2.55
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.1
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: One Pulse alternates a generous slow phase with a clear energetic
+      burst.
+    _purposeLine: READ THE PULSE
+    _maximumExpectedCompletionSeconds: 32
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Start longer cuts during the slow phase instead of reacting
+      to average speed.
+    _difficultyRating: 2
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 5
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: PULSE
+    _introMessage: WATCH ITS SPEED
+  - _stableId: freeze-pulse-window
+    _displayNumber: 7
+    _threats:
+    - _initialPosition: {x: 6.2, y: 8.5}
+      _initialDirection: {x: -0.74, y: 0.67}
+      _speed: 2
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 2
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.45
+        _pulseFastSpeedMultiplier: 1.75
+        _pulseSlowDurationSeconds: 1.15
+        _pulseFastDurationSeconds: 0.85
+    _targetCapturedFraction: 0.82
+    _barrierGrowthSpeed: 1.85
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Slow growth, a strong Pulse burst, and cut economy make Freeze
+      tactically valuable.
+    _purposeLine: CREATE A FREEZE WINDOW
+    _maximumExpectedCompletionSeconds: 36
+    _power:
+      _freezePulseCharges: 1
+      _freezePulseDurationSeconds: 3.8
+      _freezePulseSpeedMultiplier: 0.1
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Commit a valuable long cut, then freeze the dangerous acceleration
+      window.
+    _difficultyRating: 3
+    _maximumAcceptedCuts: 10
+    _expectedReasonableCutUsage: 7
+    _maximumAcceptedBarrierBreaks: 3
+    _introTitle: FREEZE
+    _introMessage: CREATE A SAFE WINDOW
+  - _stableId: instant-barrier-window
+    _displayNumber: 8
+    _threats:
+    - _initialPosition: {x: 3, y: 6}
+      _initialDirection: {x: 0.88, y: 0.48}
+      _speed: 2.1
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7.2, y: 10.8}
+      _initialDirection: {x: -0.68, y: -0.73}
+      _speed: 2.15
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.84
+    _barrierGrowthSpeed: 1.75
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 1.9
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Two threats expose long cuts enough that one saved Instant
+      charge has obvious value.
+    _purposeLine: FINISH IT INSTANTLY
+    _maximumExpectedCompletionSeconds: 38
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 1
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Group first, then spend Instant on the longest exposed target
+      push.
+    _difficultyRating: 3
+    _maximumAcceptedCuts: 9
+    _expectedReasonableCutUsage: 6
+    _maximumAcceptedBarrierBreaks: 3
+    _introTitle: INSTANT
+    _introMessage: SAVE IT FOR A RISKY CUT
+  - _stableId: hunter-normal-pair
+    _displayNumber: 9
+    _threats:
+    - _initialPosition: {x: 3.2, y: 5.2}
+      _initialDirection: {x: 0.82, y: 0.57}
+      _speed: 1.95
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 1
+        _hunterSteerFactor: 0.68
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7, y: 11.4}
+      _initialDirection: {x: -0.78, y: -0.63}
+      _speed: 2.15
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.84
+    _barrierGrowthSpeed: 2.45
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 1.8
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: A reactive Hunter and predictable Normal demand different reads
+      while grouping.
+    _purposeLine: TRACK TWO INTENTIONS
+    _maximumExpectedCompletionSeconds: 38
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Keep both threats together while accounting for only the Hunter
+      reacting.
+    _difficultyRating: 3
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 7
+    _maximumAcceptedBarrierBreaks: 3
+    _introTitle: 
+    _introMessage: 
+  - _stableId: pulse-multiple-threats
+    _displayNumber: 10
+    _threats:
+    - _initialPosition: {x: 3.3, y: 10.8}
+      _initialDirection: {x: 0.78, y: -0.62}
+      _speed: 1.9
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 2
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.45
+        _pulseFastSpeedMultiplier: 1.7
+        _pulseSlowDurationSeconds: 1.15
+        _pulseFastDurationSeconds: 0.85
+    - _initialPosition: {x: 7.1, y: 5.2}
+      _initialDirection: {x: -0.84, y: 0.54}
+      _speed: 2.15
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.84
+    _barrierGrowthSpeed: 2.35
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 1.7
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Pulse timing matters while a Normal constrains the safe grouping
+      window.
+    _purposeLine: FIND THE SHARED WINDOW
+    _maximumExpectedCompletionSeconds: 40
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Wait until slow phase and spatial grouping agree before cutting.
+    _difficultyRating: 4
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 7
+    _maximumAcceptedBarrierBreaks: 3
+    _introTitle: 
+    _introMessage: 
+  - _stableId: meaningful-power-choice
+    _displayNumber: 11
+    _threats:
+    - _initialPosition: {x: 3.2, y: 6}
+      _initialDirection: {x: 0.82, y: 0.57}
+      _speed: 1.95
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 1
+        _hunterSteerFactor: 0.72
+        _hunterMaximumTurnDegrees: 55
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7, y: 10.5}
+      _initialDirection: {x: -0.76, y: -0.65}
+      _speed: 1.85
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 2
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.45
+        _pulseFastSpeedMultiplier: 1.75
+        _pulseSlowDurationSeconds: 1.1
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.87
+    _barrierGrowthSpeed: 1.85
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 1.6
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: A lower cut budget and two distinct danger patterns reward
+      different power windows.
+    _purposeLine: CHOOSE THE RIGHT POWER
+    _maximumExpectedCompletionSeconds: 43
+    _power:
+      _freezePulseCharges: 1
+      _freezePulseDurationSeconds: 3.5
+      _freezePulseSpeedMultiplier: 0.1
+      _instantBarrierCharges: 1
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Freeze controls a bad phase; Instant secures a high-value
+      exposed cut.
+    _difficultyRating: 4
+    _maximumAcceptedCuts: 8
+    _expectedReasonableCutUsage: 6
+    _maximumAcceptedBarrierBreaks: 2
+    _introTitle: 
+    _introMessage: 
+  - _stableId: first-twelve-mastery
+    _displayNumber: 12
+    _threats:
+    - _initialPosition: {x: 2.8, y: 5}
+      _initialDirection: {x: 0.86, y: 0.51}
+      _speed: 1.9
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 1
+        _hunterSteerFactor: 0.7
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7.2, y: 8.3}
+      _initialDirection: {x: -0.72, y: 0.69}
+      _speed: 1.85
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 2
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.45
+        _pulseFastSpeedMultiplier: 1.75
+        _pulseSlowDurationSeconds: 1.1
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 4.8, y: 12.5}
+      _initialDirection: {x: 0.62, y: -0.78}
+      _speed: 2.1
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.9
+    _barrierGrowthSpeed: 2
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 1.5
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Three readable identities, the highest target, and a finite
+      cut budget test the full set.
+    _purposeLine: MASTER THE BOARD
+    _maximumExpectedCompletionSeconds: 45
+    _power:
+      _freezePulseCharges: 1
+      _freezePulseDurationSeconds: 3.5
+      _freezePulseSpeedMultiplier: 0.1
+      _instantBarrierCharges: 1
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Group, read phase, bait reaction, and spend both powers deliberately.
+    _difficultyRating: 5
+    _maximumAcceptedCuts: 10
+    _expectedReasonableCutUsage: 8
+    _maximumAcceptedBarrierBreaks: 2
+    _introTitle: 
+    _introMessage: 
+  - _stableId: motion-reset
+    _displayNumber: 13
+    _threats:
+    - _initialPosition: {x: 5, y: 8}
+      _initialDirection: {x: 0.78, y: 0.63}
+      _speed: 2
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.76
+    _barrierGrowthSpeed: 3.1
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.7
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: A calm opener resets the rhythm before motion variants arrive.
+    _purposeLine: READ THE ROOM
+    _maximumExpectedCompletionSeconds: 22
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Make confident medium cuts and re-establish the grouping read.
+    _difficultyRating: 2
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 5
+    _introTitle: 
+    _introMessage: 
+  - _stableId: parallel-pair
+    _displayNumber: 14
+    _threats:
+    - _initialPosition: {x: 3, y: 4.6}
+      _initialDirection: {x: 0.82, y: 0.57}
+      _speed: 1.9
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7, y: 11.4}
+      _initialDirection: {x: 0.82, y: 0.57}
+      _speed: 1.95
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.78
+    _barrierGrowthSpeed: 2.9
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.5
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Two parallel Normals create a readable shared movement window.
+    _purposeLine: MOVE WITH THEM
+    _maximumExpectedCompletionSeconds: 27
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Use their shared direction to place a larger safe cut.
+    _difficultyRating: 2
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 5
+    _introTitle: 
+    _introMessage: 
+  - _stableId: crossing-pair
+    _displayNumber: 15
+    _threats:
+    - _initialPosition: {x: 2.8, y: 5.2}
+      _initialDirection: {x: 0.82, y: 0.57}
+      _speed: 2.05
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7.2, y: 10.8}
+      _initialDirection: {x: -0.82, y: -0.57}
+      _speed: 2.05
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.8
+    _barrierGrowthSpeed: 2.65
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.25
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Crossing paths vary the safe window without raising raw speed.
+    _purposeLine: WAIT FOR THE CROSS
+    _maximumExpectedCompletionSeconds: 30
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Let the threats cross, then cut behind their shared position.
+    _difficultyRating: 3
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: 
+    _introMessage: 
+  - _stableId: comet-introduction
+    _displayNumber: 16
+    _threats:
+    - _initialPosition: {x: 5, y: 8}
+      _initialDirection: {x: 0.74, y: 0.67}
+      _speed: 3.25
+      _radius: 0.29
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.78
+    _barrierGrowthSpeed: 3
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.4
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: A smaller, faster Normal introduces speed with generous growth.
+    _purposeLine: MEET THE COMET
+    _maximumExpectedCompletionSeconds: 29
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Track the quick pass and commit as the Comet moves away.
+    _difficultyRating: 3
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: COMET
+    _introMessage: SMALL AND FAST
+  - _stableId: heavy-introduction
+    _displayNumber: 17
+    _threats:
+    - _initialPosition: {x: 5, y: 8}
+      _initialDirection: {x: 0.66, y: 0.75}
+      _speed: 1.45
+      _radius: 0.52
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.8
+    _barrierGrowthSpeed: 2.8
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.25
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: A slow Heavy occupies more room and changes edge clearance.
+    _purposeLine: GIVE IT SPACE
+    _maximumExpectedCompletionSeconds: 30
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Use its calm pace, but respect the larger collision radius.
+    _difficultyRating: 3
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: HEAVY
+    _introMessage: SLOW BUT LARGE
+  - _stableId: comet-normal-pair
+    _displayNumber: 18
+    _threats:
+    - _initialPosition: {x: 3, y: 5}
+      _initialDirection: {x: 0.86, y: 0.51}
+      _speed: 3.1
+      _radius: 0.29
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7, y: 11}
+      _initialDirection: {x: -0.72, y: -0.69}
+      _speed: 1.95
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.82
+    _barrierGrowthSpeed: 2.7
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.05
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Comet and Normal separate timing from grouping.
+    _purposeLine: READ TWO SPEEDS
+    _maximumExpectedCompletionSeconds: 34
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Wait until the faster threat rejoins the safer shared side.
+    _difficultyRating: 3
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: 
+    _introMessage: 
+  - _stableId: heavy-normal-pair
+    _displayNumber: 19
+    _threats:
+    - _initialPosition: {x: 3.1, y: 5.3}
+      _initialDirection: {x: 0.72, y: 0.69}
+      _speed: 1.4
+      _radius: 0.52
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7, y: 11}
+      _initialDirection: {x: -0.78, y: -0.63}
+      _speed: 2.15
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.82
+    _barrierGrowthSpeed: 2.6
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Heavy clearance and Normal pace produce a gentle spatial puzzle.
+    _purposeLine: BALANCE THE PAIR
+    _maximumExpectedCompletionSeconds: 35
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Keep both in one room without shaving too close to the Heavy.
+    _difficultyRating: 3
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: 
+    _introMessage: 
+  - _stableId: gravity-well-introduction
+    _displayNumber: 20
+    _threats:
+    - _initialPosition: {x: 3, y: 5}
+      _initialDirection: {x: 0.84, y: 0.54}
+      _speed: 2
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7, y: 11}
+      _initialDirection: {x: -0.8, y: -0.6}
+      _speed: 2
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.8
+    _barrierGrowthSpeed: 2.8
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 2.2
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: One Gravity Well gently gathers nearby threats in its active
+      room.
+    _purposeLine: BEND THEIR PATH
+    _maximumExpectedCompletionSeconds: 34
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 1
+      _gravityWellDurationSeconds: 4.25
+      _gravityWellRadius: 4.5
+      _gravityWellTurnDegreesPerSecond: 105
+    _intendedDecision: Place the well where both paths can curve into a shared safe
+      side.
+    _difficultyRating: 3
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: GRAVITY WELL
+    _introMessage: TAP A POINT TO PULL
+  - _stableId: gravity-heavy-pair
+    _displayNumber: 21
+    _threats:
+    - _initialPosition: {x: 3, y: 5}
+      _initialDirection: {x: 0.7, y: 0.71}
+      _speed: 1.45
+      _radius: 0.52
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7, y: 11}
+      _initialDirection: {x: -0.76, y: -0.65}
+      _speed: 2.15
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.83
+    _barrierGrowthSpeed: 2.55
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 1.9
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Gravity helps align a large Heavy with a quicker Normal.
+    _purposeLine: SHAPE THE GROUP
+    _maximumExpectedCompletionSeconds: 38
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 1
+      _gravityWellDurationSeconds: 4.25
+      _gravityWellRadius: 4.5
+      _gravityWellTurnDegreesPerSecond: 105
+    _intendedDecision: Pull early, then use the gathered room for one valuable cut.
+    _difficultyRating: 4
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: 
+    _introMessage: 
+  - _stableId: pulse-comet-window
+    _displayNumber: 22
+    _threats:
+    - _initialPosition: {x: 3.1, y: 10.7}
+      _initialDirection: {x: 0.78, y: -0.62}
+      _speed: 1.9
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 2
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.45
+        _pulseFastSpeedMultiplier: 1.7
+        _pulseSlowDurationSeconds: 1.15
+        _pulseFastDurationSeconds: 0.85
+    - _initialPosition: {x: 7, y: 5.2}
+      _initialDirection: {x: -0.84, y: 0.54}
+      _speed: 3.05
+      _radius: 0.29
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.84
+    _barrierGrowthSpeed: 2.55
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 1.8
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Pulse and Comet make Freeze useful without adding another rule.
+    _purposeLine: CONTROL THE BURST
+    _maximumExpectedCompletionSeconds: 40
+    _power:
+      _freezePulseCharges: 1
+      _freezePulseDurationSeconds: 3.5
+      _freezePulseSpeedMultiplier: 0.1
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 0
+      _gravityWellDurationSeconds: 4
+      _gravityWellRadius: 2.75
+      _gravityWellTurnDegreesPerSecond: 100
+    _intendedDecision: Spend Freeze when their fast windows overlap around a long
+      cut.
+    _difficultyRating: 4
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 3
+    _introTitle: 
+    _introMessage: 
+  - _stableId: four-threat-gravity
+    _displayNumber: 23
+    _threats:
+    - _initialPosition: {x: 2.2, y: 4}
+      _initialDirection: {x: 0.78, y: 0.62}
+      _speed: 1.55
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7.8, y: 4.5}
+      _initialDirection: {x: -0.74, y: 0.67}
+      _speed: 1.55
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 2.5, y: 12}
+      _initialDirection: {x: 0.7, y: -0.71}
+      _speed: 1.5
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7.5, y: 11.5}
+      _initialDirection: {x: -0.68, y: -0.73}
+      _speed: 1.5
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.82
+    _barrierGrowthSpeed: 2.9
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 1.9
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Four slow Normals add spectacle while Gravity keeps the board
+      manageable.
+    _purposeLine: GATHER THE CROWD
+    _maximumExpectedCompletionSeconds: 42
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 0
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 1
+      _gravityWellDurationSeconds: 4.25
+      _gravityWellRadius: 4.5
+      _gravityWellTurnDegreesPerSecond: 105
+    _intendedDecision: Gather a useful pair rather than trying to control every threat.
+    _difficultyRating: 4
+    _maximumAcceptedCuts: 0
+    _expectedReasonableCutUsage: 0
+    _maximumAcceptedBarrierBreaks: 4
+    _introTitle: 
+    _introMessage: 
+  - _stableId: motion-and-gravity-mastery
+    _displayNumber: 24
+    _threats:
+    - _initialPosition: {x: 2.7, y: 4.8}
+      _initialDirection: {x: 0.84, y: 0.54}
+      _speed: 1.9
+      _radius: 0.35
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 1
+        _hunterSteerFactor: 0.68
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 7.3, y: 6.3}
+      _initialDirection: {x: -0.82, y: 0.57}
+      _speed: 3.05
+      _radius: 0.29
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    - _initialPosition: {x: 5, y: 11.8}
+      _initialDirection: {x: 0.55, y: -0.84}
+      _speed: 1.4
+      _radius: 0.52
+      _maximumImpactsPerTick: 8
+      _behavior:
+        _kind: 0
+        _hunterSteerFactor: 0.25
+        _hunterMaximumTurnDegrees: 52
+        _pulseSlowSpeedMultiplier: 0.5
+        _pulseFastSpeedMultiplier: 1.5
+        _pulseSlowDurationSeconds: 1.2
+        _pulseFastDurationSeconds: 0.8
+    _targetCapturedFraction: 0.86
+    _barrierGrowthSpeed: 2.55
+    _barrierCollisionHalfWidth: 0.08
+    _minimumCutMargin: 1.65
+    _maximumBarrierSolverIterations: 16
+    _maximumCatchUpTicks: 8
+    _developmentNote: Hunter, Comet, and Heavy combine with two deliberate power
+      choices.
+    _purposeLine: MASTER THE MOTION
+    _maximumExpectedCompletionSeconds: 45
+    _power:
+      _freezePulseCharges: 0
+      _freezePulseDurationSeconds: 3
+      _freezePulseSpeedMultiplier: 0.12
+      _instantBarrierCharges: 1
+      _instantBarrierGrowthSpeed: 600
+      _gravityWellCharges: 1
+      _gravityWellDurationSeconds: 4.25
+      _gravityWellRadius: 4.5
+      _gravityWellTurnDegreesPerSecond: 105
+    _intendedDecision: Use Gravity to group, then save Instant for the final exposed
+      cut.
+    _difficultyRating: 5
+    _maximumAcceptedCuts: 10
+    _expectedReasonableCutUsage: 8
+    _maximumAcceptedBarrierBreaks: 3
+    _introTitle: CHAPTER MASTERY
+    _introMessage: SHAPE THEN CUT

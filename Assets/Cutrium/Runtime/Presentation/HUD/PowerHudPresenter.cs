@@ -28,8 +28,18 @@ namespace Cutrium.Presentation.HUD
         [SerializeField]
         private Text _instantBarrierChargesText;
 
+        [SerializeField]
+        private GameObject _gravityWellRoot;
+
+        [SerializeField]
+        private Button _gravityWellButton;
+
+        [SerializeField]
+        private Text _gravityWellChargesText;
+
         private bool _freezeButtonSubscribed;
         private bool _instantButtonSubscribed;
+        private bool _gravityButtonSubscribed;
 
         public FirstPlayableController Controller => _controller;
 
@@ -45,6 +55,12 @@ namespace Cutrium.Presentation.HUD
 
         public Text InstantBarrierChargesText => _instantBarrierChargesText;
 
+        public GameObject GravityWellRoot => _gravityWellRoot;
+
+        public Button GravityWellButton => _gravityWellButton;
+
+        public Text GravityWellChargesText => _gravityWellChargesText;
+
         public void Configure(
             FirstPlayableController controller,
             GameObject freezePulseRoot,
@@ -54,6 +70,31 @@ namespace Cutrium.Presentation.HUD
             Button instantBarrierButton,
             Text instantBarrierChargesText)
         {
+            Configure(
+                controller,
+                freezePulseRoot,
+                freezePulseButton,
+                freezePulseChargesText,
+                instantBarrierRoot,
+                instantBarrierButton,
+                instantBarrierChargesText,
+                null,
+                null,
+                null);
+        }
+
+        public void Configure(
+            FirstPlayableController controller,
+            GameObject freezePulseRoot,
+            Button freezePulseButton,
+            Text freezePulseChargesText,
+            GameObject instantBarrierRoot,
+            Button instantBarrierButton,
+            Text instantBarrierChargesText,
+            GameObject gravityWellRoot,
+            Button gravityWellButton,
+            Text gravityWellChargesText)
+        {
             UnsubscribeButtons();
             _controller = controller;
             _freezePulseRoot = freezePulseRoot;
@@ -62,6 +103,9 @@ namespace Cutrium.Presentation.HUD
             _instantBarrierRoot = instantBarrierRoot;
             _instantBarrierButton = instantBarrierButton;
             _instantBarrierChargesText = instantBarrierChargesText;
+            _gravityWellRoot = gravityWellRoot;
+            _gravityWellButton = gravityWellButton;
+            _gravityWellChargesText = gravityWellChargesText;
             if (isActiveAndEnabled && Application.isPlaying)
             {
                 SubscribeButtons();
@@ -112,6 +156,32 @@ namespace Cutrium.Presentation.HUD
                         System.Globalization.CultureInfo.InvariantCulture)
                     : string.Empty;
             }
+
+
+            int gravityChargesRemaining =
+                _controller.GravityWellChargesRemaining;
+            if (_gravityWellButton != null)
+            {
+                _gravityWellButton.interactable =
+                    _controller.GravityWellTargeting
+                    || (gravityChargesRemaining > 0
+                        && !_controller.GravityWellActive);
+                if (_gravityWellButton.targetGraphic != null)
+                {
+                    _gravityWellButton.targetGraphic.color =
+                        _controller.GravityWellTargeting
+                            ? new Color(1f, 0.72f, 1f, 1f)
+                            : Color.white;
+                }
+            }
+
+            if (_gravityWellChargesText != null)
+            {
+                _gravityWellChargesText.text = gravityChargesRemaining > 0
+                    ? gravityChargesRemaining.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture)
+                    : string.Empty;
+            }
         }
 
         private void OnEnable()
@@ -147,6 +217,13 @@ namespace Cutrium.Presentation.HUD
                     OnInstantBarrierClicked);
                 _instantButtonSubscribed = true;
             }
+
+            if (!_gravityButtonSubscribed && _gravityWellButton != null)
+            {
+                _gravityWellButton.onClick.AddListener(
+                    OnGravityWellClicked);
+                _gravityButtonSubscribed = true;
+            }
         }
 
         private void UnsubscribeButtons()
@@ -163,8 +240,15 @@ namespace Cutrium.Presentation.HUD
                     OnInstantBarrierClicked);
             }
 
+            if (_gravityButtonSubscribed && _gravityWellButton != null)
+            {
+                _gravityWellButton.onClick.RemoveListener(
+                    OnGravityWellClicked);
+            }
+
             _freezeButtonSubscribed = false;
             _instantButtonSubscribed = false;
+            _gravityButtonSubscribed = false;
         }
 
         private void OnFreezePulseClicked()
@@ -176,6 +260,12 @@ namespace Cutrium.Presentation.HUD
         private void OnInstantBarrierClicked()
         {
             _controller.TryArmInstantBarrier();
+            RefreshNow();
+        }
+
+        private void OnGravityWellClicked()
+        {
+            _controller.ToggleGravityWellTargeting();
             RefreshNow();
         }
     }

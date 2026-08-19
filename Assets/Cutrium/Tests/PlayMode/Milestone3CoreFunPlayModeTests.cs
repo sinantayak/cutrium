@@ -46,10 +46,10 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void Scene_StartsLevelOneWithSerializedTwelveLevelFlow()
+        public void Scene_StartsLevelOneWithSerializedTwentyFourLevelFlow()
         {
-            Assert.That(_controller.LevelDefinitions.Count, Is.EqualTo(12));
-            Assert.That(_controller.LevelCount, Is.EqualTo(12));
+            Assert.That(_controller.LevelDefinitions.Count, Is.EqualTo(24));
+            Assert.That(_controller.LevelCount, Is.EqualTo(24));
             Assert.That(_controller.CurrentLevelIndex, Is.Zero);
             Assert.That(_controller.CurrentLevelNumber, Is.EqualTo(1));
             Assert.That(_controller.CurrentLevelId, Is.EqualTo("learn-the-cut"));
@@ -161,9 +161,9 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void FullSequence_LevelTwelveCompletionRestartsDevelopmentSequence()
+        public void FullSequence_LevelTwentyFourCompletionRestartsDevelopmentSequence()
         {
-            for (int level = 1; level < 12; level++)
+            for (int level = 1; level < 24; level++)
             {
                 CompleteCurrentLevel();
                 Assert.That(_controller.TryAdvanceToNextLevel(), Is.True);
@@ -172,12 +172,12 @@ namespace Cutrium.PlayModeTests
             CompleteCurrentLevel();
             _hud.RefreshNow();
 
-            Assert.That(_controller.CurrentLevelNumber, Is.EqualTo(12));
+            Assert.That(_controller.CurrentLevelNumber, Is.EqualTo(24));
             Assert.That(_controller.CurrentLevelId,
-                Is.EqualTo("first-twelve-mastery"));
-            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.88f));
+                Is.EqualTo("motion-and-gravity-mastery"));
+            Assert.That(_controller.TargetCapturedFraction, Is.EqualTo(0.86f));
             Assert.That(_controller.ThreatCount, Is.EqualTo(3));
-            Assert.That(_hud.PurposeText.text, Is.EqualTo("MASTER THE BOARD"));
+            Assert.That(_hud.PurposeText.text, Is.EqualTo("MASTER THE MOTION"));
             Assert.That(_controller.Session.LevelStatus,
                 Is.EqualTo(CaptureLevelStatus.Completed));
             Assert.That(_controller.HasNextLevel, Is.False);
@@ -197,10 +197,10 @@ namespace Cutrium.PlayModeTests
             Assert.That(_controller.Metrics.SequenceCompletionCount,
                 Is.EqualTo(1));
             Assert.That(_controller.Metrics.LastCompletedSequence.Count,
-                Is.EqualTo(12));
+                Is.EqualTo(24));
             Assert.That(_controller.Metrics.LastCompletedSequence
                 .Select(run => run.LevelNumber),
-                Is.EqualTo(Enumerable.Range(1, 12)));
+                Is.EqualTo(Enumerable.Range(1, 24)));
         }
 
         [Test]
@@ -290,7 +290,7 @@ namespace Cutrium.PlayModeTests
         {
             for (int sequence = 0; sequence < 2; sequence++)
             {
-                for (int level = 0; level < 12; level++)
+                for (int level = 0; level < 24; level++)
                 {
                     CompleteCurrentLevel();
                     Assert.That(
@@ -322,7 +322,7 @@ namespace Cutrium.PlayModeTests
                     .Count(child => child.name.StartsWith(
                         "ThreatVisual",
                         StringComparison.Ordinal)),
-                Is.EqualTo(3));
+                Is.EqualTo(4));
         }
 
         [UnityTest]
@@ -449,7 +449,7 @@ namespace Cutrium.PlayModeTests
         [Test]
         public void MappingStillRejectsDecorativeMarginAfterEveryTransition()
         {
-            for (int level = 1; level <= 12; level++)
+            for (int level = 1; level <= 24; level++)
             {
                 _composition.BoardCameraFitter.RefreshNow();
                 Rect board = _composition.BoardCameraFitter.BoardScreenRect;
@@ -462,7 +462,7 @@ namespace Cutrium.PlayModeTests
                     new Vector2(board.xMin - 1f, board.center.y),
                     out _), Is.False);
 
-                if (level < 12)
+                if (level < 24)
                 {
                     CompleteCurrentLevel();
                     Assert.That(_controller.TryAdvanceToNextLevel(), Is.True);

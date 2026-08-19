@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L22_Gobeklitepe
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: gobeklitepe
+  _displayTitle: "G\xF6beklitepe"
+  _shortDescription: "G\xF6beklitepe\u2019nin hayvan kabartmal\u0131 T bi\xE7imli
+    ta\u015F s\xFCtunlar\u0131 yakla\u015F\u0131k M\xD6 9600\u2019e kadar uzan\u0131r.
+    Bu an\u0131tsal alan, \xE7anak \xE7\xF6mlekten ve yerle\u015Fik tar\u0131m toplumlar\u0131ndan
+    bile daha eski olmas\u0131yla insanl\u0131k tarihine bak\u0131\u015F\u0131 de\u011Fi\u015Ftirdi.
+    Baz\u0131lar\u0131 be\u015F metreyi a\u015Fan s\xFCtunlar\u0131n bulundu\u011Fu
+    dairesel yap\u0131larda belirgin ev izlerine rastlanmamas\u0131, alan\u0131n
+    b\xFCy\xFCk bulu\u015Fmalar ve rit\xFCeller i\xE7in kullan\u0131lm\u0131\u015F
+    olabilece\u011Fini d\xFC\u015F\xFCnd\xFCr\xFCr."
+  _sector: "\u015Eanl\u0131urfa / T\xDCRK\u0130YE"
+  _artwork: {fileID: 9132063075479195388, guid: faf9552e4edc66a40894ad2b2154029e, type: 3}

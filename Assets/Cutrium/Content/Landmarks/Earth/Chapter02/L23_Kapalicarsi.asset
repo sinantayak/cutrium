@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L23_Kapalicarsi
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: kapalicarsi
+  _displayTitle: "Kapal\u0131\xE7ar\u015F\u0131"
+  _shortDescription: "K\xF6kleri 15. y\xFCzy\u0131la uzanan Kapal\u0131\xE7ar\u015F\u0131,
+    kubbeli ge\xE7itleri ve binlerce d\xFCkk\xE2n\u0131yla ya\u015Fayan bir ticaret
+    labirentidir. M\xFCcevherden hal\u0131ya uzanan zanaat gelene\u011Fi, \u0130stanbul\u2019un
+    y\xFCzy\u0131ll\u0131k al\u0131\u015Fveri\u015F k\xFClt\xFCr\xFCn\xFC ta\u015F\u0131r.
+    Hanlar ve bedestenlerle \xF6r\xFCl\xFC 60\u2019tan fazla soka\u011F\u0131, farkl\u0131
+    mesleklerin belirli b\xF6l\xFCmlerde topland\u0131\u011F\u0131 tarih\xEE \u015Fehir
+    d\xFCzenini h\xE2l\xE2 hissettirir."
+  _sector: "\u0130stanbul / T\xDCRK\u0130YE"
+  _artwork: {fileID: -6519198434283114706, guid: da41c487963f0f840b140efe1d368e8b, type: 3}

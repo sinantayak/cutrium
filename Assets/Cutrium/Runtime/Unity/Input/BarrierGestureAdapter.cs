@@ -21,6 +21,8 @@ namespace Cutrium.Unity.Input
 
         public event Action<BarrierIntent> IntentCommitted;
 
+        public event Action<LogicalPoint> PointCommitted;
+
         public PointerInputAdapter PointerInput => _pointerInput;
         public float SelectionDeadZone => _selectionDeadZone;
         public float OrientationHysteresis => _orientationHysteresis;
@@ -30,6 +32,13 @@ namespace Cutrium.Unity.Input
         public BarrierOrientation SelectedOrientation { get; private set; }
         public int CommittedIntentCount { get; private set; }
         public int CancelledInteractionCount { get; private set; }
+        public bool IsPointTargeting { get; private set; }
+
+        public void SetPointTargeting(bool enabled)
+        {
+            IsPointTargeting = enabled;
+            ResetTracking();
+        }
 
         public void Configure(
             PointerInputAdapter pointerInput,
@@ -83,6 +92,7 @@ namespace Cutrium.Unity.Input
 
         public void ResetForRetry()
         {
+            IsPointTargeting = false;
             ResetTracking();
             CommittedIntentCount = 0;
             CancelledInteractionCount = 0;
@@ -123,6 +133,11 @@ namespace Cutrium.Unity.Input
             }
 
             CurrentPoint = sample.LogicalPoint;
+            if (IsPointTargeting)
+            {
+                return;
+            }
+
             float horizontal = Math.Abs(CurrentPoint.X - Origin.X);
             float vertical = Math.Abs(CurrentPoint.Y - Origin.Y);
             if (SelectedOrientation == BarrierOrientation.None)
@@ -160,6 +175,21 @@ namespace Cutrium.Unity.Input
             }
 
             UpdateSelection(sample);
+            if (IsPointTargeting)
+            {
+                if (!sample.IsInsideBoard)
+                {
+                    CancelledInteractionCount++;
+                    ResetTracking();
+                    return;
+                }
+
+                LogicalPoint point = sample.LogicalPoint;
+                ResetTracking();
+                PointCommitted?.Invoke(point);
+                return;
+            }
+
             if (SelectedOrientation == BarrierOrientation.None)
             {
                 CancelledInteractionCount++;

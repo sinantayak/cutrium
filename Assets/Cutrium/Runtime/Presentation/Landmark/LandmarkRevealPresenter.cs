@@ -72,8 +72,9 @@ namespace Cutrium.Presentation.Landmark
         private const float CompletionHorizontalInsetFraction = 0.06f;
         private const float CompletionHeroWidthFraction = 0.92f;
         private const float CompletionHeroHeightFraction = 0.53f;
-        private const float CompletionButtonWidthFraction = 0.28f;
-        private const float CompletionButtonCenterFraction = 0.2f;
+        private const float CompletionButtonWidth = 280f;
+        private const float CompletionButtonAspect = 512f / 210f;
+        private const float CompletionButtonHorizontalGap = 40f;
         private const float CompletionSectionGap = 8f;
         private const float CompletionButtonGap = 12f;
 
@@ -500,8 +501,8 @@ namespace Cutrium.Presentation.Landmark
         }
 
         /// Reflows the completion screen from its current safe-area size.
-        /// The photo remains square, buttons keep a compact fixed-height
-        /// touch target, and all surplus height belongs to the text region.
+        /// The photo remains square, buttons preserve the authored background
+        /// aspect, and all surplus height belongs to the text region.
         /// This is presentation-only and never changes board geometry.
         public void RefreshCompletionLayoutNow()
         {
@@ -534,13 +535,13 @@ namespace Cutrium.Presentation.Landmark
             float topPadding = Mathf.Clamp(size.y * 0.018f, 24f, 40f);
             float bottomPadding = Mathf.Clamp(size.y * 0.018f, 24f, 40f);
             float summaryHeight = Mathf.Clamp(size.y * 0.06f, 88f, 120f);
-            float buttonHeight = Mathf.Clamp(size.y * 0.04f, 58f, 76f);
             float heroSize = Mathf.Min(
                 size.x * CompletionHeroWidthFraction,
                 size.y * CompletionHeroHeightFraction);
             float contentWidth =
                 size.x * (1f - (CompletionHorizontalInsetFraction * 2f));
-            float buttonWidth = size.x * CompletionButtonWidthFraction;
+            float buttonWidth = CompletionButtonWidth;
+            float buttonHeight = buttonWidth / CompletionButtonAspect;
 
             float top = (size.y * 0.5f) - topPadding;
             float summaryBottom = top - summaryHeight;
@@ -577,15 +578,17 @@ namespace Cutrium.Presentation.Landmark
                 .anchoredPosition;
 
             float buttonCenterY = (buttonTop + buttonBottom) * 0.5f;
+            float buttonCenterOffset = buttonWidth * 0.5f
+                + CompletionButtonHorizontalGap * 0.5f;
             SetCenteredRect(
                 (RectTransform)_retryCanvasGroup.transform,
-                new Vector2(-size.x * CompletionButtonCenterFraction, 0f),
+                new Vector2(-buttonCenterOffset, 0f),
                 buttonWidth,
                 buttonHeight,
                 buttonCenterY);
             SetCenteredRect(
                 (RectTransform)_nextCanvasGroup.transform,
-                new Vector2(size.x * CompletionButtonCenterFraction, 0f),
+                new Vector2(buttonCenterOffset, 0f),
                 buttonWidth,
                 buttonHeight,
                 buttonCenterY);
@@ -598,7 +601,7 @@ namespace Cutrium.Presentation.Landmark
                 _contentCanvasGroup.GetComponent<VerticalLayoutGroup>();
             if (column != null)
             {
-                column.spacing = 4f;
+                column.spacing = 6f;
                 column.childAlignment = TextAnchor.UpperCenter;
                 column.childControlWidth = true;
                 column.childControlHeight = true;
@@ -608,30 +611,30 @@ namespace Cutrium.Presentation.Landmark
 
             ConfigureRuntimeText(
                 _titleText,
-                50,
-                28,
+                56,
+                32,
                 TextAnchor.MiddleCenter,
                 1f,
-                68f,
-                68f,
+                76f,
+                76f,
                 0f);
             ConfigureRuntimeText(
                 _sectorText,
-                26,
-                18,
+                30,
+                20,
                 TextAnchor.MiddleCenter,
                 1f,
-                36f,
-                36f,
+                42f,
+                42f,
                 0f);
             ConfigureRuntimeText(
                 _descriptionText,
-                28,
-                18,
+                32,
+                20,
                 TextAnchor.UpperCenter,
                 1f,
-                140f,
-                180f,
+                160f,
+                210f,
                 1f);
             if (_descriptionText != null)
             {
@@ -644,10 +647,10 @@ namespace Cutrium.Presentation.Landmark
             Text summary = _statsCanvasGroup.GetComponent<Text>();
             if (summary != null)
             {
-                summary.fontSize = 26;
+                summary.fontSize = 30;
                 summary.resizeTextForBestFit = true;
-                summary.resizeTextMinSize = 18;
-                summary.resizeTextMaxSize = 26;
+                summary.resizeTextMinSize = 20;
+                summary.resizeTextMaxSize = 30;
                 summary.alignment = TextAnchor.MiddleCenter;
                 summary.lineSpacing = 0.9f;
                 ApplyCompletionFont(summary);
@@ -740,11 +743,19 @@ namespace Cutrium.Presentation.Landmark
                 return;
             }
 
-            label.fontSize = 26;
+            label.fontSize = 40;
             label.resizeTextForBestFit = true;
-            label.resizeTextMinSize = 18;
-            label.resizeTextMaxSize = 26;
+            label.resizeTextMinSize = 20;
+            label.resizeTextMaxSize = 40;
+            label.fontStyle = FontStyle.Bold;
+            label.color = Color.white;
             label.alignment = TextAnchor.MiddleCenter;
+            RectTransform labelRect = label.rectTransform;
+            labelRect.anchorMin = new Vector2(0.08f, 0.08f);
+            labelRect.anchorMax = new Vector2(0.98f, 0.96f);
+            labelRect.pivot = new Vector2(0.5f, 0.5f);
+            labelRect.offsetMin = new Vector2(0f, 8f);
+            labelRect.offsetMax = new Vector2(0f, 8f);
             ApplyCompletionFont(label);
         }
 

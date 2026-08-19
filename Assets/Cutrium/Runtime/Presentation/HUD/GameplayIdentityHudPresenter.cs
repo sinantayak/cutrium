@@ -18,6 +18,10 @@ namespace Cutrium.Presentation.HUD
         [SerializeField] private CanvasGroup _failureCanvasGroup;
         [SerializeField] private Text _failureText;
         [SerializeField] private Button _retryButton;
+        [SerializeField] private Button _watchAdButton;
+
+        private const string FailurePrompt =
+            "Watch an AD\nto Continue!";
 
         private bool _retrySubscribed;
 
@@ -25,6 +29,8 @@ namespace Cutrium.Presentation.HUD
         public TMP_Text SpeedText => _speedText;
         public Image SpeedIconImage => _speedIconImage;
         public CanvasGroup FailureCanvasGroup => _failureCanvasGroup;
+        public Button RetryButton => _retryButton;
+        public Button WatchAdButton => _watchAdButton;
 
         public void Configure(
             FirstPlayableController controller,
@@ -34,7 +40,8 @@ namespace Cutrium.Presentation.HUD
             Sprite[] speedTierSprites,
             CanvasGroup failureCanvasGroup,
             Text failureText,
-            Button retryButton)
+            Button retryButton,
+            Button watchAdButton = null)
         {
             ConfigureForSetup(
                 controller,
@@ -44,7 +51,8 @@ namespace Cutrium.Presentation.HUD
                 speedTierSprites,
                 failureCanvasGroup,
                 failureText,
-                retryButton);
+                retryButton,
+                watchAdButton);
         }
 
         public void ConfigureForSetup(
@@ -55,7 +63,8 @@ namespace Cutrium.Presentation.HUD
             Sprite[] speedTierSprites,
             CanvasGroup failureCanvasGroup,
             Text failureText,
-            Button retryButton)
+            Button retryButton,
+            Button watchAdButton = null)
         {
             UnsubscribeRetry();
             _controller = controller;
@@ -66,6 +75,7 @@ namespace Cutrium.Presentation.HUD
             _failureCanvasGroup = failureCanvasGroup;
             _failureText = failureText;
             _retryButton = retryButton;
+            _watchAdButton = watchAdButton;
             if (_failureCanvasGroup != null)
             {
                 EnsureFailureOverlayIgnoresLayout();
@@ -187,9 +197,7 @@ namespace Cutrium.Presentation.HUD
             SetGroup(_failureCanvasGroup, failed, failed ? 1f : 0f, true);
             if (_failureText != null && failed)
             {
-                _failureText.text = status == CaptureLevelStatus.OutOfLives
-                    ? "OUT OF LIVES\nTOO MANY BROKEN CUTS"
-                    : "OUT OF CUTS\nTRY A BOLDER ROUTE";
+                _failureText.text = FailurePrompt;
             }
         }
 

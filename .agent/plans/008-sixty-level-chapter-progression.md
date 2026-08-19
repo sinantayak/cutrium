@@ -1,5 +1,9 @@
 # Sixty-Level Chapter-Gated Progression
 
+Turkish per-level playtest companion:
+`Docs/LEVEL_PROGRAMI_TR.md`. Keep its implemented values and planned-level
+summaries synchronized with this ExecPlan whenever chapter tuning changes.
+
 ## Purpose and Player Outcome
 
 Cutrium will grow from the current twelve-level review build into a sixty-level
@@ -674,8 +678,13 @@ landmark never changes threat, target, barrier, power, timer, or obstacle data.
   focused Edit/Play Mode regression coverage.
 - [ ] Materialize the three threat sprite references with the focused Unity
   setup and complete Unity Test Runner/manual visual checks.
-- [ ] Complete and record Chapter 1 owner baseline playtest gate.
-- [ ] Receive explicit approval to begin Chapter 2.
+- [x] Complete and record Chapter 1 owner baseline playtest gate.
+- [x] Receive explicit approval to begin Chapter 2.
+- [x] Implement the Chapter 2 gameplay source, 24-level aggregator, Comet and
+  Heavy parameter profiles, Gravity runtime/input/HUD/cue, first-24 Earth
+  source, general button styling, focused setup, and regression coverage.
+- [ ] Materialize Chapter 2 assets/scene in the licensed Editor, run Unity Test
+  Runner and responsive checks, then complete the owner tuning pass.
 - [ ] Implement, validate, playtest, tune, and accept Chapter 2.
 - [ ] Receive explicit approval to begin Chapter 3.
 - [ ] Implement timer prototype, escalation prototype, remaining Chapter 3,
@@ -732,6 +741,28 @@ landmark never changes threat, target, barrier, power, timer, or obstacle data.
   channel contrast in a small UI shader, rotate its blue palette toward red,
   then apply the same theme tint; do not use the rejected alpha-mask/solid-child
   treatment or add another texture.
+- 2026-08-19: Begin Chapter 2 after explicit owner approval. Keep Comet and
+  Heavy as fast-small and slow-large Normal configurations, respectively, so
+  the three body sprites remain Normal/Hunter/Pulse and gameplay radius stays
+  independent of visible sprite bounds.
+- 2026-08-19: Make Gravity Well a cancellable point-targeting state. Consume a
+  charge only when the chosen active-room point has at least one threat inside
+  the authored radius; keep targeting active for an empty placement. Steer only
+  threats inside both the authored radius and the well's current connected
+  room; let locked barriers block influence through existing room topology.
+- 2026-08-19: Use the supplied brown `GeneralButtonBackground` as a sliced
+  background for text-bearing buttons and add label shadows. Exclude icon-only
+  skill, settings, and HUD blocker buttons so their authored art is preserved.
+- 2026-08-19: Scale threat presentation from authored logical radius relative
+  to the Normal `0.35` baseline. This makes Chapter 2 Comet visibly smaller and
+  Heavy visibly larger while leaving logical radius, collision, motion, and
+  theme sprite selection unchanged.
+- 2026-08-19: Keep the Gravity cue host active and toggle only its graphics so
+  the presenter can observe a later activation. Show the exact gameplay radius
+  with a presentation-only circular mesh and keep the supplied skill artwork
+  as a fixed-size rotating center icon. Preserve the supplied `512:210` general
+  button aspect with `WidthControlsHeight`; enlarge failure and transient cue
+  typography for phone/tablet readability.
 
 ## Discoveries
 
@@ -760,6 +791,13 @@ landmark never changes threat, target, barrier, power, timer, or obstacle data.
   outer wall to an internal obstacle may not split space, while a later segment
   can close a capturable component. The current one-cut/two-rectangle model
   cannot express that state.
+- The supplied Gravity skill filename had a duplicated `.png.png` extension.
+  Renaming the PNG and its existing `.meta` together preserves the owner-created
+  GUID while giving setup code a conventional stable path.
+- The headless Unity entitlement can initialize assemblies yet still enter an
+  endless licensing-client reconnect loop before executing the requested Editor
+  menu. Roslyn validation remains available, but Chapter 2 scene/catalog
+  materialization requires the owner's licensed interactive Editor.
 
 ## Validation Record
 
@@ -814,13 +852,100 @@ landmark never changes threat, target, barrier, power, timer, or obstacle data.
   `Cutrium.Presentation`, `Cutrium.Editor`, `Cutrium.Gameplay.EditModeTests`, and
   `Cutrium.PlayModeTests`; shader import/compilation, licensed Editor Play Mode,
   Console, and visual verification remain open.
+- 2026-08-19 Chapter 2 implementation: Unity Roslyn compilation passed for
+  `Cutrium.Gameplay`, `Cutrium.Unity`, `Cutrium.Presentation`, `Cutrium.Editor`,
+  `Cutrium.Gameplay.EditModeTests`, and `Cutrium.PlayModeTests`, including the
+  newly added source files supplied explicitly because the cached response
+  files predate them. `git diff --check` passed. The batch Editor loaded all
+  assemblies but repeatedly lost the licensing-client connection and never
+  executed the setup method; it was terminated without scene/catalog
+  materialization. A standalone managed smoke harness confirmed 24 contiguous
+  definitions, Level 23's four threats, Gravity activation/steering with speed
+  preservation, charge use, and reset restoration. Unity Test Runner, Console
+  review, three responsive Game Views, and owner difficulty tuning remain open.
+- 2026-08-19 Comet/Heavy readability adjustment: `ThreatPresenter` now scales
+  the body, shadow, and trail from each threat's logical radius relative to the
+  Normal `0.35` baseline. Comet `0.29` renders at about `0.83x`; Heavy `0.52`
+  renders at about `1.49x`; Normal/Hunter/Pulse sizes are unchanged. Roslyn
+  compilation passed for `Cutrium.Presentation` and `Cutrium.PlayModeTests`;
+  Level 16/17 visual review remains open in Play Mode.
+- 2026-08-19 Gravity playtest correction: the original `2.9` radius could
+  consume the charge without affecting either Level 20 opening threat when the
+  well was placed at the natural board-center target (both are about `3.6`
+  units away). Chapter 2 Gravity radius is now `4.5`; empty-radius placement is
+  rejected without consuming the charge; and the active cue raises itself to
+  the top of the board presentation hierarchy. Gameplay, Unity, Presentation,
+  and Edit Mode test assemblies compile. A standalone deterministic smoke test
+  passed centered activation/steering and empty-target charge preservation.
+  Unity Test Runner loaded assemblies but could not execute because the local
+  Licensing Client repeatedly disconnected; interactive Play Mode verification
+  and rerunning the Chapter 2 setup to materialize the new catalog values remain
+  required.
+- 2026-08-19 Gravity/UI visual follow-up: inspection of the owner's playtest
+  screenshot exposed three presentation issues. `GravityWellCue` deactivated
+  its own presenter while idle, so it could not become visible on later skill
+  activation; the general button source (`512x210`) was rendered in wider,
+  shorter rects; and the cut-limit feedback remained at 32pt. The cue host now
+  stays active while its graphics toggle, a 96-segment range ring plus subtle
+  fill maps exactly to the configured logical radius, button aspect is enforced
+  responsively, cut-limit feedback is 42pt, and transient cues allow up to
+  76pt. Unity Roslyn compilation passed for `Cutrium.Presentation`,
+  `Cutrium.Editor`, and `Cutrium.PlayModeTests`; interactive visual checks and
+  focused setup materialization remain required.
+- 2026-08-19 General-button label follow-up: the corrected frame size exposed
+  the failure Retry label's inherited dark-brown color and sprite-bounds
+  centering. All text-bearing general buttons now enforce bold white centered
+  labels, retain the existing dark shadow, and use normalized inner-face
+  anchors (`0.08,0.08` to `0.98,0.96`) that compensate for the artwork's
+  asymmetric painted left/bottom shadow. Editor and Play Mode test assemblies
+  compile with validation covering Retry, Next, and cut-limit Retry.
+- 2026-08-19 General-button type tuning: owner review found the inherited 26pt
+  completion label still too small and visually low. All general button labels
+  now author at 40pt with a 20pt best-fit floor for long copy and receive an
+  exact +8 UI-unit vertical offset; white/bold/inner-face centering remains
+  shared across legacy Text and TMP labels.
+- 2026-08-19 Completion-screen readability correction: the landmark presenter
+  was overriding the Editor-authored 40pt labels at runtime with 26pt text and
+  58–76-unit button heights. Runtime and setup now share the Game Over ratio:
+  both completion actions are `280x115` with 40pt labels and a 40-unit gap.
+  Completion title/sector/description/summary maxima are now `56/30/32/30`,
+  with slightly larger layout allocations and best-fit floors so long Earth
+  copy still wraps without clipping. Presentation, Editor, and Play Mode test
+  assemblies compile after the responsive-layout regression updates.
+- 2026-08-19 custom Game Over presentation: the owner-provided 768x1037 panel
+  and two 256x256 action sprites are now authored by the idempotent Chapter 2
+  setup inside an aspect-fitted safe-area container. Retry retains the existing
+  restart behavior; Watch AD has its own serialized presenter reference but is
+  visually undimmed and non-interactable until a rewarded-ad service exists.
+  Prompt/action captions use responsive panel-relative anchors, the project UI
+  font, best-fit bounds, and shadows. A focused `Apply Game Over Panel Only`
+  menu command materializes and validates just this presentation. Presentation,
+  Editor, and Play Mode test assemblies compile. Batch materialization did not
+  run because Unity licensing lost its IPC channel before assembly reload;
+  interactive setup, Test Runner, Console review, and phone/tablet visual
+  checks remain open.
+- 2026-08-19 Game Over composition tuning: owner review approved the first
+  pass but requested tighter balance. The aspect-fitted panel bounds are about
+  four percent smaller, the center prompt grows from 64pt to 76pt, both square
+  actions move down by 3.5 percent of panel height, and their captions move
+  farther down to create a visible gap while balancing the baked title's top
+  whitespace against the panel's bottom whitespace. Interactive visual review
+  remains required after rerunning the focused Game Over setup command.
+- 2026-08-19 Game Over owner-tuned alignment: the label anchors remain exactly
+  at their approved positions. Both square actions retain their responsive
+  horizontal anchors and receive only a `-20` UI-unit Y offset to close the
+  icon/caption gap. The prompt now uses a horizontally responsive, vertically
+  centered rect at `+50` Y with a `210`-unit height and an 86pt maximum, matching
+  the owner's Inspector pass while preserving the aspect-fitted panel behavior
+  across supported screens. Interactive aspect-ratio review remains open.
 
 ## Final Outcome
 
-Planning is complete and the Chapter 1 Earth prefix is materialized. The
-deterministic twelve-entry mapping, exact-prefix validation, and regression
-expectations are authored and compile. Behavior-specific Normal, Hunter, and
-Pulse body sprite and shared-trail tint support is implemented, but its theme
-values still require the focused setup in the owner's licensed Editor.
-After that setup and Unity validation, the next gate is the Chapter 1 baseline
-playtest before any Chapter 2 implementation.
+Chapter 2 implementation is code-complete for its playtest gate: the approved
+prefix now contains 24 definitions, the second twelve Earth entries are
+authored, Comet/Heavy reuse parameterized Normal behavior, Gravity Well is
+room-scoped and targetable, and the third HUD slot/general text-button styling
+are wired through one idempotent setup. The licensed interactive Editor must
+still materialize the new assets and scene references, run Edit/Play Mode tests,
+check Console output and supported aspect ratios, and provide the owner tuning
+pass before Chapter 2 can be marked accepted or Chapter 3 can begin.

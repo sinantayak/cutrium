@@ -34,6 +34,20 @@ namespace Cutrium.Presentation.Threats
         [SerializeField]
         private float _visualLogicalDiameter = 0.9f;
 
+        [Header("Radius Readability")]
+        [SerializeField]
+        private float _referenceLogicalRadius = 0.35f;
+
+        [SerializeField]
+        [Range(0.01f, 1f)]
+        private float _radiusVisualInfluence = 1f;
+
+        [SerializeField]
+        private float _minimumRadiusVisualMultiplier = 0.75f;
+
+        [SerializeField]
+        private float _maximumRadiusVisualMultiplier = 1.5f;
+
         private readonly Dictionary<ThreatId, ThreatView> _activeViews =
             new Dictionary<ThreatId, ThreatView>();
         private readonly List<ThreatId> _staleIds = new List<ThreatId>();
@@ -58,6 +72,10 @@ namespace Cutrium.Presentation.Threats
         public Sprite OptionalSprite => _optionalSprite;
 
         public float VisualLogicalDiameter => _visualLogicalDiameter;
+
+        public float ReferenceLogicalRadius => _referenceLogicalRadius;
+
+        public float RadiusVisualInfluence => _radiusVisualInfluence;
 
         public ThreatId PresentedThreatId => _controller.Session.Threat.Id;
 
@@ -323,7 +341,38 @@ namespace Cutrium.Presentation.Threats
             rect.anchoredPosition = new Vector2(
                 (normalizedX - 0.5f) * frameRect.width,
                 (normalizedY - 0.5f) * frameRect.height);
-            float diameter = _visualLogicalDiameter * logicalScale;
+            // Scenes serialized before radius-aware presentation have no
+            // stored values for these fields. Sanitize to the authored
+            // defaults here so the visual upgrade is backward compatible
+            // without requiring another setup pass.
+            float referenceRadius =
+                IsFinite(_referenceLogicalRadius)
+                && _referenceLogicalRadius > 0f
+                    ? _referenceLogicalRadius
+                    : 0.35f;
+            float influence = IsFinite(_radiusVisualInfluence)
+                && _radiusVisualInfluence > 0f
+                ? Mathf.Clamp01(_radiusVisualInfluence)
+                : 1f;
+            float minimumMultiplier =
+                IsFinite(_minimumRadiusVisualMultiplier)
+                && _minimumRadiusVisualMultiplier > 0f
+                    ? _minimumRadiusVisualMultiplier
+                    : 0.75f;
+            float maximumMultiplier =
+                IsFinite(_maximumRadiusVisualMultiplier)
+                && _maximumRadiusVisualMultiplier >= minimumMultiplier
+                    ? _maximumRadiusVisualMultiplier
+                    : 1.5f;
+            float radiusVisualMultiplier = ResolveRadiusVisualMultiplier(
+                threat.Radius,
+                referenceRadius,
+                influence,
+                minimumMultiplier,
+                maximumMultiplier);
+            float diameter = _visualLogicalDiameter
+                * logicalScale
+                * radiusVisualMultiplier;
             Vector2 visualScale = _hasThemeStyle
                 ? _themeStyle.Scale
                 : Vector2.one;
@@ -356,6 +405,47 @@ namespace Cutrium.Presentation.Threats
                 baseTrailColor.g,
                 baseTrailColor.b,
                 Mathf.Clamp01(baseTrailColor.a * treatment.Intensity));
+        }
+
+        public static float ResolveRadiusVisualMultiplier(
+            float logicalRadius,
+            float referenceLogicalRadius = 0.35f,
+            float influence = 1f,
+            float minimumMultiplier = 0.75f,
+            float maximumMultiplier = 1.5f)
+        {
+            if (!IsFinite(logicalRadius) || logicalRadius <= 0f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(logicalRadius));
+            }
+
+            if (!IsFinite(referenceLogicalRadius)
+                || referenceLogicalRadius <= 0f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(referenceLogicalRadius));
+            }
+
+            if (!IsFinite(influence) || influence < 0f || influence > 1f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(influence));
+            }
+
+            if (!IsFinite(minimumMultiplier)
+                || !IsFinite(maximumMultiplier)
+                || minimumMultiplier <= 0f
+                || maximumMultiplier < minimumMultiplier)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(minimumMultiplier));
+            }
+
+            float authoredRatio = logicalRadius / referenceLogicalRadius;
+            float influencedRatio = Mathf.Lerp(1f, authoredRatio, influence);
+            return Mathf.Clamp(
+                influencedRatio,
+                minimumMultiplier,
+                maximumMultiplier);
         }
 
         private void ApplyStyle(

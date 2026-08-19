@@ -16,6 +16,20 @@ namespace Cutrium.Unity.Simulation
 
         public IReadOnlyList<CoreFunLevelDefinition> Levels => _levels;
 
+        public bool IsChapterOneCatalog =>
+            _levels != null
+            && _levels.Length == FirstTwelveGameplayProgression.LevelCount
+            && _levels[0] != null
+            && _levels[11] != null
+            && string.Equals(
+                _levels[0].StableId,
+                "learn-the-cut",
+                StringComparison.Ordinal)
+            && string.Equals(
+                _levels[11].StableId,
+                "first-twelve-mastery",
+                StringComparison.Ordinal);
+
         public bool IsSupersededFirstTwelveCatalog =>
             _levels != null
             && _levels.Length == FirstTwelveGameplayProgression.LevelCount
@@ -39,8 +53,8 @@ namespace Cutrium.Unity.Simulation
             && _levels[4].Threats[0].Behavior.HunterSteerFactor < 0.5f;
 
         public IReadOnlyList<CoreFunLevelDefinition> EffectiveLevels =>
-            IsSupersededFirstTwelveCatalog
-                ? FirstTwelveGameplayProgression.CreateDefinitions()
+            IsChapterOneCatalog
+                ? MainGameplayProgression.CreateDefinitions()
                 : _levels;
 
         public CoreFunLevelCatalog BuildRuntimeCatalog()

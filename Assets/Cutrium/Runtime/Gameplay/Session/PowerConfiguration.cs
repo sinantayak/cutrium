@@ -10,6 +10,29 @@ namespace Cutrium.Gameplay.Session
             float freezePulseSpeedMultiplier,
             int instantBarrierCharges,
             float instantBarrierGrowthSpeed)
+            : this(
+                freezePulseCharges,
+                freezePulseDurationSeconds,
+                freezePulseSpeedMultiplier,
+                instantBarrierCharges,
+                instantBarrierGrowthSpeed,
+                0,
+                4f,
+                2.75f,
+                100f)
+        {
+        }
+
+        public PowerConfiguration(
+            int freezePulseCharges,
+            float freezePulseDurationSeconds,
+            float freezePulseSpeedMultiplier,
+            int instantBarrierCharges,
+            float instantBarrierGrowthSpeed,
+            int gravityWellCharges,
+            float gravityWellDurationSeconds,
+            float gravityWellRadius,
+            float gravityWellTurnDegreesPerSecond)
         {
             if (freezePulseCharges < 0)
             {
@@ -25,6 +48,14 @@ namespace Cutrium.Gameplay.Session
                     nameof(instantBarrierCharges),
                     instantBarrierCharges,
                     "Instant Barrier charges cannot be negative.");
+            }
+
+            if (gravityWellCharges < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(gravityWellCharges),
+                    gravityWellCharges,
+                    "Gravity Well charges cannot be negative.");
             }
 
             if (freezePulseCharges > 0)
@@ -60,11 +91,33 @@ namespace Cutrium.Gameplay.Session
                     "Instant Barrier growth speed must be finite and positive.");
             }
 
+
+            if (gravityWellCharges > 0)
+            {
+                ValidatePositive(
+                    gravityWellDurationSeconds,
+                    nameof(gravityWellDurationSeconds),
+                    "Gravity Well duration");
+                ValidatePositive(
+                    gravityWellRadius,
+                    nameof(gravityWellRadius),
+                    "Gravity Well radius");
+                ValidatePositive(
+                    gravityWellTurnDegreesPerSecond,
+                    nameof(gravityWellTurnDegreesPerSecond),
+                    "Gravity Well turn rate");
+            }
+
             FreezePulseCharges = freezePulseCharges;
             FreezePulseDurationSeconds = freezePulseDurationSeconds;
             FreezePulseSpeedMultiplier = freezePulseSpeedMultiplier;
             InstantBarrierCharges = instantBarrierCharges;
             InstantBarrierGrowthSpeed = instantBarrierGrowthSpeed;
+            GravityWellCharges = gravityWellCharges;
+            GravityWellDurationSeconds = gravityWellDurationSeconds;
+            GravityWellRadius = gravityWellRadius;
+            GravityWellTurnDegreesPerSecond =
+                gravityWellTurnDegreesPerSecond;
         }
 
         public int FreezePulseCharges { get; }
@@ -77,6 +130,14 @@ namespace Cutrium.Gameplay.Session
 
         public float InstantBarrierGrowthSpeed { get; }
 
+        public int GravityWellCharges { get; }
+
+        public float GravityWellDurationSeconds { get; }
+
+        public float GravityWellRadius { get; }
+
+        public float GravityWellTurnDegreesPerSecond { get; }
+
         public static PowerConfiguration None { get; } =
             new PowerConfiguration(0, 1f, 0.05f, 0, 1f);
 
@@ -88,7 +149,13 @@ namespace Cutrium.Gameplay.Session
                 other.FreezePulseSpeedMultiplier)
             && InstantBarrierCharges == other.InstantBarrierCharges
             && InstantBarrierGrowthSpeed.Equals(
-                other.InstantBarrierGrowthSpeed);
+                other.InstantBarrierGrowthSpeed)
+            && GravityWellCharges == other.GravityWellCharges
+            && GravityWellDurationSeconds.Equals(
+                other.GravityWellDurationSeconds)
+            && GravityWellRadius.Equals(other.GravityWellRadius)
+            && GravityWellTurnDegreesPerSecond.Equals(
+                other.GravityWellTurnDegreesPerSecond);
 
         public override bool Equals(object obj) =>
             obj is PowerConfiguration other && Equals(other);
@@ -105,6 +172,13 @@ namespace Cutrium.Gameplay.Session
                 hashCode = (hashCode * 397) ^ InstantBarrierCharges;
                 hashCode = (hashCode * 397)
                     ^ InstantBarrierGrowthSpeed.GetHashCode();
+                hashCode = (hashCode * 397) ^ GravityWellCharges;
+                hashCode = (hashCode * 397)
+                    ^ GravityWellDurationSeconds.GetHashCode();
+                hashCode = (hashCode * 397)
+                    ^ GravityWellRadius.GetHashCode();
+                hashCode = (hashCode * 397)
+                    ^ GravityWellTurnDegreesPerSecond.GetHashCode();
                 return hashCode;
             }
         }
@@ -119,5 +193,19 @@ namespace Cutrium.Gameplay.Session
 
         private static bool IsFinite(float value) =>
             !float.IsNaN(value) && !float.IsInfinity(value);
+
+        private static void ValidatePositive(
+            float value,
+            string parameterName,
+            string displayName)
+        {
+            if (!IsFinite(value) || value <= 0f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    parameterName,
+                    value,
+                    $"{displayName} must be finite and positive.");
+            }
+        }
     }
 }

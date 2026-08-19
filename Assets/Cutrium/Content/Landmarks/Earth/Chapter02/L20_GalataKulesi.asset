@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L20_GalataKulesi
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: galata-kulesi
+  _displayTitle: Galata Kulesi
+  _shortDescription: "G\xFCn\xFCm\xFCzdeki bi\xE7iminin k\xF6kleri 14. y\xFCzy\u0131ldaki
+    Ceneviz yerle\u015Fimine uzanan Galata Kulesi, Hali\xE7\u2019in \xFCzerinde y\xFCkselir.
+    Tepesinden Bo\u011Faz ve tarih\xEE yar\u0131madan\u0131n geni\u015F panoramas\u0131
+    g\xF6r\xFCl\xFCr. Y\xFCzy\u0131llar boyunca savunma kulesi, hapishane ve yang\u0131n
+    g\xF6zetleme noktas\u0131 gibi farkl\u0131 g\xF6revler \xFCstlenen yap\u0131,
+    deprem ve yang\u0131nlardan sonra bir\xE7ok kez onar\u0131ld\u0131."
+  _sector: "\u0130stanbul / T\xDCRK\u0130YE"
+  _artwork: {fileID: 2372416621740891543, guid: 3595c6bff91f0114593eb5290ffd053f, type: 3}

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L14_DubrovnikSurlari
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: dubrovnik-surlari
+  _displayTitle: "Dubrovnik Surlar\u0131"
+  _shortDescription: "Dubrovnik\u2019in yakla\u015F\u0131k iki kilometre uzunlu\u011Fundaki
+    ta\u015F surlar\u0131, Adriyatik k\u0131y\u0131s\u0131ndaki tarih\xEE kenti b\xFCt\xFCn\xFCyle
+    \xE7evreler. Kulelerden g\xF6r\xFClen turuncu \xE7at\u0131lar ve mavi deniz,
+    \u015Fehrin en unutulmaz manzaras\u0131n\u0131 olu\u015Fturur. 13. ve 17. y\xFCzy\u0131llar
+    aras\u0131nda s\xFCrekli g\xFC\xE7lendirilen bu savunma ku\u015Fa\u011F\u0131,
+    zengin Ragusa Cumhuriyeti\u2019nin ba\u011F\u0131ms\u0131zl\u0131\u011F\u0131n\u0131
+    y\xFCzy\u0131llarca korumas\u0131na yard\u0131m etti."
+  _sector: "Dubrovnik / HIRVAT\u0130STAN"
+  _artwork: {fileID: 5806777091337663879, guid: c3b59d05140ff984696967243bae21b8, type: 3}

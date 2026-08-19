@@ -63,6 +63,23 @@ namespace Cutrium.Gameplay.EditModeTests
 
             Assert.That(PowerConfiguration.None.FreezePulseCharges, Is.Zero);
             Assert.That(PowerConfiguration.None.InstantBarrierCharges, Is.Zero);
+            Assert.That(PowerConfiguration.None.GravityWellCharges, Is.Zero);
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                new PowerConfiguration(
+                    0, 1f, 0.1f, 0, 1f,
+                    -1, 1f, 1f, 1f));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                new PowerConfiguration(
+                    0, 1f, 0.1f, 0, 1f,
+                    1, 0f, 1f, 1f));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                new PowerConfiguration(
+                    0, 1f, 0.1f, 0, 1f,
+                    1, 1f, 0f, 1f));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                new PowerConfiguration(
+                    0, 1f, 0.1f, 0, 1f,
+                    1, 1f, 1f, 0f));
         }
 
         [Test]

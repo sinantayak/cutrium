@@ -222,6 +222,23 @@ namespace Cutrium.Gameplay.Session
 
         public bool InstantBarrierArmed { get; private set; }
 
+        public int GravityWellChargesRemaining { get; private set; }
+
+        public float GravityWellRemainingSeconds { get; private set; }
+
+        public LogicalPoint? GravityWellPosition { get; private set; }
+
+        public bool GravityWellActive =>
+            GravityWellPosition.HasValue
+            && GravityWellRemainingSeconds > 0f;
+
+        public float GravityWellRadius => _powerConfiguration.GravityWellRadius;
+
+        public bool CanActivateGravityWell =>
+            LevelStatus == CaptureLevelStatus.Playing
+            && GravityWellChargesRemaining > 0
+            && !GravityWellActive;
+
         public void Tick(float elapsedTime)
         {
             _feedbackEvents.Clear();
@@ -341,6 +358,53 @@ namespace Cutrium.Gameplay.Session
             return true;
         }
 
+        public bool TryActivateGravityWell(LogicalPoint position)
+        {
+            _feedbackEvents.Clear();
+            if (!CanActivateGravityWell
+                || !Board.TryGetActiveRoomAt(position, out RoomState wellRoom)
+                || !HasThreatInGravityWellRange(position, wellRoom.Id))
+            {
+                AddFeedback(
+                    FeedbackEventKind.PowerUnavailable,
+                    default,
+                    0f,
+                    float.PositiveInfinity);
+                return false;
+            }
+
+            GravityWellChargesRemaining--;
+            GravityWellPosition = position;
+            GravityWellRemainingSeconds =
+                _powerConfiguration.GravityWellDurationSeconds;
+            AddFeedback(
+                FeedbackEventKind.PowerGravityWellActivated,
+                default,
+                0f,
+                float.PositiveInfinity);
+            return true;
+        }
+
+        private bool HasThreatInGravityWellRange(
+            LogicalPoint position,
+            RoomId roomId)
+        {
+            float radiusSquared = _powerConfiguration.GravityWellRadius
+                * _powerConfiguration.GravityWellRadius;
+            for (int index = 0; index < Board.Threats.Count; index++)
+            {
+                ThreatState threat = Board.Threats[index];
+                if (threat.RoomId == roomId
+                    && (position - threat.Position).LengthSquared
+                        <= radiusSquared)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public BarrierStartResult ValidateBarrierStart(BarrierIntent intent)
         {
             if (LevelStatus != CaptureLevelStatus.Playing)
@@ -436,6 +500,10 @@ namespace Cutrium.Gameplay.Session
             InstantBarrierChargesRemaining =
                 _powerConfiguration.InstantBarrierCharges;
             InstantBarrierArmed = false;
+            GravityWellChargesRemaining =
+                _powerConfiguration.GravityWellCharges;
+            GravityWellRemainingSeconds = 0f;
+            GravityWellPosition = null;
             _feedbackEvents.Clear();
             _lastHunterReactionThreatIds.Clear();
             AddFeedback(
@@ -881,6 +949,21 @@ namespace Cutrium.Gameplay.Session
 
         private void AdvanceBehaviorState(float elapsedTime)
         {
+            if (GravityWellActive)
+            {
+                float influenceSeconds = Math.Min(
+                    elapsedTime,
+                    GravityWellRemainingSeconds);
+                ApplyGravityWellSteering(influenceSeconds);
+                GravityWellRemainingSeconds = Math.Max(
+                    0f,
+                    GravityWellRemainingSeconds - elapsedTime);
+                if (GravityWellRemainingSeconds <= 0f)
+                {
+                    GravityWellPosition = null;
+                }
+            }
+
             if (FreezePulseRemainingSeconds > 0f)
             {
                 FreezePulseRemainingSeconds = Math.Max(
@@ -896,6 +979,99 @@ namespace Cutrium.Gameplay.Session
                     _pulseElapsedSeconds[index] += elapsedTime;
                 }
             }
+        }
+
+        private void ApplyGravityWellSteering(float elapsedTime)
+        {
+            if (!GravityWellPosition.HasValue
+                || elapsedTime <= 0f
+                || !Board.TryGetActiveRoomAt(
+                    GravityWellPosition.Value,
+                    out RoomState wellRoom))
+            {
+                GravityWellRemainingSeconds = 0f;
+                GravityWellPosition = null;
+                return;
+            }
+
+            float radiusSquared = _powerConfiguration.GravityWellRadius
+                * _powerConfiguration.GravityWellRadius;
+            float maximumTurnDegrees =
+                _powerConfiguration.GravityWellTurnDegreesPerSecond
+                * elapsedTime;
+            for (int index = 0; index < Board.Threats.Count; index++)
+            {
+                ThreatState threat = Board.Threats[index];
+                if (threat.RoomId != wellRoom.Id)
+                {
+                    continue;
+                }
+
+                LogicalVector toWell =
+                    GravityWellPosition.Value - threat.Position;
+                if (toWell.LengthSquared <= 0f
+                    || toWell.LengthSquared > radiusSquared)
+                {
+                    continue;
+                }
+
+                LogicalVector newDirection =
+                    CalculateGravityWellDirection(
+                        threat.Velocity,
+                        toWell,
+                        maximumTurnDegrees);
+                Board.UpdateThreat(threat.WithMotion(
+                    threat.Position,
+                    newDirection * threat.Speed));
+            }
+        }
+
+        public static LogicalVector CalculateGravityWellDirection(
+            LogicalVector currentDirection,
+            LogicalVector targetDirection,
+            float maximumTurnDegrees)
+        {
+            if (currentDirection.LengthSquared <= 0f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(currentDirection));
+            }
+
+            if (targetDirection.LengthSquared <= 0f)
+            {
+                return currentDirection / currentDirection.Length;
+            }
+
+            if (float.IsNaN(maximumTurnDegrees)
+                || float.IsInfinity(maximumTurnDegrees)
+                || maximumTurnDegrees < 0f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(maximumTurnDegrees));
+            }
+
+            LogicalVector current =
+                currentDirection / currentDirection.Length;
+            LogicalVector target = targetDirection / targetDirection.Length;
+            float dot = Math.Max(-1f, Math.Min(
+                1f,
+                LogicalVector.Dot(current, target)));
+            float angle = (float)Math.Acos(dot);
+            if (angle <= 0f || maximumTurnDegrees <= 0f)
+            {
+                return current;
+            }
+
+            float maximumTurnRadians = maximumTurnDegrees
+                * ((float)Math.PI / 180f);
+            float turn = Math.Min(angle, maximumTurnRadians);
+            float cross = current.X * target.Y - current.Y * target.X;
+            float signedTurn = cross >= 0f ? turn : -turn;
+            float cosine = (float)Math.Cos(signedTurn);
+            float sine = (float)Math.Sin(signedTurn);
+            return new LogicalVector(
+                current.X * cosine - current.Y * sine,
+                current.X * sine + current.Y * cosine);
         }
 
         private ThreatState PrepareForTick(ThreatState threat)

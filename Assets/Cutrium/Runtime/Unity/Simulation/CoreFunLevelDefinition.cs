@@ -194,6 +194,20 @@ namespace Cutrium.Unity.Simulation
         [SerializeField]
         private float _instantBarrierGrowthSpeed = 600f;
 
+        [Header("Gravity Well")]
+        [SerializeField]
+        [Min(0)]
+        private int _gravityWellCharges;
+
+        [SerializeField]
+        private float _gravityWellDurationSeconds = 4f;
+
+        [SerializeField]
+        private float _gravityWellRadius = 2.75f;
+
+        [SerializeField]
+        private float _gravityWellTurnDegreesPerSecond = 100f;
+
         public CoreFunPowerDefinition()
         {
         }
@@ -204,12 +218,40 @@ namespace Cutrium.Unity.Simulation
             float freezePulseSpeedMultiplier,
             int instantBarrierCharges,
             float instantBarrierGrowthSpeed)
+            : this(
+                freezePulseCharges,
+                freezePulseDurationSeconds,
+                freezePulseSpeedMultiplier,
+                instantBarrierCharges,
+                instantBarrierGrowthSpeed,
+                0,
+                4f,
+                2.75f,
+                100f)
+        {
+        }
+
+        public CoreFunPowerDefinition(
+            int freezePulseCharges,
+            float freezePulseDurationSeconds,
+            float freezePulseSpeedMultiplier,
+            int instantBarrierCharges,
+            float instantBarrierGrowthSpeed,
+            int gravityWellCharges,
+            float gravityWellDurationSeconds,
+            float gravityWellRadius,
+            float gravityWellTurnDegreesPerSecond)
         {
             _freezePulseCharges = freezePulseCharges;
             _freezePulseDurationSeconds = freezePulseDurationSeconds;
             _freezePulseSpeedMultiplier = freezePulseSpeedMultiplier;
             _instantBarrierCharges = instantBarrierCharges;
             _instantBarrierGrowthSpeed = instantBarrierGrowthSpeed;
+            _gravityWellCharges = gravityWellCharges;
+            _gravityWellDurationSeconds = gravityWellDurationSeconds;
+            _gravityWellRadius = gravityWellRadius;
+            _gravityWellTurnDegreesPerSecond =
+                gravityWellTurnDegreesPerSecond;
         }
 
         public int FreezePulseCharges => _freezePulseCharges;
@@ -220,6 +262,12 @@ namespace Cutrium.Unity.Simulation
 
         public int InstantBarrierCharges => _instantBarrierCharges;
         public float InstantBarrierGrowthSpeed => _instantBarrierGrowthSpeed;
+        public int GravityWellCharges => _gravityWellCharges;
+        public float GravityWellDurationSeconds => _gravityWellDurationSeconds;
+        public float GravityWellRadius => _gravityWellRadius;
+
+        public float GravityWellTurnDegreesPerSecond =>
+            _gravityWellTurnDegreesPerSecond;
 
         public PowerConfiguration ToRuntimeConfiguration() =>
             new PowerConfiguration(
@@ -227,7 +275,11 @@ namespace Cutrium.Unity.Simulation
                 _freezePulseDurationSeconds,
                 _freezePulseSpeedMultiplier,
                 _instantBarrierCharges,
-                _instantBarrierGrowthSpeed);
+                _instantBarrierGrowthSpeed,
+                _gravityWellCharges,
+                _gravityWellDurationSeconds,
+                _gravityWellRadius,
+                _gravityWellTurnDegreesPerSecond);
     }
 
     [Serializable]

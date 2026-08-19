@@ -8,6 +8,7 @@ using Cutrium.Gameplay.Session;
 using Cutrium.Presentation.Barriers;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
+using Cutrium.Presentation.Powers;
 using Cutrium.Unity.Bootstrap;
 using Cutrium.Unity.Simulation;
 using NUnit.Framework;
@@ -49,7 +50,7 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void Scene_HasOneLandmarkRevealPresenterWithFirstTwelveLandmarksAndTunedBarrier()
+        public void Scene_HasOneLandmarkRevealPresenterWithFirstTwentyFourLandmarksAndTunedBarrier()
         {
             Assert.That(
                 _root.GetComponentsInChildren<LandmarkRevealPresenter>(true),
@@ -62,7 +63,7 @@ namespace Cutrium.PlayModeTests
                 _landmarkPresenter.CompletionDescriptionText,
                 Is.Not.Null);
             Assert.That(_landmarkPresenter.CompletionSectorText, Is.Not.Null);
-            Assert.That(_landmarkPresenter.Landmarks.Count, Is.EqualTo(12));
+            Assert.That(_landmarkPresenter.Landmarks.Count, Is.EqualTo(24));
             Assert.That(
                 _landmarkPresenter.Landmarks.Select(l => l.LandmarkId),
                 Is.EqualTo(new[]
@@ -142,26 +143,32 @@ namespace Cutrium.PlayModeTests
                 .All(text => text.font == font), Is.True);
             Assert.That(description.resizeTextForBestFit, Is.True);
             Assert.That(description.resizeTextMinSize,
-                Is.GreaterThanOrEqualTo(18));
-            Assert.That(description.resizeTextMaxSize, Is.EqualTo(28));
-            Assert.That(title.resizeTextMaxSize, Is.EqualTo(50));
-            Assert.That(sector.resizeTextMaxSize, Is.EqualTo(26));
-            Assert.That(summary.resizeTextMaxSize, Is.EqualTo(26));
-            Assert.That(retry.resizeTextMaxSize, Is.EqualTo(26));
-            Assert.That(next.resizeTextMaxSize, Is.EqualTo(26));
+                Is.GreaterThanOrEqualTo(20));
+            Assert.That(description.resizeTextMaxSize, Is.EqualTo(32));
+            Assert.That(title.resizeTextMaxSize, Is.EqualTo(56));
+            Assert.That(sector.resizeTextMaxSize, Is.EqualTo(30));
+            Assert.That(summary.resizeTextMaxSize, Is.EqualTo(30));
+            Assert.That(retry.resizeTextMaxSize, Is.EqualTo(40));
+            Assert.That(next.resizeTextMaxSize, Is.EqualTo(40));
             Assert.That(description.rectTransform.rect.height,
-                Is.GreaterThanOrEqualTo(140f));
+                Is.GreaterThanOrEqualTo(160f));
             Assert.That(description.rectTransform
                 .GetComponent<LayoutElement>().flexibleHeight,
                 Is.EqualTo(1f));
             Assert.That(content.GetComponent<VerticalLayoutGroup>().spacing,
-                Is.EqualTo(4f));
+                Is.EqualTo(6f));
 
             RectTransform retryRect = (RectTransform)retry.transform.parent;
             RectTransform nextRect = (RectTransform)next.transform.parent;
-            Assert.That(retryRect.rect.height, Is.InRange(58f, 76f));
+            Assert.That(retryRect.rect.height, Is.GreaterThanOrEqualTo(80f));
+            Assert.That(retryRect.rect.width,
+                Is.EqualTo(280f).Within(0.01f));
             Assert.That(nextRect.rect.height,
                 Is.EqualTo(retryRect.rect.height).Within(0.01f));
+            Assert.That(retryRect.rect.width / retryRect.rect.height,
+                Is.EqualTo(512f / 210f).Within(0.02f));
+            Assert.That(nextRect.rect.width / nextRect.rect.height,
+                Is.EqualTo(512f / 210f).Within(0.02f));
         }
 
         [TestCase(1080f, 1920f)]
@@ -195,9 +202,14 @@ namespace Cutrium.PlayModeTests
                     Is.EqualTo(expectedHeroSize).Within(0.01f));
                 Assert.That(content.rect.height,
                     Is.GreaterThanOrEqualTo(180f));
-                Assert.That(retry.rect.height, Is.InRange(58f, 76f));
+                Assert.That(retry.rect.width,
+                    Is.EqualTo(280f).Within(0.01f));
+                Assert.That(retry.rect.height,
+                    Is.EqualTo(280f / (512f / 210f)).Within(0.01f));
                 Assert.That(next.rect.height,
                     Is.EqualTo(retry.rect.height).Within(0.01f));
+                Assert.That(Left(next) - Right(retry),
+                    Is.EqualTo(40f).Within(0.01f));
                 Assert.That(Bottom(summary) - Top(hero),
                     Is.EqualTo(8f).Within(0.01f));
                 Assert.That(Bottom(hero) - Top(content),
@@ -242,21 +254,21 @@ namespace Cutrium.PlayModeTests
 
             Transform freeze = skillRow.Find("FreezePulseButton");
             Transform instant = skillRow.Find("InstantBarrierButton");
-            Transform mock = skillRow.Find("MockSkillButton");
+            Transform gravity = skillRow.Find("GravityWellButton");
             Assert.That(freeze, Is.Not.Null);
             Assert.That(instant, Is.Not.Null);
-            Assert.That(mock, Is.Not.Null);
+            Assert.That(gravity, Is.Not.Null);
             Assert.That(freeze.gameObject.activeSelf, Is.True);
             Assert.That(instant.gameObject.activeSelf, Is.True);
-            Assert.That(mock.gameObject.activeSelf, Is.True);
+            Assert.That(gravity.gameObject.activeSelf, Is.True);
 
             Assert.That(freeze.GetComponent<Image>().sprite.name,
                 Is.EqualTo("FreezeSkill"));
             Assert.That(instant.GetComponent<Image>().sprite.name,
                 Is.EqualTo("InstantBarrierSkill"));
-            Assert.That(mock.GetComponent<Image>().sprite.name,
-                Is.EqualTo("MockSkill"));
-            Assert.That(mock.GetComponent<Button>().interactable, Is.False);
+            Assert.That(gravity.GetComponent<Image>().sprite.name,
+                Is.EqualTo("GravityWellSkill"));
+            Assert.That(gravity.GetComponent<Button>().interactable, Is.False);
 
             PowerHudPresenter powerHud = _root
                 .GetComponentInChildren<PowerHudPresenter>(true);
@@ -264,6 +276,154 @@ namespace Cutrium.PlayModeTests
                 Is.SameAs(freeze.gameObject));
             Assert.That(powerHud.InstantBarrierRoot,
                 Is.SameAs(instant.gameObject));
+            Assert.That(powerHud.GravityWellRoot,
+                Is.SameAs(gravity.gameObject));
+        }
+
+        [Test]
+        public void ChapterTwoPresentation_HasGravityCueAndStyledTextButtons()
+        {
+            GravityWellPresenter[] gravityPresenters = _root
+                .GetComponentsInChildren<GravityWellPresenter>(true);
+            FirstPlayableController controller = _root
+                .GetComponentInChildren<FirstPlayableController>(true);
+            Assert.That(gravityPresenters, Has.Length.EqualTo(1));
+            Assert.That(gravityPresenters[0].Controller, Is.SameAs(controller));
+            Assert.That(gravityPresenters[0].CueRoot.gameObject.activeSelf,
+                Is.True);
+            Assert.That(gravityPresenters[0].CueImage, Is.Not.Null);
+            Assert.That(gravityPresenters[0].IconRoot, Is.Not.Null);
+            Assert.That(gravityPresenters[0].RangeGraphic, Is.Not.Null);
+            Assert.That(gravityPresenters[0].RangeGraphic.raycastTarget,
+                Is.False);
+
+            Transform safeArea = _root.transform.Find("Canvas/SafeAreaRoot");
+            Transform completion = safeArea.Find("LevelCompleteOverlay");
+            Button[] styledButtons =
+            {
+                completion.Find("RetryButton").GetComponent<Button>(),
+                completion.Find("NextButton").GetComponent<Button>(),
+            };
+            foreach (Button button in styledButtons)
+            {
+                Image image = button.GetComponent<Image>();
+                Text label = button.GetComponentInChildren<Text>(true);
+                AspectRatioFitter aspect =
+                    button.GetComponent<AspectRatioFitter>();
+                Assert.That(image.sprite.name,
+                    Is.EqualTo("GeneralButtonBackground"));
+                Assert.That(image.type, Is.EqualTo(Image.Type.Sliced));
+                Assert.That(label.GetComponent<Shadow>(), Is.Not.Null);
+                Assert.That(label.color, Is.EqualTo(Color.white));
+                Assert.That(label.alignment,
+                    Is.EqualTo(TextAnchor.MiddleCenter));
+                Assert.That(label.fontSize, Is.EqualTo(40));
+                Assert.That(label.resizeTextMaxSize, Is.EqualTo(40));
+                Assert.That(label.rectTransform.anchorMin,
+                    Is.EqualTo(new Vector2(0.08f, 0.08f)));
+                Assert.That(label.rectTransform.anchorMax,
+                    Is.EqualTo(new Vector2(0.98f, 0.96f)));
+                Assert.That(label.rectTransform.offsetMin,
+                    Is.EqualTo(new Vector2(0f, 8f)));
+                Assert.That(label.rectTransform.offsetMax,
+                    Is.EqualTo(new Vector2(0f, 8f)));
+                Assert.That(aspect, Is.Not.Null);
+                Assert.That(aspect.aspectMode, Is.EqualTo(
+                    AspectRatioFitter.AspectMode.WidthControlsHeight));
+                Assert.That(aspect.aspectRatio,
+                    Is.EqualTo(512f / 210f).Within(0.001f));
+            }
+
+        }
+
+        [Test]
+        public void GameOverOverlay_UsesPanelArtAndSeparateSquareActions()
+        {
+            Transform safeArea = _root.transform.Find("Canvas/SafeAreaRoot");
+            Transform panel = safeArea.Find(
+                "CutLimitFailureOverlay/GameOverPanelBounds/GameOverPanel");
+            Assert.That(panel, Is.Not.Null);
+
+            RectTransform panelBounds = (RectTransform)panel.parent;
+            Assert.That(panelBounds.anchorMin,
+                Is.EqualTo(new Vector2(0.06f, 0.05f)));
+            Assert.That(panelBounds.anchorMax,
+                Is.EqualTo(new Vector2(0.94f, 0.95f)));
+
+            Image panelImage = panel.GetComponent<Image>();
+            AspectRatioFitter panelAspect =
+                panel.GetComponent<AspectRatioFitter>();
+            Assert.That(panelImage.sprite.texture.name,
+                Is.EqualTo("GameOverPanel"));
+            Assert.That(panelImage.type, Is.EqualTo(Image.Type.Simple));
+            Assert.That(panelImage.preserveAspect, Is.True);
+            Assert.That(panelAspect.aspectMode,
+                Is.EqualTo(AspectRatioFitter.AspectMode.FitInParent));
+            Assert.That(panelAspect.aspectRatio,
+                Is.EqualTo(768f / 1037f).Within(0.001f));
+
+            Text prompt = panel.Find("FailureText").GetComponent<Text>();
+            Assert.That(prompt.text,
+                Is.EqualTo("Watch an AD\nto Continue!"));
+            Assert.That(prompt.color, Is.EqualTo(Color.white));
+            Assert.That(prompt.resizeTextMaxSize, Is.EqualTo(86));
+            Assert.That(prompt.resizeTextMinSize, Is.EqualTo(52));
+            Assert.That(prompt.rectTransform.anchorMin,
+                Is.EqualTo(new Vector2(0.14f, 0.5f)));
+            Assert.That(prompt.rectTransform.anchorMax,
+                Is.EqualTo(new Vector2(0.86f, 0.5f)));
+            Assert.That(prompt.rectTransform.anchoredPosition,
+                Is.EqualTo(new Vector2(0f, 50f)));
+            Assert.That(prompt.rectTransform.sizeDelta,
+                Is.EqualTo(new Vector2(0f, 210f)));
+            Assert.That(prompt.GetComponent<Shadow>(), Is.Not.Null);
+
+            Button retry = panel.Find("RetryButton").GetComponent<Button>();
+            Button watchAd = panel.Find("WatchAdButton").GetComponent<Button>();
+            Assert.That(retry.GetComponent<Image>().sprite.texture.name,
+                Is.EqualTo("RetryButton"));
+            Assert.That(watchAd.GetComponent<Image>().sprite.texture.name,
+                Is.EqualTo("WatchADSButton"));
+            Assert.That(retry.interactable, Is.True);
+            Assert.That(watchAd.interactable, Is.False);
+            Assert.That(watchAd.transition,
+                Is.EqualTo(Selectable.Transition.None));
+            Assert.That(retry.GetComponent<AspectRatioFitter>().aspectRatio,
+                Is.EqualTo(1f));
+            Assert.That(watchAd.GetComponent<AspectRatioFitter>().aspectRatio,
+                Is.EqualTo(1f));
+            Assert.That(((RectTransform)retry.transform).anchorMin.y,
+                Is.EqualTo(0.345f).Within(0.0001f));
+            Assert.That(((RectTransform)watchAd.transform).anchorMin.y,
+                Is.EqualTo(0.345f).Within(0.0001f));
+            Assert.That(((RectTransform)retry.transform).anchoredPosition.y,
+                Is.EqualTo(-20f).Within(0.0001f));
+            Assert.That(((RectTransform)watchAd.transform).anchoredPosition.y,
+                Is.EqualTo(-20f).Within(0.0001f));
+            Assert.That(retry.GetComponentInChildren<Text>(true), Is.Null);
+            Assert.That(watchAd.GetComponentInChildren<Text>(true), Is.Null);
+
+            Text retryLabel = panel.Find("RetryLabel").GetComponent<Text>();
+            Text watchAdLabel = panel.Find("WatchAdLabel").GetComponent<Text>();
+            Assert.That(retryLabel.text, Is.EqualTo("Retry"));
+            Assert.That(watchAdLabel.text, Is.EqualTo("Watch AD"));
+            Assert.That(retryLabel.resizeTextMaxSize, Is.EqualTo(48));
+            Assert.That(watchAdLabel.resizeTextMaxSize, Is.EqualTo(48));
+            Assert.That(retryLabel.rectTransform.anchorMin.y,
+                Is.EqualTo(0.185f).Within(0.0001f));
+            Assert.That(retryLabel.rectTransform.anchorMax.y,
+                Is.EqualTo(0.255f).Within(0.0001f));
+            Assert.That(watchAdLabel.rectTransform.anchorMin.y,
+                Is.EqualTo(0.185f).Within(0.0001f));
+            Assert.That(watchAdLabel.rectTransform.anchorMax.y,
+                Is.EqualTo(0.255f).Within(0.0001f));
+            Assert.That(retryLabel.GetComponent<Shadow>(), Is.Not.Null);
+            Assert.That(watchAdLabel.GetComponent<Shadow>(), Is.Not.Null);
+
+            GameplayIdentityHudPresenter presenter = safeArea
+                .GetComponent<GameplayIdentityHudPresenter>();
+            Assert.That(presenter.RetryButton, Is.SameAs(retry));
+            Assert.That(presenter.WatchAdButton, Is.SameAs(watchAd));
         }
 
         [Test]

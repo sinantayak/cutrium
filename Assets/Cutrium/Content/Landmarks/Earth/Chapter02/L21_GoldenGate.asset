@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L21_GoldenGate
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: golden-gate-koprusu
+  _displayTitle: "Golden Gate K\xF6pr\xFCs\xFC"
+  _shortDescription: "1937\u2019de a\xE7\u0131lan Golden Gate, sisli bo\u011Faz\u0131
+    ge\xE7en dev bir asma k\xF6pr\xFCd\xFCr. \u201CInternational Orange\u201D rengi,
+    k\xF6pr\xFCn\xFCn hem sis i\xE7inde se\xE7ilmesini hem de \xE7evredeki tepelerle
+    uyum kurmas\u0131n\u0131 sa\u011Flar. 1.280 metrelik ana a\xE7\u0131kl\u0131\u011F\u0131
+    tamamland\u0131\u011F\u0131nda d\xFCnya rekoruydu; Art Deco ayr\u0131nt\u0131l\u0131
+    kuleleri suyun yakla\u015F\u0131k 227 metre \xFCzerine y\xFCkselir."
+  _sector: San Francisco / ABD
+  _artwork: {fileID: 7268314836617758416, guid: ee522927b54c1d44cb55e5d30b57e889, type: 3}

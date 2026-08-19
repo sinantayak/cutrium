@@ -263,7 +263,7 @@ namespace Cutrium.Gameplay.EditModeTests
         }
 
         [Test]
-        public void GameplayCatalogAsset_CopiesAndBuildsTwelveDefinitions()
+        public void GameplayCatalogAsset_PromotesRecognizedChapterOneToMainFlow()
         {
             CoreFunLevelCatalogDefinition asset =
                 ScriptableObject.CreateInstance<CoreFunLevelCatalogDefinition>();
@@ -274,7 +274,7 @@ namespace Cutrium.Gameplay.EditModeTests
 
             Assert.That(asset.Levels, Has.Count.EqualTo(12));
             Assert.That(asset.Levels[0], Is.Not.Null);
-            Assert.That(asset.BuildRuntimeCatalog().Count, Is.EqualTo(12));
+            Assert.That(asset.BuildRuntimeCatalog().Count, Is.EqualTo(24));
             UnityEngine.Object.DestroyImmediate(asset);
         }
 
@@ -287,7 +287,7 @@ namespace Cutrium.Gameplay.EditModeTests
 
             Assert.That(asset, Is.Not.Null);
             CoreFunLevelCatalog catalog = asset.BuildRuntimeCatalog();
-            Assert.That(catalog.Count, Is.EqualTo(12));
+            Assert.That(catalog.Count, Is.EqualTo(24));
             Assert.That(catalog[3].Capture.MaximumAcceptedCuts, Is.EqualTo(10));
             Assert.That(catalog[4].ThreatMotion.Behavior.HunterSteerFactor,
                 Is.EqualTo(0.72f));
@@ -385,21 +385,23 @@ namespace Cutrium.Gameplay.EditModeTests
         }
 
         [Test]
-        public void CheckedInLandmarkCatalog_HasTwelveOrderedEarthEntries()
+        public void CheckedInLandmarkCatalog_HasTwentyFourOrderedEarthEntries()
         {
             LandmarkCatalog catalog = AssetDatabase.LoadAssetAtPath<LandmarkCatalog>(
                 GameplayProgressionSetup.LandmarkCatalogPath);
 
             Assert.That(catalog, Is.Not.Null);
-            Assert.That(catalog.Count, Is.EqualTo(12));
+            FirstTwelveLandmarkContent.Entry[] expected =
+                FirstTwelveLandmarkContent.Entries
+                    .Concat(ChapterTwoLandmarkContent.Entries)
+                    .ToArray();
+            Assert.That(catalog.Count, Is.EqualTo(24));
             Assert.That(catalog.Landmarks.Select(item => item.LandmarkId),
-                Is.EqualTo(FirstTwelveLandmarkContent.Entries.Select(
-                    item => item.Id)));
+                Is.EqualTo(expected.Select(item => item.Id)));
             for (int index = 0; index < catalog.Count; index++)
             {
                 LandmarkDefinition landmark = catalog.Landmarks[index];
-                FirstTwelveLandmarkContent.Entry source =
-                    FirstTwelveLandmarkContent.Entries[index];
+                FirstTwelveLandmarkContent.Entry source = expected[index];
                 Assert.That(landmark.DisplayTitle, Is.EqualTo(source.Title));
                 Assert.That(landmark.ShortDescription,
                     Is.EqualTo(source.Description));

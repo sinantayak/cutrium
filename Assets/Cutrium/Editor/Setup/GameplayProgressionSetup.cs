@@ -13,16 +13,26 @@ using UnityEngine.UI;
 
 namespace Cutrium.Editor.Setup
 {
-    /// Focused, idempotent setup for progression data. It intentionally does
-    /// not invoke any milestone or presentation setup, so user-authored HUD,
-    /// color, sand, trail, and popup changes remain untouched.
+    /// Focused, idempotent setup for progression data and the Chapter 2 UI
+    /// additions. It does not invoke the broad milestone/presentation passes,
+    /// so existing HUD layout, theme, sand, trail, and popup tuning stays in
+    /// place while Gravity Well and shared text-button styling are wired.
     public static class GameplayProgressionSetup
     {
         public const string GameplayCatalogPath =
-            "Assets/Cutrium/Content/Levels/First12GameplayCatalog.asset";
+            "Assets/Cutrium/Content/Levels/MainGameplayCatalog.asset";
 
         public const string LandmarkCatalogPath =
             "Assets/Cutrium/Content/Landmarks/LandmarkCatalog.asset";
+
+        public const string GameOverPanelPath =
+            "Assets/Cutrium/Content/Gui/GameOverPanel.png";
+
+        public const string RetryButtonPath =
+            "Assets/Cutrium/Content/Gui/RetryButton.png";
+
+        public const string WatchAdsButtonPath =
+            "Assets/Cutrium/Content/Gui/WatchADSButton.png";
 
         [MenuItem("Cutrium/Setup/Fix Stale BottomHudRow LayoutElement Only")]
         public static void FixStaleBottomHudRowLayoutElementOnly()
@@ -110,7 +120,7 @@ namespace Cutrium.Editor.Setup
             Debug.Log("Removed the legacy BottomHUD/CutLimitCounter element.");
         }
 
-        [MenuItem("Cutrium/Setup/Validate First 12 Gameplay Progression")]
+        [MenuItem("Cutrium/Setup/Validate Chapter 2 Gameplay Progression")]
         public static void ValidateExistingAssets()
         {
             CoreFunLevelCatalogDefinition gameplayCatalog =
@@ -121,23 +131,57 @@ namespace Cutrium.Editor.Setup
                     LandmarkCatalogPath);
             if (gameplayCatalog == null
                 || gameplayCatalog.BuildRuntimeCatalog().Count
-                    != FirstTwelveGameplayProgression.LevelCount)
+                    != MainGameplayProgression.LevelCount)
             {
                 throw new InvalidOperationException(
-                    "The first-twelve gameplay catalog is invalid.");
+                    "The Chapter 2 gameplay catalog is invalid.");
             }
 
             if (landmarkCatalog == null)
             {
                 throw new InvalidOperationException(
-                    "The first-twelve landmark catalog is not materialized. " +
-                    "Run Chapter 1 Earth Landmarks setup in a licensed Editor.");
+                    "The Earth landmark catalog is not materialized. Run " +
+                    "Chapter 2 Gameplay Progression in a licensed Editor.");
             }
 
-            ValidateChapterOneEarthLandmarks(landmarkCatalog);
+            ValidateMainEarthLandmarks(landmarkCatalog);
             Debug.Log(
-                "First 12 gameplay and Chapter 1 Earth landmark catalogs " +
-                "are valid.");
+                "Chapter 2 gameplay and first 24 Earth landmarks are valid.");
+        }
+
+        [MenuItem("Cutrium/Setup/Apply Game Over Panel Only")]
+        public static void ApplyGameOverPanelOnly()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "Exit Play Mode before configuring the Game Over panel.");
+            }
+
+            Scene scene = OpenVerticalSliceWithoutDiscardingDirtyScenes();
+            GameObject root = scene.GetRootGameObjects().Single(
+                candidate => candidate.name == "VerticalSliceRoot");
+            FirstPlayableController controller = root
+                .GetComponentInChildren<FirstPlayableController>(true);
+            if (controller == null)
+            {
+                throw new InvalidOperationException(
+                    "VerticalSliceRoot is missing FirstPlayableController.");
+            }
+
+            ConfigureIdentityHud(root, controller);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(
+                    scene,
+                    Milestone2SceneSetup.VerticalSliceScenePath))
+            {
+                throw new InvalidOperationException(
+                    "Unity could not save the Game Over panel wiring.");
+            }
+
+            AssetDatabase.SaveAssets();
+            Debug.Log(
+                "Game Over panel configured with Retry and Watch AD art.");
         }
 
         [MenuItem("Cutrium/Setup/Chapter 1 Earth Landmarks")]
@@ -157,7 +201,7 @@ namespace Cutrium.Editor.Setup
                 "gameplay or scene presentation.");
         }
 
-        [MenuItem("Cutrium/Setup/First 12 Gameplay Progression")]
+        [MenuItem("Cutrium/Setup/Chapter 2 Gameplay Progression")]
         public static void Apply()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -171,7 +215,7 @@ namespace Cutrium.Editor.Setup
                 GetOrCreateAsset<CoreFunLevelCatalogDefinition>(
                     GameplayCatalogPath);
             gameplayCatalog.ConfigureForSetup(
-                FirstTwelveGameplayProgression.CreateDefinitions());
+                MainGameplayProgression.CreateDefinitions());
             EditorUtility.SetDirty(gameplayCatalog);
 
             GameObject root = scene.GetRootGameObjects().Single(
@@ -184,13 +228,13 @@ namespace Cutrium.Editor.Setup
                     "VerticalSliceRoot is missing FirstPlayableController.");
             }
 
-            Undo.RecordObject(controller, "Wire First 12 Gameplay Catalog");
+            Undo.RecordObject(controller, "Wire Chapter 2 Gameplay Catalog");
             controller.ConfigureLevelCatalogForSetup(gameplayCatalog);
             EditorUtility.SetDirty(controller);
 
             LandmarkRevealPresenter landmarkPresenter = root
                 .GetComponentInChildren<LandmarkRevealPresenter>(true);
-            LandmarkCatalog landmarkCatalog = ConfigureChapterOneEarthLandmarks();
+            LandmarkCatalog landmarkCatalog = ConfigureMainEarthLandmarks();
             if (landmarkPresenter != null)
             {
                 Undo.RecordObject(
@@ -203,6 +247,8 @@ namespace Cutrium.Editor.Setup
             ConfigureIdentityHud(root, controller);
             ConfigureHealthHud(root, controller);
             ConfigurePreLevelIntro(root, controller);
+            LandmarkRevealPresentationSetup
+                .ConfigureChapterTwoPresentationForSetup(root);
 
             Validate(controller);
             EditorSceneManager.MarkSceneDirty(scene);
@@ -216,15 +262,26 @@ namespace Cutrium.Editor.Setup
 
             AssetDatabase.SaveAssets();
             Debug.Log(
-                "First 12 gameplay progression configured. Gameplay and " +
-                "landmark catalogs remain separate; no presentation setup " +
-                "was run.");
+                "Chapter 2 gameplay progression configured: 24 levels, " +
+                "24 Earth landmarks, Gravity Well HUD/cue, and general " +
+                "button styling are wired.");
         }
 
         private static LandmarkCatalog ConfigureChapterOneEarthLandmarks()
         {
             LandmarkDefinition[] landmarks =
                 FirstTwelveLandmarkContent.CreateOrUpdateAssets();
+            LandmarkCatalog landmarkCatalog =
+                GetOrCreateAsset<LandmarkCatalog>(LandmarkCatalogPath);
+            landmarkCatalog.ConfigureForSetup(landmarks);
+            EditorUtility.SetDirty(landmarkCatalog);
+            return landmarkCatalog;
+        }
+
+        private static LandmarkCatalog ConfigureMainEarthLandmarks()
+        {
+            LandmarkDefinition[] landmarks =
+                MainEarthLandmarkContent.CreateOrUpdateAssets();
             LandmarkCatalog landmarkCatalog =
                 GetOrCreateAsset<LandmarkCatalog>(LandmarkCatalogPath);
             landmarkCatalog.ConfigureForSetup(landmarks);
@@ -261,6 +318,46 @@ namespace Cutrium.Editor.Setup
                     throw new InvalidOperationException(
                         $"Chapter 1 Earth landmark {index + 1} does not " +
                         "match its authored source.");
+                }
+            }
+        }
+
+        private static void ValidateMainEarthLandmarks(
+            LandmarkCatalog landmarkCatalog)
+        {
+            landmarkCatalog.Validate();
+            FirstTwelveLandmarkContent.Entry[] chapterOne =
+                FirstTwelveLandmarkContent.Entries;
+            FirstTwelveLandmarkContent.Entry[] chapterTwo =
+                ChapterTwoLandmarkContent.Entries;
+            if (landmarkCatalog.Count != MainGameplayProgression.LevelCount
+                || chapterOne.Length + chapterTwo.Length
+                    != MainGameplayProgression.LevelCount)
+            {
+                throw new InvalidOperationException(
+                    "Chapter 2 requires one Earth landmark per gameplay level.");
+            }
+
+            for (int index = 0; index < landmarkCatalog.Count; index++)
+            {
+                FirstTwelveLandmarkContent.Entry expected =
+                    index < chapterOne.Length
+                        ? chapterOne[index]
+                        : chapterTwo[index - chapterOne.Length];
+                LandmarkDefinition actual = landmarkCatalog.Landmarks[index];
+                if (actual.LandmarkId != expected.Id
+                    || actual.DisplayTitle != expected.Title
+                    || actual.ShortDescription != expected.Description
+                    || actual.Sector != expected.Sector
+                    || actual.Artwork == null
+                    || AssetDatabase.GetAssetPath(actual)
+                        != expected.DefinitionPath
+                    || AssetDatabase.GetAssetPath(actual.Artwork)
+                        != expected.ArtworkPath)
+                {
+                    throw new InvalidOperationException(
+                        $"Earth landmark {index + 1} does not match its " +
+                        "authored source.");
                 }
             }
         }
@@ -319,12 +416,12 @@ namespace Cutrium.Editor.Setup
         {
             if (controller.LevelCatalogDefinition == null
                 || controller.LevelDefinitions.Count
-                    != FirstTwelveGameplayProgression.LevelCount
+                    != MainGameplayProgression.LevelCount
                 || controller.LevelCatalogDefinition.BuildRuntimeCatalog().Count
-                    != FirstTwelveGameplayProgression.LevelCount)
+                    != MainGameplayProgression.LevelCount)
             {
                 throw new InvalidOperationException(
-                    "The first-twelve gameplay catalog was not wired correctly.");
+                    "The Chapter 2 gameplay catalog was not wired correctly.");
             }
         }
 
@@ -413,42 +510,121 @@ namespace Cutrium.Editor.Setup
             Image scrim = GetOrAddComponent<Image>(failureRect.gameObject);
             scrim.color = new Color(0.08f, 0.035f, 0.02f, 0.86f);
             scrim.raycastTarget = true;
-            Text failureText = GetOrCreateText(
+
+            Sprite panelSprite = LandmarkRevealPresentationSetup
+                .LoadUiSpriteForSetup(GameOverPanelPath);
+            Sprite retrySprite = LandmarkRevealPresentationSetup
+                .LoadUiSpriteForSetup(RetryButtonPath);
+            Sprite watchAdsSprite = LandmarkRevealPresentationSetup
+                .LoadUiSpriteForSetup(WatchAdsButtonPath);
+
+            RectTransform panelBounds = GetOrCreateRect(
                 failureRect,
+                "GameOverPanelBounds",
+                new Vector2(0.06f, 0.05f),
+                new Vector2(0.94f, 0.95f),
+                Vector2.zero,
+                Vector2.zero);
+            RectTransform panelRect = GetOrCreateRect(
+                panelBounds,
+                "GameOverPanel",
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(panelSprite.rect.width, panelSprite.rect.height));
+            Image panelImage = GetOrAddComponent<Image>(panelRect.gameObject);
+            panelImage.sprite = panelSprite;
+            panelImage.type = Image.Type.Simple;
+            panelImage.preserveAspect = true;
+            panelImage.color = Color.white;
+            panelImage.raycastTarget = false;
+            AspectRatioFitter panelAspect =
+                GetOrAddComponent<AspectRatioFitter>(panelRect.gameObject);
+            panelAspect.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            panelAspect.aspectRatio = panelSprite.rect.width
+                / panelSprite.rect.height;
+
+            // Migrate the previous flat failure UI into the artwork's local
+            // coordinate space. This keeps the setup safe to rerun on scenes
+            // authored before GameOverPanel was introduced.
+            MoveDirectChildIfPresent(failureRect, panelRect, "FailureText");
+            MoveDirectChildIfPresent(failureRect, panelRect, "RetryButton");
+
+            Text failureText = GetOrCreateText(
+                panelRect,
                 "FailureText",
-                new Vector2(0.5f, 0.5f),
-                new Vector2(0.5f, 0.5f),
-                new Vector2(0f, 55f),
-                new Vector2(520f, 120f),
-                32,
+                new Vector2(0.14f, 0.5f),
+                new Vector2(0.86f, 0.5f),
+                new Vector2(0f, 50f),
+                new Vector2(0f, 210f),
+                86,
                 TextAnchor.MiddleCenter);
-            failureText.color = Color.white;
+            ConfigureGameOverText(
+                failureText,
+                "Watch an AD\nto Continue!",
+                Color.white,
+                86,
+                52,
+                0.8f);
 
             RectTransform retryRect = GetOrCreateRect(
-                failureRect,
+                panelRect,
                 "RetryButton",
-                new Vector2(0.5f, 0.5f),
-                new Vector2(0.5f, 0.5f),
-                new Vector2(0f, -60f),
-                new Vector2(240f, 64f));
-            Image retryImage = GetOrAddComponent<Image>(
-                retryRect.gameObject);
-            retryImage.color = new Color(0.92f, 0.5f, 0.12f, 1f);
-            Button retryButton = GetOrAddComponent<Button>(
-                retryRect.gameObject);
-            retryButton.targetGraphic = retryImage;
-            Text retryLabel = GetOrCreateText(
+                new Vector2(0.24f, 0.345f),
+                new Vector2(0.44f, 0.345f),
+                new Vector2(0f, -20f),
+                Vector2.zero);
+            RemoveLegacyButtonLabel(retryRect);
+            Button retryButton = ConfigureGameOverButton(
                 retryRect,
-                "Label",
+                retrySprite,
+                true);
+
+            RectTransform watchAdRect = GetOrCreateRect(
+                panelRect,
+                "WatchAdButton",
+                new Vector2(0.56f, 0.345f),
+                new Vector2(0.76f, 0.345f),
+                new Vector2(0f, -20f),
+                Vector2.zero);
+            Button watchAdButton = ConfigureGameOverButton(
+                watchAdRect,
+                watchAdsSprite,
+                false);
+
+            Text retryLabel = GetOrCreateText(
+                panelRect,
+                "RetryLabel",
+                new Vector2(0.20f, 0.185f),
+                new Vector2(0.48f, 0.255f),
                 Vector2.zero,
-                Vector2.one,
                 Vector2.zero,
-                Vector2.zero,
-                26,
+                48,
                 TextAnchor.MiddleCenter);
-            retryLabel.text = "RETRY";
-            retryLabel.color = new Color(0.2f, 0.08f, 0.02f, 1f);
-            retryLabel.raycastTarget = false;
+            ConfigureGameOverText(
+                retryLabel,
+                "Retry",
+                new Color(1f, 0.76f, 0.31f, 1f),
+                48,
+                30,
+                1f);
+
+            Text watchAdLabel = GetOrCreateText(
+                panelRect,
+                "WatchAdLabel",
+                new Vector2(0.52f, 0.185f),
+                new Vector2(0.80f, 0.255f),
+                Vector2.zero,
+                Vector2.zero,
+                48,
+                TextAnchor.MiddleCenter);
+            ConfigureGameOverText(
+                watchAdLabel,
+                "Watch AD",
+                new Color(1f, 0.76f, 0.31f, 1f),
+                48,
+                30,
+                1f);
             // LevelCompleteOverlay must remain the final safe-area sibling
             // (see LandmarkRevealPresentationSetup's
             // ConfigureGrainFlightRoot/Validate) so the completion screen
@@ -477,8 +653,71 @@ namespace Cutrium.Editor.Setup
                 speedTierSprites,
                 failureGroup,
                 failureText,
-                retryButton);
+                retryButton,
+                watchAdButton);
+            ValidateGameOverPresentation(
+                failureRect,
+                presenter,
+                panelSprite,
+                retrySprite,
+                watchAdsSprite);
             EditorUtility.SetDirty(presenter);
+        }
+
+        private static void ValidateGameOverPresentation(
+            RectTransform failureRect,
+            GameplayIdentityHudPresenter presenter,
+            Sprite panelSprite,
+            Sprite retrySprite,
+            Sprite watchAdsSprite)
+        {
+            Transform panel = failureRect.Find(
+                "GameOverPanelBounds/GameOverPanel");
+            Image panelImage = panel != null
+                ? panel.GetComponent<Image>()
+                : null;
+            AspectRatioFitter panelAspect = panel != null
+                ? panel.GetComponent<AspectRatioFitter>()
+                : null;
+            Text prompt = panel != null
+                ? panel.Find("FailureText")?.GetComponent<Text>()
+                : null;
+            Button retry = panel != null
+                ? panel.Find("RetryButton")?.GetComponent<Button>()
+                : null;
+            Button watchAd = panel != null
+                ? panel.Find("WatchAdButton")?.GetComponent<Button>()
+                : null;
+            Text retryLabel = panel != null
+                ? panel.Find("RetryLabel")?.GetComponent<Text>()
+                : null;
+            Text watchAdLabel = panel != null
+                ? panel.Find("WatchAdLabel")?.GetComponent<Text>()
+                : null;
+
+            if (panelImage == null
+                || panelImage.sprite != panelSprite
+                || panelAspect == null
+                || panelAspect.aspectMode
+                    != AspectRatioFitter.AspectMode.FitInParent
+                || prompt == null
+                || prompt.text != "Watch an AD\nto Continue!"
+                || retry == null
+                || retry.GetComponent<Image>()?.sprite != retrySprite
+                || watchAd == null
+                || watchAd.GetComponent<Image>()?.sprite != watchAdsSprite
+                || !retry.interactable
+                || watchAd.interactable
+                || retryLabel == null
+                || retryLabel.text != "Retry"
+                || watchAdLabel == null
+                || watchAdLabel.text != "Watch AD"
+                || presenter.RetryButton != retry
+                || presenter.WatchAdButton != watchAd)
+            {
+                throw new InvalidOperationException(
+                    "The Game Over panel presentation was not fully wired.");
+            }
         }
 
         // Wires the live heart row (HealthHudPresenter) built by
@@ -694,6 +933,113 @@ namespace Cutrium.Editor.Setup
             }
 
             return null;
+        }
+
+        private static void MoveDirectChildIfPresent(
+            RectTransform oldParent,
+            RectTransform newParent,
+            string childName)
+        {
+            Transform directChild = oldParent.Find(childName);
+            if (directChild == null)
+            {
+                return;
+            }
+
+            Transform existingTarget = newParent.Find(childName);
+            if (existingTarget != null)
+            {
+                Undo.DestroyObjectImmediate(directChild.gameObject);
+                return;
+            }
+
+            Undo.SetTransformParent(
+                directChild,
+                newParent,
+                "Move " + childName + " Into Game Over Panel");
+            directChild.localScale = Vector3.one;
+        }
+
+        private static Button ConfigureGameOverButton(
+            RectTransform buttonRect,
+            Sprite sprite,
+            bool interactable)
+        {
+            Image image = GetOrAddComponent<Image>(buttonRect.gameObject);
+            image.sprite = sprite;
+            image.type = Image.Type.Simple;
+            image.preserveAspect = true;
+            image.color = Color.white;
+            image.raycastTarget = true;
+
+            AspectRatioFitter aspect =
+                GetOrAddComponent<AspectRatioFitter>(buttonRect.gameObject);
+            aspect.aspectMode =
+                AspectRatioFitter.AspectMode.WidthControlsHeight;
+            aspect.aspectRatio = 1f;
+
+            Button button = GetOrAddComponent<Button>(buttonRect.gameObject);
+            button.targetGraphic = image;
+            button.interactable = interactable;
+            button.transition = interactable
+                ? Selectable.Transition.ColorTint
+                : Selectable.Transition.None;
+            Navigation navigation = button.navigation;
+            navigation.mode = Navigation.Mode.None;
+            button.navigation = navigation;
+
+            ColorBlock colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = Color.white;
+            colors.selectedColor = Color.white;
+            colors.pressedColor = new Color(0.82f, 0.82f, 0.82f, 1f);
+            colors.disabledColor = Color.white;
+            colors.colorMultiplier = 1f;
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
+
+            EditorUtility.SetDirty(image);
+            EditorUtility.SetDirty(aspect);
+            EditorUtility.SetDirty(button);
+            return button;
+        }
+
+        private static void RemoveLegacyButtonLabel(RectTransform buttonRect)
+        {
+            Transform legacyLabel = buttonRect.Find("Label");
+            if (legacyLabel != null)
+            {
+                Undo.DestroyObjectImmediate(legacyLabel.gameObject);
+            }
+        }
+
+        private static void ConfigureGameOverText(
+            Text text,
+            string value,
+            Color color,
+            int maximumSize,
+            int minimumSize,
+            float lineSpacing)
+        {
+            text.text = value;
+            text.color = color;
+            text.fontStyle = FontStyle.Bold;
+            text.fontSize = maximumSize;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = minimumSize;
+            text.resizeTextMaxSize = maximumSize;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
+            text.lineSpacing = lineSpacing;
+            text.raycastTarget = false;
+
+            Shadow shadow = GetOrAddComponent<Shadow>(text.gameObject);
+            shadow.effectColor = new Color(0.12f, 0.035f, 0.01f, 0.78f);
+            shadow.effectDistance = new Vector2(3f, -3f);
+            shadow.useGraphicAlpha = true;
+            EditorUtility.SetDirty(shadow);
+            EditorUtility.SetDirty(text);
         }
 
         private static RectTransform GetOrCreateRect(

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L19_FushimiInari
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: fushimi-inari-taisha
+  _displayTitle: Fushimi Inari Taisha
+  _shortDescription: "Bereket ve pirin\xE7le ili\u015Fkilendirilen \u0130nari\u2019ye
+    adanan bu \u015Einto tap\u0131na\u011F\u0131, da\u011Fa do\u011Fru uzanan binlerce
+    parlak k\u0131rm\u0131z\u0131 torii kap\u0131s\u0131yla \xFCnl\xFCd\xFCr. Kap\u0131lar,
+    orman\u0131n i\xE7inde adeta sonsuz bir t\xFCnel olu\u015Fturur. Her kap\u0131
+    bir ki\u015Fi ya da i\u015Fletmenin ba\u011F\u0131\u015F\u0131n\u0131 temsil
+    eder; yol boyunca g\xF6r\xFClen tilki heykelleri ise \u0130nari\u2019nin habercileri
+    kabul edilir."
+  _sector: Kyoto / JAPONYA
+  _artwork: {fileID: -8487113702607003437, guid: 2015037147deacc478da23ec89a305f5, type: 3}

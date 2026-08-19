@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 1b530bd8955bb3a4baf7f595962a24fe
+guid: 4dfc3f4be86f43d48b228aea6ca6da09
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 1832233862143772405
-    second: MockSkill_0
+      213: -5556577256398379791
+    second: WatchADSButton_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: MockSkill_0
+      name: WatchADSButton_0
       rect:
         serializedVersion: 2
-        x: 0
+        x: 1
         y: 0
-        width: 452
-        height: 436
+        width: 255
+        height: 256
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 5f685827df66d6910800000000000000
-      internalID: 1832233862143772405
+      spriteID: 1f42c51ec6213e2b0800000000000000
+      internalID: -5556577256398379791
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      MockSkill_0: 1832233862143772405
+      WatchADSButton_0: -5556577256398379791
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

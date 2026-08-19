@@ -6,6 +6,7 @@ using Cutrium.Presentation.Barriers;
 using Cutrium.Presentation.Capture;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
+using Cutrium.Presentation.Powers;
 using Cutrium.Presentation.Theme;
 using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Layout;
@@ -75,8 +76,10 @@ namespace Cutrium.Editor.Setup
             "Assets/Cutrium/Content/Gui/FreezeSkill.png";
         public const string InstantBarrierSkillPath =
             "Assets/Cutrium/Content/Gui/InstantBarrierSkill.png";
-        public const string MockSkillPath =
-            "Assets/Cutrium/Content/Gui/MockSkill.png";
+        public const string GravityWellSkillPath =
+            "Assets/Cutrium/Content/Gui/GravityWellSkill.png";
+        public const string GeneralButtonBackgroundPath =
+            "Assets/Cutrium/Content/Gui/GeneralButtonBackground.png";
         public const string TopHudFontPath =
             "Assets/Cutrium/Art/Fonts/LapsusPro-Bold SDF.asset";
         public const string CompletionFontPath =
@@ -166,6 +169,109 @@ namespace Cutrium.Editor.Setup
                 "shows the gameplay TopHUD, unchanged logical 10x16 board, " +
                 "and sand-fed target-progress bar; the full-screen landmark " +
                 "completion flow remains wired and ready.");
+        }
+
+        public static void ConfigureChapterTwoPresentationForSetup(
+            GameObject root)
+        {
+            if (root == null)
+            {
+                throw new ArgumentNullException(nameof(root));
+            }
+
+            FirstPlayableController controller = root
+                .GetComponentInChildren<FirstPlayableController>(true);
+            PowerHudPresenter powerHud = root
+                .GetComponentInChildren<PowerHudPresenter>(true);
+            if (controller == null || powerHud == null)
+            {
+                throw new InvalidOperationException(
+                    "Chapter 2 presentation requires the gameplay " +
+                    "controller and PowerHudPresenter.");
+            }
+
+            Transform safeArea = RequireChild(
+                root.transform,
+                "Canvas/SafeAreaRoot");
+            Transform completion = RequireChild(
+                safeArea,
+                "LevelCompleteOverlay");
+            RectTransform boardFrame = (RectTransform)RequireChild(
+                safeArea,
+                "BoardStage/BoardViewport/BoardFrame");
+            SkillAssets skillAssets = LoadSkillAssets();
+            ConfigureBottomHudSkillRow(
+                safeArea,
+                controller,
+                powerHud,
+                skillAssets);
+            ConfigureGravityWellCue(
+                boardFrame,
+                controller,
+                skillAssets.Gravity);
+            ApplyCompletionReadability(completion, LoadCompletionFont());
+            ConfigureGeneralActionButtonLayoutForSetup(safeArea);
+            ApplyGeneralButtonStylesForSetup(root);
+            ConfigureFeedbackReadabilityForSetup(safeArea);
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(
+                (RectTransform)safeArea);
+
+            if (powerHud.GravityWellButton == null
+                || powerHud.GravityWellChargesText == null
+                || root.GetComponentsInChildren<GravityWellPresenter>(true)
+                    .Length != 1
+                || root.GetComponentInChildren<GravityWellPresenter>(true)
+                    .RangeGraphic == null)
+            {
+                throw new InvalidOperationException(
+                    "Chapter 2 Gravity Well presentation did not wire " +
+                    "all required references.");
+            }
+
+            ValidateGeneralButtonStyle(
+                RequireChild(completion, "RetryButton").GetComponent<Button>());
+            ValidateGeneralButtonStyle(
+                RequireChild(completion, "NextButton").GetComponent<Button>());
+        }
+
+        public static void ApplyGeneralButtonStyleForSetup(Button button)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            EnsureUiSpriteImportSettings(
+                GeneralButtonBackgroundPath,
+                sliced9Slice: true);
+            ApplyGeneralButtonStyle(
+                button,
+                LoadSingleSprite(GeneralButtonBackgroundPath));
+        }
+
+        public static void ApplyGeneralButtonStylesForSetup(GameObject root)
+        {
+            EnsureUiSpriteImportSettings(
+                GeneralButtonBackgroundPath,
+                sliced9Slice: true);
+            Sprite background = LoadSingleSprite(GeneralButtonBackgroundPath);
+            Button[] buttons = root.GetComponentsInChildren<Button>(true);
+            for (int index = 0; index < buttons.Length; index++)
+            {
+                Button button = buttons[index];
+                if (IsIconOnlyButton(button))
+                {
+                    continue;
+                }
+
+                bool hasText = button.GetComponentInChildren<Text>(true) != null
+                    || button.GetComponentInChildren<TMP_Text>(true) != null;
+                if (hasText)
+                {
+                    ApplyGeneralButtonStyle(button, background);
+                }
+            }
         }
 
         [MenuItem("Cutrium/Setup/Apply Barrier Preview Only")]
@@ -948,7 +1054,7 @@ namespace Cutrium.Editor.Setup
         {
             // A broad presentation rerun must not restore the old three
             // placeholder landmarks over the real first-twelve catalog.
-            return FirstTwelveLandmarkContent.CreateOrUpdateAssets();
+            return MainEarthLandmarkContent.CreateOrUpdateAssets();
         }
 
         private static LandmarkDefinition GetOrCreateLandmark(
@@ -991,7 +1097,7 @@ namespace Cutrium.Editor.Setup
 
         private static LandmarkDefinition[] ReloadLandmarks()
         {
-            return FirstTwelveLandmarkContent.CreateOrUpdateAssets();
+            return MainEarthLandmarkContent.CreateOrUpdateAssets();
         }
 
         private static ProgressSprites LoadProgressSprites()
@@ -1038,11 +1144,17 @@ namespace Cutrium.Editor.Setup
         {
             EnsureUiSpriteImportSettings(FreezeSkillPath);
             EnsureUiSpriteImportSettings(InstantBarrierSkillPath);
-            EnsureUiSpriteImportSettings(MockSkillPath);
+            EnsureUiSpriteImportSettings(GravityWellSkillPath);
             return new SkillAssets(
                 LoadSingleSprite(FreezeSkillPath),
                 LoadSingleSprite(InstantBarrierSkillPath),
-                LoadSingleSprite(MockSkillPath));
+                LoadSingleSprite(GravityWellSkillPath));
+        }
+
+        internal static Sprite LoadUiSpriteForSetup(string path)
+        {
+            EnsureUiSpriteImportSettings(path);
+            return LoadSingleSprite(path);
         }
 
         private static Sprite LoadSingleSprite(string path)
@@ -1172,6 +1284,11 @@ namespace Cutrium.Editor.Setup
                 controller,
                 powerHud,
                 LoadSkillAssets());
+            ConfigureGravityWellCue(
+                boardFrame,
+                controller,
+                LoadSingleSprite(GravityWellSkillPath));
+            ConfigureFeedbackReadabilityForSetup(safeArea);
             RectTransform grainFlightRoot = ConfigureGrainFlightRoot(safeArea);
 
             ConfigureLandmarkLayer(
@@ -1207,6 +1324,7 @@ namespace Cutrium.Editor.Setup
             capturePresenter.RefreshNow();
             landmarkPresenter.RefreshNow();
             sandProgressPresenter.RefreshNow();
+            ApplyGeneralButtonStylesForSetup(root);
 
             EditorUtility.SetDirty(controller);
             EditorUtility.SetDirty(barrierPresenter);
@@ -1372,7 +1490,7 @@ namespace Cutrium.Editor.Setup
             VerticalLayoutGroup contentColumn =
                 GetOrAddComponent<VerticalLayoutGroup>(contentRect.gameObject);
             contentColumn.padding = new RectOffset(0, 0, 0, 0);
-            contentColumn.spacing = 4f;
+            contentColumn.spacing = 6f;
             contentColumn.childAlignment = TextAnchor.UpperCenter;
             contentColumn.childControlWidth = true;
             contentColumn.childControlHeight = true;
@@ -1386,14 +1504,14 @@ namespace Cutrium.Editor.Setup
             Text titleText = ConfigureText(
                 titleRect,
                 "Landmark",
-                50,
+                56,
                 TextAnchor.LowerCenter,
                 new Color(0.99f, 0.96f, 0.9f, 1f));
             titleText.fontStyle = FontStyle.Bold;
             LayoutElement titleLayout =
                 GetOrAddComponent<LayoutElement>(titleRect.gameObject);
-            titleLayout.minHeight = 68f;
-            titleLayout.preferredHeight = 68f;
+            titleLayout.minHeight = 76f;
+            titleLayout.preferredHeight = 76f;
             titleLayout.flexibleHeight = 0f;
 
             RectTransform sectorRect = GetOrCreateUiChild(contentRect, "Sector");
@@ -1403,13 +1521,13 @@ namespace Cutrium.Editor.Setup
             Text sectorText = ConfigureText(
                 sectorRect,
                 "Sector",
-                26,
+                30,
                 TextAnchor.UpperCenter,
                 new Color(0.85f, 0.78f, 0.62f, 0.92f));
             LayoutElement sectorLayout =
                 GetOrAddComponent<LayoutElement>(sectorRect.gameObject);
-            sectorLayout.minHeight = 36f;
-            sectorLayout.preferredHeight = 36f;
+            sectorLayout.minHeight = 42f;
+            sectorLayout.preferredHeight = 42f;
             sectorLayout.flexibleHeight = 0f;
 
             RectTransform descriptionRect = GetOrCreateUiChild(
@@ -1421,15 +1539,15 @@ namespace Cutrium.Editor.Setup
             Text descriptionText = ConfigureText(
                 descriptionRect,
                 "Description",
-                28,
+                32,
                 TextAnchor.UpperCenter,
                 new Color(0.9f, 0.89f, 0.86f, 0.9f));
             descriptionText.horizontalOverflow = HorizontalWrapMode.Wrap;
             descriptionText.verticalOverflow = VerticalWrapMode.Truncate;
             LayoutElement descriptionLayout =
                 GetOrAddComponent<LayoutElement>(descriptionRect.gameObject);
-            descriptionLayout.minHeight = 140f;
-            descriptionLayout.preferredHeight = 180f;
+            descriptionLayout.minHeight = 160f;
+            descriptionLayout.preferredHeight = 210f;
             descriptionLayout.flexibleHeight = 1f;
 
             // The stats line reuses the existing CompleteText element rather
@@ -1448,7 +1566,7 @@ namespace Cutrium.Editor.Setup
             statsRect.offsetMin = Vector2.zero;
             statsRect.offsetMax = Vector2.zero;
             Text statsText = completeTextTransform.GetComponent<Text>();
-            statsText.fontSize = 26;
+            statsText.fontSize = 30;
             statsText.fontStyle = FontStyle.Normal;
             statsText.alignment = TextAnchor.MiddleCenter;
             statsText.color = new Color(0.82f, 0.86f, 0.88f, 0.85f);
@@ -1462,21 +1580,13 @@ namespace Cutrium.Editor.Setup
                 completionOverlay,
                 "RetryButton");
             var retryRect = (RectTransform)retryTransform;
-            retryRect.anchorMin = new Vector2(0.16f, 0.02f);
-            retryRect.anchorMax = new Vector2(0.44f, 0.095f);
-            retryRect.pivot = new Vector2(0.5f, 0.5f);
-            retryRect.offsetMin = Vector2.zero;
-            retryRect.offsetMax = Vector2.zero;
+            ConfigureFixedCompletionButton(retryRect, -160f);
             CanvasGroup retryGroup =
                 GetOrAddComponent<CanvasGroup>(retryTransform.gameObject);
 
             Transform nextTransform = RequireChild(completionOverlay, "NextButton");
             var nextRect = (RectTransform)nextTransform;
-            nextRect.anchorMin = new Vector2(0.56f, 0.02f);
-            nextRect.anchorMax = new Vector2(0.84f, 0.095f);
-            nextRect.pivot = new Vector2(0.5f, 0.5f);
-            nextRect.offsetMin = Vector2.zero;
-            nextRect.offsetMax = Vector2.zero;
+            ConfigureFixedCompletionButton(nextRect, 160f);
             CanvasGroup nextGroup =
                 GetOrAddComponent<CanvasGroup>(nextTransform.gameObject);
 
@@ -2278,7 +2388,7 @@ namespace Cutrium.Editor.Setup
             EditorUtility.SetDirty(presenter);
         }
 
-        // SkillRow owns its own Freeze/Instant/Mock GameObjects outright --
+        // SkillRow owns its own Freeze/Instant/Gravity GameObjects outright --
         // it does NOT reparent Milestone6SceneSetup's PowerControls buttons
         // (an earlier version did, but that made re-running this pass
         // non-idempotent: PowerControls' own GetOrCreateUiChild lookup no
@@ -2370,18 +2480,20 @@ namespace Cutrium.Editor.Setup
                 instantCharges);
             instantRoot.SetSiblingIndex(1);
 
-            RectTransform mockRoot = GetOrCreateUiChild(skillRow, "MockSkillButton");
-            mockRoot.gameObject.SetActive(true);
-            Button mockButton = GetOrAddComponent<Button>(mockRoot.gameObject);
-            mockButton.interactable = false;
-            Text mockCharges = GetOrCreateSkillBadgeText(mockRoot);
+            RectTransform gravityRoot = GetOrCreateUiChild(
+                skillRow,
+                "GravityWellButton");
+            gravityRoot.gameObject.SetActive(true);
+            Button gravityButton = GetOrAddComponent<Button>(
+                gravityRoot.gameObject);
+            Text gravityCharges = GetOrCreateSkillBadgeText(gravityRoot);
             ConfigureSkillSlot(
                 skillRow,
-                mockRoot,
-                skillAssets.Mock,
-                mockButton,
-                mockCharges);
-            mockRoot.SetSiblingIndex(2);
+                gravityRoot,
+                skillAssets.Gravity,
+                gravityButton,
+                gravityCharges);
+            gravityRoot.SetSiblingIndex(2);
 
             presenter.Configure(
                 controller,
@@ -2390,10 +2502,13 @@ namespace Cutrium.Editor.Setup
                 freezeCharges,
                 instantRoot.gameObject,
                 instantButton,
-                instantCharges);
+                instantCharges,
+                gravityRoot.gameObject,
+                gravityButton,
+                gravityCharges);
 
             EditorUtility.SetDirty(skillLayout);
-            EditorUtility.SetDirty(mockButton);
+            EditorUtility.SetDirty(gravityButton);
             EditorUtility.SetDirty(presenter);
         }
 
@@ -2450,6 +2565,261 @@ namespace Cutrium.Editor.Setup
 
             EditorUtility.SetDirty(layout);
             EditorUtility.SetDirty(image);
+        }
+
+        private static void ConfigureGravityWellCue(
+            RectTransform boardFrame,
+            FirstPlayableController controller,
+            Sprite gravitySprite)
+        {
+            RectTransform cueRoot = GetOrCreateUiChild(
+                boardFrame,
+                "GravityWellCue");
+            cueRoot.anchorMin = new Vector2(0.5f, 0.5f);
+            cueRoot.anchorMax = new Vector2(0.5f, 0.5f);
+            cueRoot.pivot = new Vector2(0.5f, 0.5f);
+            cueRoot.anchoredPosition = Vector2.zero;
+            cueRoot.localScale = Vector3.one;
+            cueRoot.gameObject.SetActive(true);
+            cueRoot.SetAsLastSibling();
+
+            Image staleRootImage = cueRoot.GetComponent<Image>();
+            if (staleRootImage != null)
+            {
+                UnityEngine.Object.DestroyImmediate(staleRootImage);
+            }
+
+            RectTransform rangeRect = GetOrCreateUiChild(
+                cueRoot,
+                "Range");
+            StretchToParent(rangeRect);
+            GravityWellRangeGraphic rangeGraphic =
+                GetOrAddComponent<GravityWellRangeGraphic>(
+                    rangeRect.gameObject);
+            rangeGraphic.ConfigureForSetup(
+                new Color(1f, 0.68f, 0.18f, 0.9f),
+                6f,
+                96);
+            rangeRect.SetAsFirstSibling();
+
+            RectTransform iconRoot = GetOrCreateUiChild(
+                cueRoot,
+                "Icon");
+            iconRoot.anchorMin = new Vector2(0.5f, 0.5f);
+            iconRoot.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRoot.pivot = new Vector2(0.5f, 0.5f);
+            iconRoot.anchoredPosition = Vector2.zero;
+            iconRoot.sizeDelta = new Vector2(92f, 92f);
+            iconRoot.localScale = Vector3.one;
+            iconRoot.SetAsLastSibling();
+
+            Image cueImage = GetOrAddComponent<Image>(iconRoot.gameObject);
+            cueImage.sprite = gravitySprite;
+            cueImage.type = Image.Type.Simple;
+            cueImage.preserveAspect = true;
+            cueImage.color = new Color(1f, 1f, 1f, 0.9f);
+            cueImage.raycastTarget = false;
+
+            LayoutElement layout = GetOrAddComponent<LayoutElement>(
+                cueRoot.gameObject);
+            layout.ignoreLayout = true;
+            GravityWellPresenter presenter =
+                GetOrAddComponent<GravityWellPresenter>(cueRoot.gameObject);
+            presenter.ConfigureForSetup(
+                controller,
+                boardFrame,
+                cueRoot,
+                iconRoot,
+                cueImage,
+                rangeGraphic);
+
+            EditorUtility.SetDirty(cueImage);
+            EditorUtility.SetDirty(rangeGraphic);
+            EditorUtility.SetDirty(layout);
+            EditorUtility.SetDirty(presenter);
+        }
+
+        private static void ApplyGeneralButtonStyle(
+            Button button,
+            Sprite background)
+        {
+            Image image = button.GetComponent<Image>();
+            if (image == null)
+            {
+                image = GetOrAddComponent<Image>(button.gameObject);
+            }
+
+            image.sprite = background;
+            image.type = Image.Type.Sliced;
+            image.preserveAspect = false;
+            image.color = Color.white;
+            button.targetGraphic = image;
+
+            AspectRatioFitter aspectFitter =
+                GetOrAddComponent<AspectRatioFitter>(button.gameObject);
+            aspectFitter.aspectMode =
+                AspectRatioFitter.AspectMode.WidthControlsHeight;
+            aspectFitter.aspectRatio = background.rect.width
+                / background.rect.height;
+
+            Text[] legacyLabels = button.GetComponentsInChildren<Text>(true);
+            for (int index = 0; index < legacyLabels.Length; index++)
+            {
+                ConfigureGeneralButtonLabel(legacyLabels[index]);
+            }
+
+            TMP_Text[] tmpLabels =
+                button.GetComponentsInChildren<TMP_Text>(true);
+            for (int index = 0; index < tmpLabels.Length; index++)
+            {
+                ConfigureGeneralButtonLabel(tmpLabels[index]);
+            }
+
+            EditorUtility.SetDirty(image);
+            EditorUtility.SetDirty(aspectFitter);
+            EditorUtility.SetDirty(button);
+        }
+
+        private static void ConfigureGeneralButtonLabel(Text label)
+        {
+            ConfigureGeneralButtonLabelRect(label.rectTransform);
+            label.color = Color.white;
+            label.fontStyle = FontStyle.Bold;
+            label.fontSize = 40;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.resizeTextForBestFit = true;
+            label.resizeTextMinSize = 20;
+            label.resizeTextMaxSize = 40;
+            label.raycastTarget = false;
+            ConfigureButtonTextShadow(label);
+            EditorUtility.SetDirty(label);
+        }
+
+        private static void ConfigureGeneralButtonLabel(TMP_Text label)
+        {
+            ConfigureGeneralButtonLabelRect(label.rectTransform);
+            label.color = Color.white;
+            label.fontStyle |= FontStyles.Bold;
+            label.fontSize = 40f;
+            label.alignment = TextAlignmentOptions.Center;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 20f;
+            label.fontSizeMax = 40f;
+            label.raycastTarget = false;
+            ConfigureButtonTextShadow(label);
+            EditorUtility.SetDirty(label);
+        }
+
+        private static void ConfigureGeneralButtonLabelRect(
+            RectTransform labelRect)
+        {
+            // The artwork's readable inner panel is slightly right/up of the
+            // full PNG bounds because the left/bottom painted shadow is part
+            // of the source image. These normalized insets center the label
+            // on the visible face rather than on the transparent sprite rect.
+            labelRect.anchorMin = new Vector2(0.08f, 0.08f);
+            labelRect.anchorMax = new Vector2(0.98f, 0.96f);
+            labelRect.pivot = new Vector2(0.5f, 0.5f);
+            labelRect.offsetMin = new Vector2(0f, 8f);
+            labelRect.offsetMax = new Vector2(0f, 8f);
+            labelRect.localScale = Vector3.one;
+        }
+
+        private static void ConfigureFeedbackReadabilityForSetup(
+            Transform safeArea)
+        {
+            Transform cueTransform = safeArea.Find("FeedbackOverlay/CueLabel");
+            if (cueTransform != null)
+            {
+                RectTransform cueRect = (RectTransform)cueTransform;
+                cueRect.anchorMin = new Vector2(0.04f, 0.37f);
+                cueRect.anchorMax = new Vector2(0.96f, 0.63f);
+                cueRect.offsetMin = Vector2.zero;
+                cueRect.offsetMax = Vector2.zero;
+                Text cueText = cueTransform.GetComponent<Text>();
+                if (cueText != null)
+                {
+                    cueText.fontSize = 76;
+                    cueText.resizeTextForBestFit = true;
+                    cueText.resizeTextMinSize = 40;
+                    cueText.resizeTextMaxSize = 76;
+                    ConfigureButtonTextShadow(cueText);
+                    EditorUtility.SetDirty(cueText);
+                }
+            }
+
+            Transform failureTransform = safeArea.Find(
+                "CutLimitFailureOverlay/GameOverPanelBounds/" +
+                "GameOverPanel/FailureText");
+            if (failureTransform != null)
+            {
+                RectTransform failureRect = (RectTransform)failureTransform;
+                failureRect.anchorMin = new Vector2(0.14f, 0.5f);
+                failureRect.anchorMax = new Vector2(0.86f, 0.5f);
+                failureRect.pivot = new Vector2(0.5f, 0.5f);
+                failureRect.anchoredPosition = new Vector2(0f, 50f);
+                failureRect.sizeDelta = new Vector2(0f, 210f);
+                Text failureText = failureTransform.GetComponent<Text>();
+                if (failureText != null)
+                {
+                    failureText.fontSize = 86;
+                    failureText.resizeTextForBestFit = true;
+                    failureText.resizeTextMinSize = 52;
+                    failureText.resizeTextMaxSize = 86;
+                    ConfigureButtonTextShadow(failureText);
+                    EditorUtility.SetDirty(failureText);
+                }
+            }
+        }
+
+        private static void ConfigureGeneralActionButtonLayoutForSetup(
+            Transform safeArea)
+        {
+            Transform completion = RequireChild(
+                safeArea,
+                "LevelCompleteOverlay");
+            ConfigureFixedCompletionButton(
+                (RectTransform)RequireChild(completion, "RetryButton"),
+                -160f);
+            ConfigureFixedCompletionButton(
+                (RectTransform)RequireChild(completion, "NextButton"),
+                160f);
+
+            // The failure actions use square, bespoke icon art and are
+            // positioned relative to GameOverPanel by ConfigureIdentityHud.
+            // Only the completion screen uses the shared wide action frame.
+        }
+
+        private static void ConfigureFixedCompletionButton(
+            RectTransform buttonRect,
+            float horizontalPosition)
+        {
+            buttonRect.anchorMin = new Vector2(0.5f, 0.065f);
+            buttonRect.anchorMax = new Vector2(0.5f, 0.065f);
+            buttonRect.pivot = new Vector2(0.5f, 0.5f);
+            buttonRect.anchoredPosition = new Vector2(
+                horizontalPosition,
+                0f);
+            buttonRect.sizeDelta = new Vector2(280f, 115f);
+        }
+
+        private static void ConfigureButtonTextShadow(Graphic label)
+        {
+            Shadow shadow = GetOrAddComponent<Shadow>(label.gameObject);
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.72f);
+            shadow.effectDistance = new Vector2(2f, -2f);
+            shadow.useGraphicAlpha = true;
+            EditorUtility.SetDirty(shadow);
+        }
+
+        private static bool IsIconOnlyButton(Button button)
+        {
+            string name = button.gameObject.name;
+            return name == "FreezePulseButton"
+                || name == "InstantBarrierButton"
+                || name == "GravityWellButton"
+                || name == "SettingsButton"
+                || name == "HudBlockerButton";
         }
 
         private static Text GetOrCreateSkillBadgeText(RectTransform slotRoot)
@@ -3068,12 +3438,12 @@ namespace Cutrium.Editor.Setup
                 || landmarkPresenter.CompletionDescriptionText == null
                 || landmarkPresenter.CompletionSectorText == null
                 || landmarkPresenter.Landmarks.Count
-                    != FirstTwelveGameplayProgression.LevelCount)
+                    != MainGameplayProgression.LevelCount)
             {
                 throw new InvalidOperationException(
                     "LandmarkRevealPresenter has a missing or mismatched " +
                     "serialized reference, or is not wired to the complete " +
-                    "first-twelve landmark catalog.");
+                    "first-24 landmark catalog.");
             }
 
             for (int index = 0; index < landmarks.Length; index++)
@@ -3199,6 +3569,25 @@ namespace Cutrium.Editor.Setup
 
             ValidateBottomHudSkillRow(
                 (RectTransform)RequireChild(bottomRow, "SkillRow"));
+
+            GravityWellPresenter[] gravityPresenters = root
+                .GetComponentsInChildren<GravityWellPresenter>(true);
+            if (gravityPresenters.Length != 1
+                || gravityPresenters[0].Controller == null
+                || gravityPresenters[0].BoardFrame == null
+                || !gravityPresenters[0].CueRoot.gameObject.activeSelf
+                || gravityPresenters[0].CueImage == null
+                || gravityPresenters[0].IconRoot == null
+                || gravityPresenters[0].RangeGraphic == null)
+            {
+                throw new InvalidOperationException(
+                    "Chapter 2 requires one fully wired Gravity Well cue.");
+            }
+
+            ValidateGeneralButtonStyle(
+                RequireChild(completion, "RetryButton").GetComponent<Button>());
+            ValidateGeneralButtonStyle(
+                RequireChild(completion, "NextButton").GetComponent<Button>());
 
             Transform retryButtonTransform = RequireChild(
                 bottomHud,
@@ -3393,10 +3782,10 @@ namespace Cutrium.Editor.Setup
         {
             Transform freeze = RequireChild(skillRow, "FreezePulseButton");
             Transform instant = RequireChild(skillRow, "InstantBarrierButton");
-            Transform mock = RequireChild(skillRow, "MockSkillButton");
+            Transform gravity = RequireChild(skillRow, "GravityWellButton");
             if (!freeze.gameObject.activeSelf
                 || !instant.gameObject.activeSelf
-                || !mock.gameObject.activeSelf)
+                || !gravity.gameObject.activeSelf)
             {
                 throw new InvalidOperationException(
                     "SkillRow must show all three skill slots by default.");
@@ -3408,20 +3797,75 @@ namespace Cutrium.Editor.Setup
                     instant.GetComponent<Image>()?.sprite)
                     != InstantBarrierSkillPath
                 || AssetDatabase.GetAssetPath(
-                    mock.GetComponent<Image>()?.sprite) != MockSkillPath)
+                    gravity.GetComponent<Image>()?.sprite)
+                    != GravityWellSkillPath)
             {
                 throw new InvalidOperationException(
                     "SkillRow slots are not wired to their imported skill " +
                     "artwork.");
             }
 
-            Button mockButton = mock.GetComponent<Button>();
-            if (mockButton == null || mockButton.interactable)
+            Button gravityButton = gravity.GetComponent<Button>();
+            if (gravityButton == null)
             {
                 throw new InvalidOperationException(
-                    "The placeholder third skill slot must stay disabled " +
-                    "until a real skill is assigned to it.");
+                    "The Gravity Well skill slot requires a Button.");
             }
+        }
+
+        private static void ValidateGeneralButtonStyle(Button button)
+        {
+            Image image = button != null ? button.GetComponent<Image>() : null;
+            Graphic label = button != null
+                ? button.GetComponentInChildren<Text>(true)
+                : null;
+            if (label == null && button != null)
+            {
+                label = button.GetComponentInChildren<TMP_Text>(true);
+            }
+
+            if (button == null
+                || image == null
+                || image.type != Image.Type.Sliced
+                || AssetDatabase.GetAssetPath(image.sprite)
+                    != GeneralButtonBackgroundPath
+                || label == null
+                || !IsGeneralButtonLabelConfigured(label)
+                || label.GetComponent<Shadow>() == null
+                || button.GetComponent<AspectRatioFitter>() == null
+                || button.GetComponent<AspectRatioFitter>().aspectMode
+                    != AspectRatioFitter.AspectMode.WidthControlsHeight
+                || !Mathf.Approximately(
+                    button.GetComponent<AspectRatioFitter>().aspectRatio,
+                    512f / 210f))
+            {
+                throw new InvalidOperationException(
+                    "Text buttons must use GeneralButtonBackground with a " +
+                    "centered white shadowed label.");
+            }
+        }
+
+        private static bool IsGeneralButtonLabelConfigured(Graphic label)
+        {
+            bool centered = label is Text legacy
+                ? legacy.alignment == TextAnchor.MiddleCenter
+                : label is TMP_Text tmp
+                    && tmp.alignment == TextAlignmentOptions.Center;
+            bool readableSize = label is Text legacyText
+                ? legacyText.fontSize == 40
+                    && legacyText.resizeTextForBestFit
+                    && legacyText.resizeTextMaxSize == 40
+                : label is TMP_Text tmpText
+                    && tmpText.enableAutoSizing
+                    && Mathf.Approximately(tmpText.fontSizeMax, 40f);
+            RectTransform rect = label.rectTransform;
+            return centered
+                && readableSize
+                && label.color == Color.white
+                && rect.anchorMin == new Vector2(0.08f, 0.08f)
+                && rect.anchorMax == new Vector2(0.98f, 0.96f)
+                && rect.offsetMin == new Vector2(0f, 8f)
+                && rect.offsetMax == new Vector2(0f, 8f);
         }
 
         private static void ValidateTopHudBoardSeparation(
@@ -3683,7 +4127,7 @@ namespace Cutrium.Editor.Setup
             VerticalLayoutGroup column =
                 GetOrAddComponent<VerticalLayoutGroup>(content.gameObject);
             column.padding = new RectOffset(0, 0, 0, 0);
-            column.spacing = 4f;
+            column.spacing = 6f;
             column.childAlignment = TextAnchor.UpperCenter;
             column.childControlWidth = true;
             column.childControlHeight = true;
@@ -3694,45 +4138,45 @@ namespace Cutrium.Editor.Setup
             ConfigureCompletionText(
                 title,
                 font,
-                50,
-                28,
+                56,
+                32,
                 TextAnchor.MiddleCenter,
                 1f);
             title.fontStyle = FontStyle.Bold;
             ConfigureCompletionLayoutElement(
                 title.rectTransform,
-                68f,
-                68f,
+                76f,
+                76f,
                 0f);
 
             Text sector = RequireText(content, "Sector");
             ConfigureCompletionText(
                 sector,
                 font,
-                26,
-                18,
+                30,
+                20,
                 TextAnchor.MiddleCenter,
                 1f);
             ConfigureCompletionLayoutElement(
                 sector.rectTransform,
-                36f,
-                36f,
+                42f,
+                42f,
                 0f);
 
             Text description = RequireText(content, "Description");
             ConfigureCompletionText(
                 description,
                 font,
-                28,
-                18,
+                32,
+                20,
                 TextAnchor.UpperCenter,
                 1f);
             description.horizontalOverflow = HorizontalWrapMode.Wrap;
             description.verticalOverflow = VerticalWrapMode.Truncate;
             ConfigureCompletionLayoutElement(
                 description.rectTransform,
-                140f,
-                180f,
+                160f,
+                210f,
                 1f);
 
             Text summary = RequireChild(completionOverlay, "CompleteText")
@@ -3742,8 +4186,8 @@ namespace Cutrium.Editor.Setup
             ConfigureCompletionText(
                 summary,
                 font,
-                26,
-                18,
+                30,
+                20,
                 TextAnchor.MiddleCenter,
                 0.9f);
 
@@ -3753,8 +4197,8 @@ namespace Cutrium.Editor.Setup
             ConfigureCompletionText(
                 retryLabel,
                 font,
-                26,
-                18,
+                40,
+                20,
                 TextAnchor.MiddleCenter,
                 1f);
             Text nextLabel = RequireText(
@@ -3763,8 +4207,8 @@ namespace Cutrium.Editor.Setup
             ConfigureCompletionText(
                 nextLabel,
                 font,
-                26,
-                18,
+                40,
+                20,
                 TextAnchor.MiddleCenter,
                 1f);
 
@@ -3952,16 +4396,16 @@ namespace Cutrium.Editor.Setup
 
         private readonly struct SkillAssets
         {
-            public SkillAssets(Sprite freeze, Sprite instant, Sprite mock)
+            public SkillAssets(Sprite freeze, Sprite instant, Sprite gravity)
             {
                 Freeze = freeze;
                 Instant = instant;
-                Mock = mock;
+                Gravity = gravity;
             }
 
             public Sprite Freeze { get; }
             public Sprite Instant { get; }
-            public Sprite Mock { get; }
+            public Sprite Gravity { get; }
         }
 
         private enum GeneratedPattern

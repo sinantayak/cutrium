@@ -245,6 +245,31 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
+        public void CometAndHeavy_UseDistinctRadiusScaledVisualSizes()
+        {
+            Assert.That(_controller.TryJumpToLevelForDevelopment(13), Is.True);
+            _threat.RefreshNow();
+            float normalSize = _threat.Visual.sizeDelta.x;
+
+            Assert.That(_controller.TryJumpToLevelForDevelopment(16), Is.True);
+            _threat.RefreshNow();
+            float cometSize = _threat.Visual.sizeDelta.x;
+            Assert.That(_controller.Session.Threat.Radius, Is.EqualTo(0.29f));
+
+            Assert.That(_controller.TryJumpToLevelForDevelopment(17), Is.True);
+            _threat.RefreshNow();
+            float heavySize = _threat.Visual.sizeDelta.x;
+            Assert.That(_controller.Session.Threat.Radius, Is.EqualTo(0.52f));
+
+            Assert.That(cometSize, Is.LessThan(normalSize * 0.9f));
+            Assert.That(heavySize, Is.GreaterThan(normalSize * 1.4f));
+            Assert.That(cometSize / normalSize,
+                Is.EqualTo(0.29f / 0.35f).Within(0.001f));
+            Assert.That(heavySize / normalSize,
+                Is.EqualTo(0.52f / 0.35f).Within(0.001f));
+        }
+
+        [Test]
         public void ThreatTrail_IsVisibleAndPointsOppositeMotion()
         {
             _threat.RefreshNow();

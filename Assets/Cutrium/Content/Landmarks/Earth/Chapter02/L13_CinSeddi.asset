@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L13_CinSeddi
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: cin-seddi
+  _displayTitle: "\xC7in Seddi"
+  _shortDescription: "\xC7in Seddi tek ve kesintisiz bir duvar de\u011Fil, farkl\u0131
+    hanedanlar\u0131n y\xFCzy\u0131llar boyunca kurdu\u011Fu geni\u015F bir savunma
+    a\u011F\u0131d\u0131r. Duvarlar, ge\xE7itler ve g\xF6zetleme kuleleri binlerce
+    kilometrelik bir sistem olu\u015Fturur. B\xF6lgeye g\xF6re s\u0131k\u0131\u015Ft\u0131r\u0131lm\u0131\u015F
+    toprak, ta\u015F ya da tu\u011Fla kullan\u0131lan kulelerde duman, ate\u015F
+    ve bayrak sinyalleriyle haberler h\u0131zla aktar\u0131l\u0131rd\u0131."
+  _sector: "\xC7\u0130N"
+  _artwork: {fileID: 8068504576610999302, guid: 2639107870faa1c489a99e330fa563d2, type: 3}

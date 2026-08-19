@@ -66,6 +66,8 @@ namespace Cutrium.PlayModeTests
             Assert.That(counter.text, Is.EqualTo("CUT: 1/1"));
             Assert.That(failure.alpha, Is.EqualTo(1f));
             Assert.That(failure.blocksRaycasts, Is.True);
+            Assert.That(failureText.text,
+                Is.EqualTo("Watch an AD\nto Continue!"));
 
             retry.onClick.Invoke();
             presenter.RefreshNow(0f);

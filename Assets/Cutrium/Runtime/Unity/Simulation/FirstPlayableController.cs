@@ -85,6 +85,8 @@ namespace Cutrium.Unity.Simulation
         private IReadOnlyList<CoreFunLevelDefinition> _activeLevelDefinitions;
         private bool _completionReported;
 
+        public bool GravityWellTargeting { get; private set; }
+
         public ThreatMotionSession Session { get; private set; }
 
         public bool SimulationHeld { get; private set; }
@@ -214,6 +216,7 @@ namespace Cutrium.Unity.Simulation
             if (_barrierGesture != null)
             {
                 _barrierGesture.IntentCommitted += OnBarrierIntentCommitted;
+                _barrierGesture.PointCommitted += OnPointCommitted;
             }
         }
 
@@ -222,6 +225,7 @@ namespace Cutrium.Unity.Simulation
             if (_barrierGesture != null)
             {
                 _barrierGesture.IntentCommitted -= OnBarrierIntentCommitted;
+                _barrierGesture.PointCommitted -= OnPointCommitted;
             }
         }
 
@@ -240,6 +244,11 @@ namespace Cutrium.Unity.Simulation
         public void SetSimulationHold(bool held)
         {
             SimulationHeld = held;
+            if (held && GravityWellTargeting)
+            {
+                CancelGravityWellTargeting();
+            }
+
             if (_barrierGesture != null)
             {
                 _barrierGesture.enabled = !held;
@@ -376,6 +385,49 @@ namespace Cutrium.Unity.Simulation
             return armed;
         }
 
+        public bool ToggleGravityWellTargeting()
+        {
+            InitializeOnce();
+            if (GravityWellTargeting)
+            {
+                CancelGravityWellTargeting();
+                return false;
+            }
+
+            if (!Session.CanActivateGravityWell || _barrierGesture == null)
+            {
+                return false;
+            }
+
+            GravityWellTargeting = true;
+            _barrierGesture.SetPointTargeting(true);
+            return true;
+        }
+
+        public void CancelGravityWellTargeting()
+        {
+            GravityWellTargeting = false;
+            _barrierGesture?.SetPointTargeting(false);
+        }
+
+        public bool TryPlaceGravityWell(LogicalPoint position)
+        {
+            InitializeOnce();
+            if (!GravityWellTargeting)
+            {
+                return false;
+            }
+
+            bool activated = Session.TryActivateGravityWell(position);
+            if (activated)
+            {
+                CancelGravityWellTargeting();
+            }
+
+            DispatchFeedbackEvents();
+            return activated;
+        }
+
         public int FreezePulseChargesRemaining =>
             Session?.FreezePulseChargesRemaining ?? 0;
 
@@ -387,6 +439,19 @@ namespace Cutrium.Unity.Simulation
 
         public bool InstantBarrierArmed =>
             Session?.InstantBarrierArmed ?? false;
+
+        public int GravityWellChargesRemaining =>
+            Session?.GravityWellChargesRemaining ?? 0;
+
+        public float GravityWellRemainingSeconds =>
+            Session?.GravityWellRemainingSeconds ?? 0f;
+
+        public LogicalPoint? GravityWellPosition =>
+            Session?.GravityWellPosition;
+
+        public bool GravityWellActive => Session?.GravityWellActive ?? false;
+
+        public float GravityWellRadius => Session?.GravityWellRadius ?? 0f;
 
         public bool HasCutLimit => Session?.HasCutLimit ?? false;
 
@@ -583,7 +648,7 @@ namespace Cutrium.Unity.Simulation
             if (HasLegacyThreeLevelGate(_levelDefinitions))
             {
                 _activeLevelDefinitions =
-                    FirstTwelveGameplayProgression.CreateDefinitions();
+                    MainGameplayProgression.CreateDefinitions();
                 return BuildCatalog(_activeLevelDefinitions);
             }
 
@@ -659,6 +724,7 @@ namespace Cutrium.Unity.Simulation
 
         private void LoadCurrentLevel()
         {
+            GravityWellTargeting = false;
             Session = new ThreatMotionSession(
                 CurrentLevelConfiguration.ThreatMotions,
                 CurrentLevelConfiguration.Barrier,
@@ -699,6 +765,11 @@ namespace Cutrium.Unity.Simulation
         private void OnBarrierIntentCommitted(BarrierIntent intent)
         {
             SubmitBarrierIntent(intent);
+        }
+
+        private void OnPointCommitted(LogicalPoint point)
+        {
+            TryPlaceGravityWell(point);
         }
     }
 }

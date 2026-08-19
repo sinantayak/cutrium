@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04a1c6c33d735cb448279d43f7813601, type: 3}
+  m_Name: L17_EyfelKulesi
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
+  _landmarkId: eyfel-kulesi
+  _displayTitle: Eyfel Kulesi
+  _shortDescription: "1889 D\xFCnya Fuar\u0131 i\xE7in in\u015Fa edilen Eyfel Kulesi
+    ba\u015Flang\u0131\xE7ta ge\xE7ici bir yap\u0131 olarak tasarlanm\u0131\u015Ft\u0131.
+    Bir zamanlar ele\u015Ftirilen demir kafes, bug\xFCn Paris\u2019in en g\xFC\xE7l\xFC
+    simgesidir. Yakla\u015F\u0131k 300 metrelik kule, radyo deneyleri ve haberle\u015Fme
+    antenleri sayesinde kullan\u0131m de\u011Ferini kan\u0131tlayarak planlanan s\xF6k\xFCl\xFC\u015Ften
+    kurtuldu."
+  _sector: Paris / FRANSA
+  _artwork: {fileID: -3723603176774370489, guid: 6db472337166c22479c597f26b402b44, type: 3}

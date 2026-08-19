@@ -1488,3 +1488,63 @@ trail texture is required. The Hunter material is created and released by
 `ThreatPresenter` from a project-owned Resources shader; no scene object or
 extra UI layer is created. A future Hunter+Pulse kind must make an explicit
 visual choice when that behavior is implemented.
+
+## ADR-036 — Chapter 2 Uses Room-Scoped Gravity and Parameterized Motion
+
+**Status:** Accepted for Chapter 2 playtesting.
+
+**Context:**
+Chapter 2 must add variety without making the relaxing 20–45 second loop feel
+punishing. Comet, Heavy, and Gravity Well were approved, while the presentation
+still intentionally has only Normal, Hunter, and Pulse threat body identities.
+The third skill also needs a touch-safe placement flow that cannot accidentally
+create a barrier or spend a charge on invalid input.
+
+**Decision:**
+Author Levels 13–24 in a separate chapter source and combine the approved
+prefix through `MainGameplayProgression`. Implement Comet as a smaller, faster
+Normal configuration and Heavy as a larger, slower Normal configuration; both
+therefore use the existing Normal presentation. Gravity Well enters an explicit
+point-targeting input state, consumes a charge only when the chosen point lies
+in an active room, and applies bounded deterministic steering without changing
+speed, radius, or position. Each simulation tick resolves the active room that
+contains the well and affects only nearby threats in that same room, so locked
+barriers block its influence naturally.
+
+Keep Gravity configuration explicit beside Freeze and Instant rather than
+introducing a generic power framework. Display the owner-supplied Gravity icon
+in the third HUD slot and reuse it as a translucent, presentation-only board
+cue. Apply `GeneralButtonBackground.png` as a sliced sprite to text buttons and
+add a shadow to their labels; icon-only skill/settings buttons retain their own
+artwork.
+
+**Consequences:**
+Chapter 2 adds speed, size, count, and spatial-control variety without a new
+collision system or threat visual category. Old five-argument power
+constructors and zero-Gravity serialized content remain compatible. The
+24-level catalog, twelve new Earth definitions, scene references, and sprite
+import settings must be materialized by the idempotent Chapter 2 Editor setup.
+
+## ADR-037 — Game Over Presentation Keeps Rewarded Continue Optional
+
+**Status:** Accepted for the current visual pass.
+
+**Context:**
+The owner supplied a complete `GameOverPanel.png` frame plus separate Retry and
+Watch AD icon artwork. The project does not yet contain an approved advertising
+SDK or rewarded-ad service.
+
+**Decision:**
+Build the failure screen as a responsive presentation hierarchy inside the
+existing full-safe-area failure overlay. Preserve the panel's native aspect,
+position the prompt and action captions relative to that panel, and keep the
+existing Retry action wired to the level restart flow. Serialize a separate
+Watch AD button reference on `GameplayIdentityHudPresenter`, but leave it
+non-interactable and visually undimmed until a real rewarded-ad service owns
+its availability and click behavior.
+
+**Consequences:**
+The requested Game Over composition can be reviewed without inventing ad
+rewards or adding a third-party dependency. A later rewarded-ad integration
+can bind the dedicated button and make the prompt conditional without
+rebuilding the panel or changing gameplay failure logic.
