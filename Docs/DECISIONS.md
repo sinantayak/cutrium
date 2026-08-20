@@ -1548,3 +1548,25 @@ The requested Game Over composition can be reviewed without inventing ad
 rewards or adding a third-party dependency. A later rewarded-ad integration
 can bind the dedicated button and make the prompt conditional without
 rebuilding the panel or changing gameplay failure logic.
+
+## ADR-038 — Gravity Well Uses a Radius-Sized Vortex Cue
+
+**Status:** Accepted for visual playtesting.
+
+**Context:**
+The first Gravity Well presentation combined the skill icon with a procedural
+range ring and fill. The owner supplied a transparent `Vortex.png` effect and
+wants the placed well to read as an effect rather than as another HUD icon.
+
+**Decision:**
+Keep `GravityWellSkill.png` exclusively in the HUD skill slot. At the selected
+board point, display only `Vortex.png`, stretch its square presentation root to
+the gameplay-derived Gravity diameter, rotate it continuously, and apply a
+small scale/alpha pulse. Remove the old center icon and range-ring GameObjects
+from the scene setup. The cue remains a raycast-free presentation element.
+
+**Consequences:**
+The visual footprint still follows the configured logical Gravity radius on
+phones and tablets, while gameplay position, force, duration, collision, and
+room isolation remain unchanged. A focused Editor setup command can replace
+the old cue without rebuilding Chapter 2 content.

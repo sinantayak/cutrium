@@ -37,6 +37,12 @@ namespace Cutrium.Presentation.HUD
         [SerializeField]
         private Text _gravityWellChargesText;
 
+        [SerializeField]
+        private Outline _gravityWellHighlight;
+
+        private static readonly Color GravityTargetingTint =
+            new Color(1f, 0.93f, 0.78f, 1f);
+
         private bool _freezeButtonSubscribed;
         private bool _instantButtonSubscribed;
         private bool _gravityButtonSubscribed;
@@ -60,6 +66,8 @@ namespace Cutrium.Presentation.HUD
         public Button GravityWellButton => _gravityWellButton;
 
         public Text GravityWellChargesText => _gravityWellChargesText;
+
+        public Outline GravityWellHighlight => _gravityWellHighlight;
 
         public void Configure(
             FirstPlayableController controller,
@@ -93,7 +101,8 @@ namespace Cutrium.Presentation.HUD
             Text instantBarrierChargesText,
             GameObject gravityWellRoot,
             Button gravityWellButton,
-            Text gravityWellChargesText)
+            Text gravityWellChargesText,
+            Outline gravityWellHighlight = null)
         {
             UnsubscribeButtons();
             _controller = controller;
@@ -106,6 +115,7 @@ namespace Cutrium.Presentation.HUD
             _gravityWellRoot = gravityWellRoot;
             _gravityWellButton = gravityWellButton;
             _gravityWellChargesText = gravityWellChargesText;
+            _gravityWellHighlight = gravityWellHighlight;
             if (isActiveAndEnabled && Application.isPlaying)
             {
                 SubscribeButtons();
@@ -170,9 +180,15 @@ namespace Cutrium.Presentation.HUD
                 {
                     _gravityWellButton.targetGraphic.color =
                         _controller.GravityWellTargeting
-                            ? new Color(1f, 0.72f, 1f, 1f)
+                            ? GravityTargetingTint
                             : Color.white;
                 }
+            }
+
+            if (_gravityWellHighlight != null)
+            {
+                _gravityWellHighlight.enabled =
+                    _controller.GravityWellTargeting;
             }
 
             if (_gravityWellChargesText != null)

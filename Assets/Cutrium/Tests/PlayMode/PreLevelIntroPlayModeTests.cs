@@ -15,13 +15,14 @@ namespace Cutrium.PlayModeTests
         private const float PastThreshold = 999f;
 
         [UnityTest]
-        public IEnumerator NewLevel_PlaysStagedSequenceAndHoldsSimulation()
+        public IEnumerator LevelEight_ShowsCutAndInstantAndRoutesOnlyHudValues()
         {
             var root = new GameObject("PreLevelIntroTestRoot");
             root.SetActive(false);
             FirstPlayableController controller =
                 root.AddComponent<FirstPlayableController>();
-            controller.ConfigureLevelsForSetup(new[] { Definition() });
+            controller.ConfigureLevelsForSetup(
+                new[] { FirstTwelveGameplayProgression.CreateDefinitions()[7] });
 
             PreLevelIntroPresenter presenter =
                 root.AddComponent<PreLevelIntroPresenter>();
@@ -38,8 +39,10 @@ namespace Cutrium.PlayModeTests
             TMP_Text infoMessageText = TmpText(infoGroup.transform, "Message");
             RectTransform progressDestination =
                 Rect(root.transform, "ProgressDestination");
+            progressDestination.anchoredPosition = new Vector2(0f, -300f);
             RectTransform cutDestination =
                 Rect(root.transform, "CutDestination");
+            cutDestination.anchoredPosition = new Vector2(0f, 300f);
 
             presenter.Configure(
                 controller,
@@ -61,17 +64,42 @@ namespace Cutrium.PlayModeTests
             presenter.RefreshNow(0f);
             Assert.That(threatPresenter.Visible, Is.False);
             Assert.That(controller.SimulationHeld, Is.True);
-            Assert.That(levelText.text, Is.EqualTo("LEVEL 1"));
+            Assert.That(levelText.text, Is.EqualTo("LEVEL 8"));
 
             presenter.RefreshNow(PastThreshold);
-            Assert.That(targetText.text, Is.EqualTo("TARGET 99%"));
+            Assert.That(targetText.text, Is.EqualTo("TARGET 84%"));
 
             presenter.RefreshNow(PastThreshold);
-            presenter.RefreshNow(PastThreshold);
-            Assert.That(infoTitleText.text, Is.EqualTo("1 CUT"));
-            Assert.That(infoMessageText.text, Is.EqualTo("MAKE IT COUNT"));
+            presenter.RefreshNow(0.3f);
+            Assert.That(
+                ((RectTransform)targetGroup.transform).anchoredPosition.y,
+                Is.LessThan(0f));
 
             presenter.RefreshNow(PastThreshold);
+            Assert.That(infoTitleText.text, Is.EqualTo("9 CUTS"));
+            Assert.That(infoMessageText.text, Is.EqualTo("MAKE THEM COUNT"));
+
+            presenter.RefreshNow(PastThreshold);
+            presenter.RefreshNow(0.3f);
+            Assert.That(
+                ((RectTransform)infoGroup.transform).anchoredPosition.y,
+                Is.GreaterThan(0f));
+
+            presenter.RefreshNow(PastThreshold);
+            Assert.That(infoTitleText.text, Is.EqualTo("INSTANT"));
+            Assert.That(
+                infoMessageText.text,
+                Is.EqualTo("SAVE IT FOR A RISKY CUT"));
+            Assert.That(
+                ((RectTransform)infoGroup.transform).anchoredPosition,
+                Is.EqualTo(Vector2.zero));
+
+            presenter.RefreshNow(0.1f);
+            Assert.That(
+                ((RectTransform)infoGroup.transform).anchoredPosition,
+                Is.EqualTo(Vector2.zero));
+            Assert.That(infoGroup.alpha, Is.GreaterThan(0f));
+
             presenter.RefreshNow(PastThreshold);
             Assert.That(threatPresenter.Visible, Is.True);
             Assert.That(controller.SimulationHeld, Is.False);

@@ -269,6 +269,14 @@ namespace Cutrium.PlayModeTests
             Assert.That(gravity.GetComponent<Image>().sprite.name,
                 Is.EqualTo("GravityWellSkill"));
             Assert.That(gravity.GetComponent<Button>().interactable, Is.False);
+            Outline gravityHighlight = gravity.GetComponent<Outline>();
+            Assert.That(gravityHighlight, Is.Not.Null);
+            Assert.That(gravityHighlight.effectColor,
+                Is.EqualTo(new Color(1f, 0.87f, 0.35f, 0.95f)));
+            Assert.That(gravityHighlight.effectDistance,
+                Is.EqualTo(new Vector2(4f, -4f)));
+            Assert.That(gravityHighlight.useGraphicAlpha, Is.True);
+            Assert.That(gravityHighlight.enabled, Is.False);
 
             PowerHudPresenter powerHud = _root
                 .GetComponentInChildren<PowerHudPresenter>(true);
@@ -278,6 +286,8 @@ namespace Cutrium.PlayModeTests
                 Is.SameAs(instant.gameObject));
             Assert.That(powerHud.GravityWellRoot,
                 Is.SameAs(gravity.gameObject));
+            Assert.That(powerHud.GravityWellHighlight,
+                Is.SameAs(gravityHighlight));
         }
 
         [Test]
@@ -291,11 +301,20 @@ namespace Cutrium.PlayModeTests
             Assert.That(gravityPresenters[0].Controller, Is.SameAs(controller));
             Assert.That(gravityPresenters[0].CueRoot.gameObject.activeSelf,
                 Is.True);
-            Assert.That(gravityPresenters[0].CueImage, Is.Not.Null);
-            Assert.That(gravityPresenters[0].IconRoot, Is.Not.Null);
-            Assert.That(gravityPresenters[0].RangeGraphic, Is.Not.Null);
-            Assert.That(gravityPresenters[0].RangeGraphic.raycastTarget,
+            Assert.That(gravityPresenters[0].VortexImage, Is.Not.Null);
+            Assert.That(gravityPresenters[0].VortexRoot, Is.Not.Null);
+            Assert.That(gravityPresenters[0].VortexImage.sprite.texture.name,
+                Is.EqualTo("Vortex"));
+            Assert.That(gravityPresenters[0].VortexImage.preserveAspect,
+                Is.True);
+            Assert.That(gravityPresenters[0].VortexImage.raycastTarget,
                 Is.False);
+            Assert.That(gravityPresenters[0].VortexRoot.anchorMin,
+                Is.EqualTo(Vector2.zero));
+            Assert.That(gravityPresenters[0].VortexRoot.anchorMax,
+                Is.EqualTo(Vector2.one));
+            Assert.That(gravityPresenters[0].CueRoot.Find("Icon"), Is.Null);
+            Assert.That(gravityPresenters[0].CueRoot.Find("Range"), Is.Null);
 
             Transform safeArea = _root.transform.Find("Canvas/SafeAreaRoot");
             Transform completion = safeArea.Find("LevelCompleteOverlay");

@@ -1,6 +1,7 @@
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Unity.Simulation;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Cutrium.Presentation.Powers
@@ -18,43 +19,39 @@ namespace Cutrium.Presentation.Powers
         private RectTransform _cueRoot;
 
         [SerializeField]
-        private Image _cueImage;
+        [FormerlySerializedAs("_cueImage")]
+        private Image _vortexImage;
 
         [SerializeField]
-        private RectTransform _iconRoot;
-
-        [SerializeField]
-        private GravityWellRangeGraphic _rangeGraphic;
+        [FormerlySerializedAs("_iconRoot")]
+        private RectTransform _vortexRoot;
 
         [SerializeField]
         private float _rotationDegreesPerSecond = 72f;
 
         [SerializeField]
-        private Color _rangeBaseColor = new Color(1f, 0.68f, 0.18f, 0.9f);
+        private Color _vortexBaseColor = new Color(1f, 1f, 1f, 0.78f);
 
         public FirstPlayableController Controller => _controller;
         public RectTransform BoardFrame => _boardFrame;
         public RectTransform CueRoot => _cueRoot;
-        public Image CueImage => _cueImage;
-        public RectTransform IconRoot => _iconRoot;
-        public GravityWellRangeGraphic RangeGraphic => _rangeGraphic;
+        public Image VortexImage => _vortexImage;
+        public RectTransform VortexRoot => _vortexRoot;
 
         public void ConfigureForSetup(
             FirstPlayableController controller,
             RectTransform boardFrame,
             RectTransform cueRoot,
-            RectTransform iconRoot,
-            Image cueImage,
-            GravityWellRangeGraphic rangeGraphic)
+            RectTransform vortexRoot,
+            Image vortexImage)
         {
             _controller = controller;
             _boardFrame = boardFrame;
             _cueRoot = cueRoot;
-            _iconRoot = iconRoot;
-            _cueImage = cueImage;
-            _rangeGraphic = rangeGraphic;
-            _rangeBaseColor = _rangeGraphic != null
-                ? _rangeGraphic.color
+            _vortexRoot = vortexRoot;
+            _vortexImage = vortexImage;
+            _vortexBaseColor = _vortexImage != null
+                ? _vortexImage.color
                 : Color.white;
             RefreshNow();
         }
@@ -70,18 +67,18 @@ namespace Cutrium.Presentation.Powers
                 && _controller.GravityWellActive
                 && _controller.GravityWellPosition.HasValue
                 && _boardFrame != null;
-            if (_cueImage != null)
+            if (_vortexImage != null)
             {
-                _cueImage.enabled = visible;
-            }
-
-            if (_rangeGraphic != null)
-            {
-                _rangeGraphic.enabled = visible;
+                _vortexImage.enabled = visible;
             }
 
             if (!visible)
             {
+                if (_vortexRoot != null)
+                {
+                    _vortexRoot.localScale = Vector3.one;
+                }
+
                 return;
             }
 
@@ -107,28 +104,28 @@ namespace Cutrium.Presentation.Powers
         {
             RefreshNow();
             if (_cueRoot == null
-                || _cueImage == null
-                || !_cueImage.enabled)
+                || _vortexImage == null
+                || !_vortexImage.enabled)
             {
                 return;
             }
 
-            if (_iconRoot != null)
+            if (_vortexRoot != null)
             {
-                _iconRoot.Rotate(
+                _vortexRoot.Rotate(
                     0f,
                     0f,
                     -_rotationDegreesPerSecond * Time.unscaledDeltaTime);
+                float pulse = 0.96f
+                    + Mathf.Sin(Time.unscaledTime * 4f) * 0.04f;
+                _vortexRoot.localScale = new Vector3(pulse, pulse, 1f);
             }
 
             _cueRoot.localScale = Vector3.one;
-            if (_rangeGraphic != null)
-            {
-                Color pulsed = _rangeBaseColor;
-                pulsed.a *= 0.86f
-                    + Mathf.Sin(Time.unscaledTime * 4f) * 0.14f;
-                _rangeGraphic.color = pulsed;
-            }
+            Color pulsed = _vortexBaseColor;
+            pulsed.a *= 0.88f
+                + Mathf.Sin(Time.unscaledTime * 4f) * 0.12f;
+            _vortexImage.color = pulsed;
         }
     }
 }

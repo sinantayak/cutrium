@@ -4,11 +4,13 @@ using Cutrium.Editor.Setup;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
 using Cutrium.Gameplay.Threats;
+using Cutrium.Presentation.HUD;
 using Cutrium.Unity.Input;
 using Cutrium.Unity.Simulation;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Cutrium.Gameplay.EditModeTests
 {
@@ -206,6 +208,83 @@ namespace Cutrium.Gameplay.EditModeTests
             Assert.That(barrierCount, Is.Zero);
             Assert.That(gesture.CommittedIntentCount, Is.Zero);
             Object.DestroyImmediate(gameObject);
+        }
+
+        [Test]
+        public void GravityHudHighlight_FollowsPointTargetingState()
+        {
+            var root = new GameObject("GravityHudHighlightTest");
+            FirstPlayableController controller =
+                root.AddComponent<FirstPlayableController>();
+            BarrierGestureAdapter gesture =
+                root.AddComponent<BarrierGestureAdapter>();
+            controller.ConfigureBarrierForSetup(
+                gesture,
+                3f,
+                0.08f,
+                0.6f,
+                16);
+            controller.ConfigureLevelsForSetup(new[]
+            {
+                ChapterTwoGameplayProgression.CreateDefinitions()[7],
+            });
+            controller.AdvanceSimulation(0f);
+
+            var buttonObject = new GameObject(
+                "GravityWellButton",
+                typeof(RectTransform),
+                typeof(Image),
+                typeof(Button),
+                typeof(Outline));
+            buttonObject.transform.SetParent(root.transform, false);
+            Image image = buttonObject.GetComponent<Image>();
+            Button button = buttonObject.GetComponent<Button>();
+            Outline highlight = buttonObject.GetComponent<Outline>();
+            button.targetGraphic = image;
+            highlight.enabled = false;
+
+            var chargesObject = new GameObject(
+                "Charges",
+                typeof(RectTransform),
+                typeof(Text));
+            chargesObject.transform.SetParent(buttonObject.transform, false);
+            Text charges = chargesObject.GetComponent<Text>();
+            PowerHudPresenter presenter =
+                root.AddComponent<PowerHudPresenter>();
+            presenter.Configure(
+                controller,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                buttonObject,
+                button,
+                charges,
+                highlight);
+
+            try
+            {
+                Assert.That(controller.GravityWellTargeting, Is.False);
+                Assert.That(highlight.enabled, Is.False);
+                Assert.That(image.color, Is.EqualTo(Color.white));
+
+                Assert.That(controller.ToggleGravityWellTargeting(), Is.True);
+                presenter.RefreshNow();
+                Assert.That(highlight.enabled, Is.True);
+                Assert.That(image.color,
+                    Is.EqualTo(new Color(1f, 0.93f, 0.78f, 1f)));
+
+                controller.CancelGravityWellTargeting();
+                presenter.RefreshNow();
+                Assert.That(highlight.enabled, Is.False);
+                Assert.That(image.color, Is.EqualTo(Color.white));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
         }
 
         [Test]

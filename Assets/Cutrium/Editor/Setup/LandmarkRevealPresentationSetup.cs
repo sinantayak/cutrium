@@ -78,6 +78,8 @@ namespace Cutrium.Editor.Setup
             "Assets/Cutrium/Content/Gui/InstantBarrierSkill.png";
         public const string GravityWellSkillPath =
             "Assets/Cutrium/Content/Gui/GravityWellSkill.png";
+        public const string GravityWellVortexPath =
+            "Assets/Cutrium/Content/Gui/Vortex.png";
         public const string GeneralButtonBackgroundPath =
             "Assets/Cutrium/Content/Gui/GeneralButtonBackground.png";
         public const string TopHudFontPath =
@@ -114,6 +116,8 @@ namespace Cutrium.Editor.Setup
             new Color(0.12f, 0.9f, 0.28f, 0.86f);
         private static readonly Color TopHudTextBrown =
             new Color(0.34f, 0.105f, 0.025f, 1f);
+        private static readonly Color GravityTargetingHighlight =
+            new Color(1f, 0.87f, 0.35f, 0.95f);
         private static readonly Color CompletionBackgroundBrown =
             new Color(0.12156863f, 0.07f, 0.043137256f, 1f);
 
@@ -208,7 +212,7 @@ namespace Cutrium.Editor.Setup
             ConfigureGravityWellCue(
                 boardFrame,
                 controller,
-                skillAssets.Gravity);
+                LoadUiSpriteForSetup(GravityWellVortexPath));
             ApplyCompletionReadability(completion, LoadCompletionFont());
             ConfigureGeneralActionButtonLayoutForSetup(safeArea);
             ApplyGeneralButtonStylesForSetup(root);
@@ -218,21 +222,89 @@ namespace Cutrium.Editor.Setup
                 (RectTransform)safeArea);
 
             if (powerHud.GravityWellButton == null
-                || powerHud.GravityWellChargesText == null
-                || root.GetComponentsInChildren<GravityWellPresenter>(true)
-                    .Length != 1
-                || root.GetComponentInChildren<GravityWellPresenter>(true)
-                    .RangeGraphic == null)
+                || powerHud.GravityWellChargesText == null)
             {
                 throw new InvalidOperationException(
                     "Chapter 2 Gravity Well presentation did not wire " +
                     "all required references.");
             }
+            ValidateGravityWellVortex(root);
 
             ValidateGeneralButtonStyle(
                 RequireChild(completion, "RetryButton").GetComponent<Button>());
             ValidateGeneralButtonStyle(
                 RequireChild(completion, "NextButton").GetComponent<Button>());
+        }
+
+        [MenuItem("Cutrium/Setup/Apply Gravity Well Visuals Only")]
+        public static void ApplyGravityWellVisualsOnly()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "Exit Play Mode before updating the Gravity Well cue.");
+            }
+
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.path != Milestone2SceneSetup.VerticalSliceScenePath)
+            {
+                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                {
+                    throw new OperationCanceledException(
+                        "Gravity Well cue setup cancelled before opening " +
+                        "VerticalSlice.unity.");
+                }
+
+                scene = EditorSceneManager.OpenScene(
+                    Milestone2SceneSetup.VerticalSliceScenePath,
+                    OpenSceneMode.Single);
+            }
+
+            GameObject root = RequireRoot(scene, "VerticalSliceRoot");
+            FirstPlayableController controller = root
+                .GetComponentInChildren<FirstPlayableController>(true);
+            PowerHudPresenter powerHud = root
+                .GetComponentInChildren<PowerHudPresenter>(true);
+            Transform safeArea = RequireChild(
+                root.transform,
+                "Canvas/SafeAreaRoot");
+            RectTransform boardFrame = (RectTransform)RequireChild(
+                root.transform,
+                "Canvas/SafeAreaRoot/BoardStage/BoardViewport/BoardFrame");
+            if (controller == null || powerHud == null)
+            {
+                throw new InvalidOperationException(
+                    "Gravity Well visuals require FirstPlayableController " +
+                    "and PowerHudPresenter.");
+            }
+
+            ConfigureBottomHudSkillRow(
+                safeArea,
+                controller,
+                powerHud,
+                LoadSkillAssets());
+            ConfigureGravityWellCue(
+                boardFrame,
+                controller,
+                LoadUiSpriteForSetup(GravityWellVortexPath));
+            ValidateBottomHudSkillRow((RectTransform)RequireChild(
+                safeArea,
+                "BottomHUD/BottomHudRow/SkillRow"));
+            ValidateGravityWellVortex(root);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(
+                    scene,
+                    Milestone2SceneSetup.VerticalSliceScenePath))
+            {
+                throw new InvalidOperationException(
+                    "Unity could not save the Gravity Well Vortex cue.");
+            }
+
+            AssetDatabase.SaveAssets();
+            Debug.Log(
+                "Gravity Well now uses the radius-sized Vortex effect and " +
+                "a HUD-yellow targeting highlight without the legacy " +
+                "center icon or range ring.");
         }
 
         public static void ApplyGeneralButtonStyleForSetup(Button button)
@@ -1287,7 +1359,7 @@ namespace Cutrium.Editor.Setup
             ConfigureGravityWellCue(
                 boardFrame,
                 controller,
-                LoadSingleSprite(GravityWellSkillPath));
+                LoadUiSpriteForSetup(GravityWellVortexPath));
             ConfigureFeedbackReadabilityForSetup(safeArea);
             RectTransform grainFlightRoot = ConfigureGrainFlightRoot(safeArea);
 
@@ -2493,6 +2565,12 @@ namespace Cutrium.Editor.Setup
                 skillAssets.Gravity,
                 gravityButton,
                 gravityCharges);
+            Outline gravityHighlight =
+                GetOrAddComponent<Outline>(gravityRoot.gameObject);
+            gravityHighlight.effectColor = GravityTargetingHighlight;
+            gravityHighlight.effectDistance = new Vector2(4f, -4f);
+            gravityHighlight.useGraphicAlpha = true;
+            gravityHighlight.enabled = false;
             gravityRoot.SetSiblingIndex(2);
 
             presenter.Configure(
@@ -2505,10 +2583,12 @@ namespace Cutrium.Editor.Setup
                 instantCharges,
                 gravityRoot.gameObject,
                 gravityButton,
-                gravityCharges);
+                gravityCharges,
+                gravityHighlight);
 
             EditorUtility.SetDirty(skillLayout);
             EditorUtility.SetDirty(gravityButton);
+            EditorUtility.SetDirty(gravityHighlight);
             EditorUtility.SetDirty(presenter);
         }
 
@@ -2570,7 +2650,7 @@ namespace Cutrium.Editor.Setup
         private static void ConfigureGravityWellCue(
             RectTransform boardFrame,
             FirstPlayableController controller,
-            Sprite gravitySprite)
+            Sprite vortexSprite)
         {
             RectTransform cueRoot = GetOrCreateUiChild(
                 boardFrame,
@@ -2589,36 +2669,39 @@ namespace Cutrium.Editor.Setup
                 UnityEngine.Object.DestroyImmediate(staleRootImage);
             }
 
-            RectTransform rangeRect = GetOrCreateUiChild(
-                cueRoot,
-                "Range");
-            StretchToParent(rangeRect);
-            GravityWellRangeGraphic rangeGraphic =
-                GetOrAddComponent<GravityWellRangeGraphic>(
-                    rangeRect.gameObject);
-            rangeGraphic.ConfigureForSetup(
-                new Color(1f, 0.68f, 0.18f, 0.9f),
-                6f,
-                96);
-            rangeRect.SetAsFirstSibling();
+            Transform legacyRange = cueRoot.Find("Range");
+            if (legacyRange != null)
+            {
+                Undo.DestroyObjectImmediate(legacyRange.gameObject);
+            }
 
-            RectTransform iconRoot = GetOrCreateUiChild(
-                cueRoot,
-                "Icon");
-            iconRoot.anchorMin = new Vector2(0.5f, 0.5f);
-            iconRoot.anchorMax = new Vector2(0.5f, 0.5f);
-            iconRoot.pivot = new Vector2(0.5f, 0.5f);
-            iconRoot.anchoredPosition = Vector2.zero;
-            iconRoot.sizeDelta = new Vector2(92f, 92f);
-            iconRoot.localScale = Vector3.one;
-            iconRoot.SetAsLastSibling();
+            Transform legacyIcon = cueRoot.Find("Icon");
+            Transform existingVortex = cueRoot.Find("Vortex");
+            if (legacyIcon != null && existingVortex == null)
+            {
+                Undo.RecordObject(
+                    legacyIcon.gameObject,
+                    "Rename Gravity Well Icon To Vortex");
+                legacyIcon.name = "Vortex";
+            }
+            else if (legacyIcon != null)
+            {
+                Undo.DestroyObjectImmediate(legacyIcon.gameObject);
+            }
 
-            Image cueImage = GetOrAddComponent<Image>(iconRoot.gameObject);
-            cueImage.sprite = gravitySprite;
-            cueImage.type = Image.Type.Simple;
-            cueImage.preserveAspect = true;
-            cueImage.color = new Color(1f, 1f, 1f, 0.9f);
-            cueImage.raycastTarget = false;
+            RectTransform vortexRoot = GetOrCreateUiChild(
+                cueRoot,
+                "Vortex");
+            StretchToParent(vortexRoot);
+            vortexRoot.localScale = Vector3.one;
+            vortexRoot.SetAsLastSibling();
+
+            Image vortexImage = GetOrAddComponent<Image>(vortexRoot.gameObject);
+            vortexImage.sprite = vortexSprite;
+            vortexImage.type = Image.Type.Simple;
+            vortexImage.preserveAspect = true;
+            vortexImage.color = new Color(1f, 1f, 1f, 0.78f);
+            vortexImage.raycastTarget = false;
 
             LayoutElement layout = GetOrAddComponent<LayoutElement>(
                 cueRoot.gameObject);
@@ -2629,12 +2712,10 @@ namespace Cutrium.Editor.Setup
                 controller,
                 boardFrame,
                 cueRoot,
-                iconRoot,
-                cueImage,
-                rangeGraphic);
+                vortexRoot,
+                vortexImage);
 
-            EditorUtility.SetDirty(cueImage);
-            EditorUtility.SetDirty(rangeGraphic);
+            EditorUtility.SetDirty(vortexImage);
             EditorUtility.SetDirty(layout);
             EditorUtility.SetDirty(presenter);
         }
@@ -3570,19 +3651,7 @@ namespace Cutrium.Editor.Setup
             ValidateBottomHudSkillRow(
                 (RectTransform)RequireChild(bottomRow, "SkillRow"));
 
-            GravityWellPresenter[] gravityPresenters = root
-                .GetComponentsInChildren<GravityWellPresenter>(true);
-            if (gravityPresenters.Length != 1
-                || gravityPresenters[0].Controller == null
-                || gravityPresenters[0].BoardFrame == null
-                || !gravityPresenters[0].CueRoot.gameObject.activeSelf
-                || gravityPresenters[0].CueImage == null
-                || gravityPresenters[0].IconRoot == null
-                || gravityPresenters[0].RangeGraphic == null)
-            {
-                throw new InvalidOperationException(
-                    "Chapter 2 requires one fully wired Gravity Well cue.");
-            }
+            ValidateGravityWellVortex(root);
 
             ValidateGeneralButtonStyle(
                 RequireChild(completion, "RetryButton").GetComponent<Button>());
@@ -3806,10 +3875,52 @@ namespace Cutrium.Editor.Setup
             }
 
             Button gravityButton = gravity.GetComponent<Button>();
-            if (gravityButton == null)
+            Outline gravityHighlight = gravity.GetComponent<Outline>();
+            if (gravityButton == null
+                || gravityHighlight == null
+                || gravityHighlight.effectColor != GravityTargetingHighlight
+                || gravityHighlight.effectDistance != new Vector2(4f, -4f)
+                || !gravityHighlight.useGraphicAlpha
+                || gravityHighlight.enabled)
             {
                 throw new InvalidOperationException(
-                    "The Gravity Well skill slot requires a Button.");
+                    "The Gravity Well skill slot requires its Button and " +
+                    "disabled HUD-yellow targeting highlight.");
+            }
+        }
+
+        private static void ValidateGravityWellVortex(GameObject root)
+        {
+            GravityWellPresenter[] presenters = root
+                .GetComponentsInChildren<GravityWellPresenter>(true);
+            if (presenters.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    "Chapter 2 requires one Gravity Well presenter.");
+            }
+
+            GravityWellPresenter presenter = presenters[0];
+            RectTransform vortexRoot = presenter.VortexRoot;
+            Image vortexImage = presenter.VortexImage;
+            if (presenter.Controller == null
+                || presenter.BoardFrame == null
+                || presenter.CueRoot == null
+                || !presenter.CueRoot.gameObject.activeSelf
+                || vortexRoot == null
+                || vortexRoot.name != "Vortex"
+                || vortexImage == null
+                || AssetDatabase.GetAssetPath(vortexImage.sprite)
+                    != GravityWellVortexPath
+                || !vortexImage.preserveAspect
+                || vortexImage.raycastTarget
+                || vortexRoot.anchorMin != Vector2.zero
+                || vortexRoot.anchorMax != Vector2.one
+                || presenter.CueRoot.Find("Icon") != null
+                || presenter.CueRoot.Find("Range") != null)
+            {
+                throw new InvalidOperationException(
+                    "Gravity Well must use only the radius-sized Vortex " +
+                    "effect without the legacy icon or range ring.");
             }
         }
 

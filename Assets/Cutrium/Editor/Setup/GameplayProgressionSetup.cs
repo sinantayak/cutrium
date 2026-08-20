@@ -755,12 +755,14 @@ namespace Cutrium.Editor.Setup
             EditorUtility.SetDirty(presenter);
         }
 
-        // Big, staged "LEVEL N -> TARGET X% -> intro copy" text that plays
+        // Big, staged "LEVEL N -> TARGET X% -> CUT N -> intro copy" text that
+        // plays
         // before a genuinely new level starts, while only the threats stay
         // hidden (see PreLevelIntroPresenter/ThreatPresenter.SetVisible) --
         // the board, sand, and landmark art stay visible and ready. Runs
-        // after ConfigureIdentityHud so the TopHUD Cut panel and the
-        // sand-flight FillStartTarget it lands text on already exist.
+        // after ConfigureIdentityHud so the Target and Cut cards can land on
+        // the progress bar and TopHUD Cut panel. Mechanic intro copy reuses
+        // the same centered block afterward and fades without flying.
         private static void ConfigurePreLevelIntro(
             GameObject root,
             FirstPlayableController controller)

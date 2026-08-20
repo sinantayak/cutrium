@@ -7,12 +7,13 @@ using UnityEngine;
 
 namespace Cutrium.Presentation.HUD
 {
-    /// Plays a staged "LEVEL N -> TARGET X% -> intro copy" cinematic before
-    /// each genuinely new level starts: only the threats stay hidden and the
-    /// simulation held while big centered text appears in turn -- the board,
-    /// sand, and landmark art underneath stay visible and ready -- with the
-    /// target and intro-copy stages flying into their live HUD destinations
-    /// (the progress bar and the Cut counter) instead of simply fading out.
+    /// Plays a staged "LEVEL N -> TARGET X% -> CUT N -> intro copy" cinematic
+    /// before each genuinely new level starts: only the threats stay hidden
+    /// and the simulation held while big centered text appears in turn -- the
+    /// board, sand, and landmark art underneath stay visible and ready. The
+    /// target and Cut stages fly into their matching live HUD destinations.
+    /// Mechanic introductions such as Hunter, Pulse, and Instant stay centered
+    /// and fade away in place.
     /// Retries are intentionally excluded (see RetryCount handling below) so
     /// the player drops straight back into a visible, playable board.
     [DisallowMultipleComponent]
@@ -24,8 +25,9 @@ namespace Cutrium.Presentation.HUD
             ShowingLevel,
             ShowingTarget,
             FlyingTarget,
+            ShowingCut,
+            FlyingCut,
             ShowingInfo,
-            FlyingInfo,
             Done
         }
 
@@ -241,6 +243,35 @@ namespace Cutrium.Presentation.HUD
                         {
                             SetGroup(_targetGroup, 0f);
                             ResetFlightVisualState(_targetGroup);
+                            if (ApplyCutCopy())
+                            {
+                                _stage = Stage.ShowingCut;
+                            }
+                            else if (ApplyInfoCopy())
+                            {
+                                _stage = Stage.ShowingInfo;
+                            }
+                            else
+                            {
+                                CompleteSequence();
+                            }
+                        });
+                    break;
+                case Stage.ShowingCut:
+                    AdvanceHoldStage(
+                        _infoGroup,
+                        onComplete: () => BeginFlight(
+                            _infoGroup,
+                            Stage.FlyingCut));
+                    break;
+                case Stage.FlyingCut:
+                    AdvanceFlightStage(
+                        _infoGroup,
+                        _cutFlightDestination,
+                        onComplete: () =>
+                        {
+                            SetGroup(_infoGroup, 0f);
+                            ResetFlightVisualState(_infoGroup);
                             if (ApplyInfoCopy())
                             {
                                 _stage = Stage.ShowingInfo;
@@ -252,35 +283,7 @@ namespace Cutrium.Presentation.HUD
                         });
                     break;
                 case Stage.ShowingInfo:
-                    // Flying into the Cut region only reads correctly when
-                    // this level actually enforces a cut limit (that's
-                    // where the live "CUT: X/Y" counter lands) -- copy
-                    // about anything else (e.g. a threat-behavior tip) just
-                    // fades away in place instead of flying somewhere that
-                    // won't visually relate to it.
-                    if (_controller.Session.HasCutLimit)
-                    {
-                        AdvanceHoldStage(
-                            _infoGroup,
-                            onComplete: () => BeginFlight(
-                                _infoGroup,
-                                Stage.FlyingInfo));
-                    }
-                    else
-                    {
-                        AdvanceFadeStage(_infoGroup, CompleteSequence);
-                    }
-                    break;
-                case Stage.FlyingInfo:
-                    AdvanceFlightStage(
-                        _infoGroup,
-                        _cutFlightDestination,
-                        onComplete: () =>
-                        {
-                            SetGroup(_infoGroup, 0f);
-                            ResetFlightVisualState(_infoGroup);
-                            CompleteSequence();
-                        });
+                    AdvanceFadeStage(_infoGroup, CompleteSequence);
                     break;
             }
         }
@@ -428,17 +431,69 @@ namespace Cutrium.Presentation.HUD
 
             CoreFunLevelDefinition definition =
                 _controller.LevelDefinitions[_controller.CurrentLevelIndex];
+            string title = definition.IntroTitle?.Trim() ?? string.Empty;
+            string message = definition.IntroMessage?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(title) && string.IsNullOrEmpty(message))
+            {
+                return false;
+            }
+
+            // Earlier cut-only levels authored their cut count inside the
+            // generic intro fields. The dedicated Cut stage now owns that
+            // responsibility, so do not repeat the same card immediately
+            // after it lands in the HUD.
+            if (_controller.Session.HasCutLimit
+                && IsCutLimitTitle(
+                    title,
+                    _controller.Session.MaximumAcceptedCuts))
+            {
+                return false;
+            }
+
             if (_infoTitleText != null)
             {
-                _infoTitleText.text = definition.IntroTitle;
+                _infoTitleText.text = title;
             }
 
             if (_infoMessageText != null)
             {
-                _infoMessageText.text = definition.IntroMessage;
+                _infoMessageText.text = message;
             }
 
             return true;
+        }
+
+        private bool ApplyCutCopy()
+        {
+            if (_controller.Session == null
+                || !_controller.Session.HasCutLimit)
+            {
+                return false;
+            }
+
+            int maximumCuts = _controller.Session.MaximumAcceptedCuts;
+            if (_infoTitleText != null)
+            {
+                _infoTitleText.text = maximumCuts == 1
+                    ? "1 CUT"
+                    : $"{maximumCuts} CUTS";
+            }
+
+            if (_infoMessageText != null)
+            {
+                _infoMessageText.text = "MAKE THEM COUNT";
+            }
+
+            return true;
+        }
+
+        private static bool IsCutLimitTitle(string title, int maximumCuts)
+        {
+            string normalized = title.Trim().ToUpperInvariant();
+            return normalized == $"{maximumCuts} CUT"
+                || normalized == $"{maximumCuts} CUTS"
+                || normalized == $"CUT {maximumCuts}"
+                || normalized == $"CUTS {maximumCuts}";
         }
 
         private static void SetGroup(CanvasGroup group, float alpha)

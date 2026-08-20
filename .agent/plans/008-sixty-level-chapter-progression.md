@@ -683,6 +683,9 @@ landmark never changes threat, target, barrier, power, timer, or obstacle data.
 - [x] Implement the Chapter 2 gameplay source, 24-level aggregator, Comet and
   Heavy parameter profiles, Gravity runtime/input/HUD/cue, first-24 Earth
   source, general button styling, focused setup, and regression coverage.
+- [x] Separate pre-level Target, Cut-limit, and mechanic-introduction roles so
+  mixed levels such as Level 8 present every relevant card and route only
+  Target/Cut values into their matching HUD destinations.
 - [ ] Materialize Chapter 2 assets/scene in the licensed Editor, run Unity Test
   Runner and responsive checks, then complete the owner tuning pass.
 - [ ] Implement, validate, playtest, tune, and accept Chapter 2.
@@ -763,6 +766,12 @@ landmark never changes threat, target, barrier, power, timer, or obstacle data.
   as a fixed-size rotating center icon. Preserve the supplied `512:210` general
   button aspect with `WidthControlsHeight`; enlarge failure and transient cue
   typography for phone/tablet readability.
+- 2026-08-20: Treat pre-level copy as distinct presentation roles rather than
+  one generic flying block. Target flies to the lower progress target, an
+  automatically generated cut-limit card flies to the TopHUD Cut counter, and
+  mechanic introductions (including Hunter, Pulse, Freeze, Instant, and
+  Gravity) stay centered and fade. Reuse the existing InfoGroup sequentially so
+  the change needs no new scene object or serialized reference.
 
 ## Discoveries
 
@@ -938,6 +947,33 @@ landmark never changes threat, target, barrier, power, timer, or obstacle data.
   centered rect at `+50` Y with a `210`-unit height and an 86pt maximum, matching
   the owner's Inspector pass while preserving the aspect-fitted panel behavior
   across supported screens. Interactive aspect-ratio review remains open.
+- 2026-08-19 Gravity Vortex visual revision: the owner-provided transparent
+  512x512 `Vortex.png` replaces both the small placed Gravity skill icon and
+  the procedural range ring/fill. Its root fills the gameplay-derived Gravity
+  diameter, rotates at 72 degrees/second, and uses a restrained four-percent
+  scale pulse plus alpha pulse. The HUD still uses `GravityWellSkill.png`; no
+  gameplay configuration changed. A focused `Apply Gravity Well Vortex Only`
+  setup command migrates the old Icon child, removes the Range child, wires the
+  Vortex Sprite, and validates that the cue is raycast-free. Interactive Play
+  Mode scale/tint review remains open.
+- 2026-08-19 Gravity targeting HUD highlight: the existing targeting tint is
+  now a warm HUD-compatible `1.0/0.93/0.78` instead of pink, and the Gravity
+  skill Image gains a four-unit `Outline` in the established HUD yellow
+  (`1.0/0.87/0.35`). `PowerHudPresenter` enables the outline only while point
+  targeting is active and disables it again on cancel/placement. The focused
+  Gravity visuals setup now materializes both the Vortex cue and skill-row
+  highlight. Interactive visual weight review remains open.
+- 2026-08-20 pre-level mixed-card routing: Level 8 is now covered directly by a
+  Play Mode regression that observes `LEVEL 8`, `TARGET 84%`, generated
+  `9 CUTS`, and the authored `INSTANT` card in sequence. It also asserts Target
+  moves toward negative Y, Cut moves toward positive Y, and Instant remains at
+  the centered anchored position while fading. Roslyn compilation passed for
+  `Cutrium.Presentation`, `Cutrium.Editor`, and `Cutrium.PlayModeTests`; the
+  command-line compiler emitted only the repository's existing Unity source-
+  generator load warnings. The owner's active Unity Editor then reported a
+  successful 1,076-node Tundra build, IL post-processing for the test
+  assemblies, and a clean domain reload with no compiler error in the Editor
+  log. Unity Test Runner plus phone/tablet visual checks remain open.
 
 ## Final Outcome
 
