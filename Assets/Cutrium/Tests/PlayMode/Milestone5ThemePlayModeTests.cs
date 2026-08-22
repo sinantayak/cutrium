@@ -45,6 +45,12 @@ namespace Cutrium.PlayModeTests
             _barrier = _root.GetComponentInChildren<BarrierPresenter>(true);
             _capture = _root
                 .GetComponentInChildren<CaptureBoardPresenter>(true);
+            _root.GetComponentInChildren<
+                    Cutrium.Presentation.Frontend.FrontEndPresenter>(true)
+                ?.SkipForTesting();
+            _root.GetComponentInChildren<
+                    Cutrium.Presentation.HUD.PreLevelIntroPresenter>(true)
+                ?.SkipForTesting();
             Canvas.ForceUpdateCanvases();
             _theme.ApplyNow();
             _threat.RefreshNow();

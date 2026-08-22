@@ -120,6 +120,9 @@ namespace Cutrium.Presentation.HUD
             RectTransform progressFlightDestination,
             RectTransform cutFlightDestination)
         {
+            _controller?.SetSimulationHold(
+                SimulationHoldReason.PreLevelIntro,
+                false);
             _controller = controller;
             _threatPresenter = threatPresenter;
             _levelGroup = levelGroup;
@@ -184,9 +187,21 @@ namespace Cutrium.Presentation.HUD
             RefreshNow(Time.unscaledDeltaTime);
         }
 
+        private void OnDisable()
+        {
+            if (Application.isPlaying)
+            {
+                _controller?.SetSimulationHold(
+                    SimulationHoldReason.PreLevelIntro,
+                    false);
+            }
+        }
+
         private void SkipSequence()
         {
-            _controller.SetSimulationHold(false);
+            _controller.SetSimulationHold(
+                SimulationHoldReason.PreLevelIntro,
+                false);
             _threatPresenter?.SetVisible(true);
             SetGroup(_levelGroup, 0f);
             SetGroup(_targetGroup, 0f);
@@ -196,7 +211,9 @@ namespace Cutrium.Presentation.HUD
 
         private void StartSequence()
         {
-            _controller.SetSimulationHold(true);
+            _controller.SetSimulationHold(
+                SimulationHoldReason.PreLevelIntro,
+                true);
             _threatPresenter?.SetVisible(false);
             SetGroup(_targetGroup, 0f);
             SetGroup(_infoGroup, 0f);
@@ -291,7 +308,9 @@ namespace Cutrium.Presentation.HUD
         private void CompleteSequence()
         {
             _threatPresenter?.SetVisible(true);
-            _controller.SetSimulationHold(false);
+            _controller.SetSimulationHold(
+                SimulationHoldReason.PreLevelIntro,
+                false);
             _elapsed = 0f;
             _stage = Stage.Done;
         }

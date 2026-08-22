@@ -575,6 +575,9 @@ namespace Cutrium.PlayModeTests
             _controller = root.GetComponentInChildren<FirstPlayableController>(true);
             _gesture = root.GetComponentInChildren<BarrierGestureAdapter>(true);
             _presenter = root.GetComponentInChildren<BarrierPresenter>(true);
+            root.GetComponentInChildren<
+                    Cutrium.Presentation.Frontend.FrontEndPresenter>(true)
+                ?.SkipForTesting();
             // These tests exercise raw gesture/input plumbing, not the
             // pre-level cinematic (see PreLevelIntroPresenter), which would
             // otherwise hold the simulation and disable barrier input for

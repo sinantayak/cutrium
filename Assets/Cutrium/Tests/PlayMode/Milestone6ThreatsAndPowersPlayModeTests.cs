@@ -54,6 +54,11 @@ namespace Cutrium.PlayModeTests
                 .GetComponentInChildren<FirstPlayableController>(true);
             _gesture = _root.GetComponentInChildren<BarrierGestureAdapter>(true);
             _powerHud = _root.GetComponentInChildren<PowerHudPresenter>(true);
+            _root.GetComponentInChildren<
+                    Cutrium.Presentation.Frontend.FrontEndPresenter>(true)
+                ?.SkipForTesting();
+            _root.GetComponentInChildren<PreLevelIntroPresenter>(true)
+                ?.SkipForTesting();
             Canvas.ForceUpdateCanvases();
             _composition.BoardCameraFitter.RefreshNow();
         }

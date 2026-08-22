@@ -527,6 +527,11 @@ namespace Cutrium.PlayModeTests
             _threatPresenter = _root
                 .GetComponentInChildren<ThreatPresenter>(true);
             _hud = _root.GetComponentInChildren<CaptureHudPresenter>(true);
+            _root.GetComponentInChildren<
+                    Cutrium.Presentation.Frontend.FrontEndPresenter>(true)
+                ?.SkipForTesting();
+            _root.GetComponentInChildren<PreLevelIntroPresenter>(true)
+                ?.SkipForTesting();
             Canvas.ForceUpdateCanvases();
             _composition.BoardCameraFitter.RefreshNow();
             _boardPresenter.RefreshNow();

@@ -49,6 +49,11 @@ namespace Cutrium.PlayModeTests
                 .GetComponentInChildren<BarrierPresenter>(true);
             _eventSystem = _root.GetComponentInChildren<SceneCompositionRoot>(true)
                 .EventSystem;
+            _root.GetComponentInChildren<
+                    Cutrium.Presentation.Frontend.FrontEndPresenter>(true)
+                ?.SkipForTesting();
+            _root.GetComponentInChildren<PreLevelIntroPresenter>(true)
+                ?.SkipForTesting();
             Canvas.ForceUpdateCanvases();
         }
 

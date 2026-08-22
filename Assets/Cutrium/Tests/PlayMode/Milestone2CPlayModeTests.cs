@@ -790,6 +790,9 @@ namespace Cutrium.PlayModeTests
                 .GetComponentInChildren<CaptureBoardPresenter>(true);
             _hudPresenter = _root
                 .GetComponentInChildren<CaptureHudPresenter>(true);
+            _root.GetComponentInChildren<
+                    Cutrium.Presentation.Frontend.FrontEndPresenter>(true)
+                ?.SkipForTesting();
             // These tests drive capture/retry flows directly and don't
             // exercise the pre-level cinematic (see PreLevelIntroPresenter),
             // which would otherwise hold the simulation and disable barrier

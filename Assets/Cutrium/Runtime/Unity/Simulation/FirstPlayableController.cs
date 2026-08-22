@@ -84,12 +84,17 @@ namespace Cutrium.Unity.Simulation
         private CoreFunLevelCatalog _levelCatalog;
         private IReadOnlyList<CoreFunLevelDefinition> _activeLevelDefinitions;
         private bool _completionReported;
+        private SimulationHoldReason _simulationHoldReasons;
 
         public bool GravityWellTargeting { get; private set; }
 
         public ThreatMotionSession Session { get; private set; }
 
-        public bool SimulationHeld { get; private set; }
+        public bool SimulationHeld =>
+            _simulationHoldReasons != SimulationHoldReason.None;
+
+        public SimulationHoldReason ActiveSimulationHolds =>
+            _simulationHoldReasons;
 
         public event Action<FeedbackEvent> FeedbackEventRaised;
 
@@ -243,17 +248,40 @@ namespace Cutrium.Unity.Simulation
         // the level visibly starts.
         public void SetSimulationHold(bool held)
         {
-            SimulationHeld = held;
-            if (held && GravityWellTargeting)
+            SetSimulationHold(SimulationHoldReason.Legacy, held);
+        }
+
+        public void SetSimulationHold(
+            SimulationHoldReason reason,
+            bool held)
+        {
+            if (reason == SimulationHoldReason.None)
+            {
+                throw new ArgumentOutOfRangeException(nameof(reason));
+            }
+
+            if (held)
+            {
+                _simulationHoldReasons |= reason;
+            }
+            else
+            {
+                _simulationHoldReasons &= ~reason;
+            }
+
+            if (SimulationHeld && GravityWellTargeting)
             {
                 CancelGravityWellTargeting();
             }
 
             if (_barrierGesture != null)
             {
-                _barrierGesture.enabled = !held;
+                _barrierGesture.enabled = !SimulationHeld;
             }
         }
+
+        public bool HasSimulationHold(SimulationHoldReason reason) =>
+            (_simulationHoldReasons & reason) != 0;
 
         public FixedStepAdvanceResult AdvanceSimulation(float renderDeltaTime)
         {
@@ -298,6 +326,10 @@ namespace Cutrium.Unity.Simulation
             _barrierCollisionHalfWidth = collisionHalfWidth;
             _barrierMinimumEdgeMargin = minimumEdgeMargin;
             _maximumBarrierSolverIterations = maximumSolverIterations;
+            if (_barrierGesture != null)
+            {
+                _barrierGesture.enabled = !SimulationHeld;
+            }
         }
 
         public void ConfigureCaptureForSetup(float targetCapturedFraction)
@@ -470,6 +502,22 @@ namespace Cutrium.Unity.Simulation
             Metrics.RetryCurrentLevel();
             LoadCurrentLevel();
             RetryCount++;
+        }
+
+        public bool TryStartLevel(int oneBasedLevelNumber)
+        {
+            InitializeOnce();
+            int index = oneBasedLevelNumber - 1;
+            if (index < 0 || index >= _levelCatalog.Count)
+            {
+                return false;
+            }
+
+            Metrics.StartSequence(_levelCatalog[index]);
+            CurrentLevelIndex = index;
+            CurrentLevelConfiguration = _levelCatalog[index];
+            LoadCurrentLevel();
+            return true;
         }
 
         public bool TryAdvanceToNextLevel()

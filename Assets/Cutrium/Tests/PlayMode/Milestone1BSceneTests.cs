@@ -48,6 +48,12 @@ namespace Cutrium.PlayModeTests
             Scene scene = SceneManager.GetActiveScene();
             GameObject root = scene.GetRootGameObjects().Single(
                 candidate => candidate.name == "VerticalSliceRoot");
+            root.GetComponentInChildren<
+                    Cutrium.Presentation.Frontend.FrontEndPresenter>(true)
+                ?.SkipForTesting();
+            root.GetComponentInChildren<
+                    Cutrium.Presentation.HUD.PreLevelIntroPresenter>(true)
+                ?.SkipForTesting();
             _compositionRoot = root.transform
                 .Find("SceneCompositionRoot")
                 .GetComponent<SceneCompositionRoot>();

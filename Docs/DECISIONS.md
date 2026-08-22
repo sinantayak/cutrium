@@ -1618,3 +1618,87 @@ final-reveal gate before the popup begins. Threat visibility now combines pre-le
 and completion ownership so resetting one cannot reveal content still hidden by
 the other. Phone, tall-phone, and 4:3 tablet Game View checks remain required to
 approve summary readability/timing and the enlarged popup layout.
+
+## ADR-040 — Frontend Is a Same-Scene Shell with Independent Simulation Holds
+
+**Status:** Accepted for visual playtesting.
+
+**Context:**
+The game previously entered level one immediately. The requested mobile
+opening flow needs Home, Shop, and Challenge tabs, instant Play actions, and a
+bottom-to-top level map without adding a second heavy scene or allowing the
+loaded board to simulate invisibly behind the frontend. The pre-level intro
+already owns a simulation hold, but its former boolean API could release a hold
+that belonged to another presentation surface.
+
+**Decision:**
+Keep `VerticalSlice.unity` as the only enabled build scene and place an opaque,
+full-Canvas `FrontEndRoot` above the gameplay UI. Put pages and navigation in a
+dedicated `SafeAreaFitter` child so the color covers unsafe bands while controls
+avoid them. Open Home by default, reuse `GeneralButtonBackground.png` for Play
+actions, and use the
+supplied Shop, Home, Challenge, and Node sprites through serialized uGUI
+references. Reserve named empty Home/Shop content roots for later logo, quick
+access, lives, daily bonus, ads, and economy presentation without implementing
+those systems now.
+
+Replace the controller's single hold boolean with composable named reasons.
+`FrontEndPresenter` owns `FrontEnd`; `PreLevelIntroPresenter` owns
+`PreLevelIntro`; the existing boolean method remains a compatibility wrapper.
+Simulation and barrier input resume only after every owner releases its reason.
+Expose a player-facing, bounded `TryStartLevel` method for Home and Challenge
+rather than reusing the development jump API.
+
+Author the Challenge route from the bottom upward with one real node per entry
+in the active serialized catalog, alternating bounded horizontal offsets to
+form a zigzag. Node selection controls a separate `PLAY LEVEL N` action. All 24
+current catalog nodes remain selectable during this prototype; current and
+lower indices supply selected/traversed styling, while persistent unlock/save
+progression is deferred to a future dedicated source. Build and wire the entire
+frontend through an idempotent Editor setup command instead of runtime object
+searches or hand-edited scene YAML.
+
+After reference review, keep only the bottom navigation inside its safe-area
+container. Move Challenge to a full-Canvas sibling behind that navigation,
+remove its title, and let the transparent map viewport reach the physical top
+and side edges so the upward route naturally continues beyond the visible
+screen. Keep the Play action positioned from the navigation's real top edge so
+bottom insets still remain usable. Use `HomeBackground.png` as aspect-filled
+frontend artwork and `CutriumAmblem.png` as the Home focal logo; both remain
+serialized, replaceable presentation assets and do not affect gameplay logic.
+
+After tablet review, render the navigation's rounded background as a separate
+full-Canvas underlay that reaches the physical bottom edge, while its tab hit
+targets remain in the fitted safe-area container. Draw the rounded bar and the
+larger raised active-tab fill with a small code-native uGUI graphic so no new
+panel sprite or gameplay dependency is required. Treat Challenge Play as a
+dedicated bottom action region: keep space below and above it, and clip the
+scroll viewport at the upper edge of that spacing so nodes cannot render behind
+or below the button. Add unscaled, low-amplitude presentation pulses to both
+Play actions and to the selected node glow; simulation timing and selection
+state remain unchanged.
+
+The first visual review rejected the selected-node pulse because the repeated
+scale change made the route appear to shift. Keep the unscaled pulse only on
+Home and Challenge Play, reduce the longer Challenge label to 46 points, and
+use a static selected-node glow plus the existing fixed selected scale. Use
+`SmallSquareButtonBackground.png` on every tab plate with active/inactive tint;
+retain a solid-color runtime fallback so missing scene serialization can never
+leave icon-only tabs. Correct the code-native rounded panel winding and keep it
+as the full-bottom bar behind those tab buttons.
+
+The sprite-backed tab review was rejected. Remove the small-square sprite from
+the frontend wiring and return to a dark rounded bar with only the active tab
+receiving a flat raised color plate. The Challenge route movement was traced to
+deriving its viewport boundary from the pulsing button's transformed world
+corners. Keep the button RectTransform static, pulse only its label, and derive
+the viewport boundary from anchored layout position plus unscaled rect height.
+This preserves the attention cue without changing route geometry each frame.
+
+**Consequences:**
+Entering gameplay stays immediate and does not load a second scene. The menu
+cannot accidentally begin background simulation when the intro finishes, and
+future modal presentation can add another explicit hold reason. The Shop is a
+visible placeholder only; no IAP, ads, currency, lives, daily limits, or save
+format are introduced. The configured scene and three required aspect ratios
+still need licensed Unity Editor/Test Runner validation before visual approval.

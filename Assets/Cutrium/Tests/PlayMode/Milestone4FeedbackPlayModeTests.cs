@@ -54,6 +54,11 @@ namespace Cutrium.PlayModeTests
                 .GetComponentInChildren<FeedbackAudioPresenter>(true);
             _haptics = _root
                 .GetComponentInChildren<FeedbackHapticPresenter>(true);
+            _root.GetComponentInChildren<
+                    Cutrium.Presentation.Frontend.FrontEndPresenter>(true)
+                ?.SkipForTesting();
+            _root.GetComponentInChildren<PreLevelIntroPresenter>(true)
+                ?.SkipForTesting();
         }
 
         [Test]
