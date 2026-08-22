@@ -13,13 +13,20 @@ MonoBehaviour:
   m_Name: L14_DubrovnikSurlari
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: dubrovnik-surlari
-  _displayTitle: "Dubrovnik Surlar\u0131"
-  _shortDescription: "Dubrovnik\u2019in yakla\u015F\u0131k iki kilometre uzunlu\u011Fundaki
+  _displayTitle: Walls of Dubrovnik
+  _shortDescription: Dubrovnik's stone walls run for almost two kilometres and completely
+    surround the historic city on the Adriatic coast. Views of orange rooftops and
+    blue sea from the towers create the city's most memorable panorama. Strengthened
+    continuously between the 13th and 17th centuries, these defences helped the prosperous
+    Republic of Ragusa preserve its independence for hundreds of years.
+  _sector: Dubrovnik / CROATIA
+  _displayTitleTurkish: "Dubrovnik Surlar\u0131"
+  _shortDescriptionTurkish: "Dubrovnik\u2019in yakla\u015F\u0131k iki kilometre uzunlu\u011Fundaki
     ta\u015F surlar\u0131, Adriyatik k\u0131y\u0131s\u0131ndaki tarih\xEE kenti b\xFCt\xFCn\xFCyle
     \xE7evreler. Kulelerden g\xF6r\xFClen turuncu \xE7at\u0131lar ve mavi deniz,
     \u015Fehrin en unutulmaz manzaras\u0131n\u0131 olu\u015Fturur. 13. ve 17. y\xFCzy\u0131llar
     aras\u0131nda s\xFCrekli g\xFC\xE7lendirilen bu savunma ku\u015Fa\u011F\u0131,
     zengin Ragusa Cumhuriyeti\u2019nin ba\u011F\u0131ms\u0131zl\u0131\u011F\u0131n\u0131
     y\xFCzy\u0131llarca korumas\u0131na yard\u0131m etti."
-  _sector: "Dubrovnik / HIRVAT\u0130STAN"
+  _sectorTurkish: "Dubrovnik / HIRVAT\u0130STAN"
   _artwork: {fileID: 5806777091337663879, guid: c3b59d05140ff984696967243bae21b8, type: 3}

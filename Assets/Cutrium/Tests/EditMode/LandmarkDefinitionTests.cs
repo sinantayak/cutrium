@@ -1,5 +1,6 @@
 using System;
 using Cutrium.Presentation.Landmark;
+using Cutrium.Presentation.Localization;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -76,6 +77,60 @@ namespace Cutrium.Gameplay.EditModeTests
                     string.Empty,
                     string.Empty,
                     null));
+        }
+
+        [Test]
+        public void ConfigureLocalizedForSetup_ReturnsCopyForSelectedLanguage()
+        {
+            _landmark.ConfigureLocalizedForSetup(
+                "galata-tower",
+                "Galata Tower",
+                "An English description.",
+                "Istanbul / TURKEY",
+                "Galata Kulesi",
+                "Türkçe bir açıklama.",
+                "İstanbul / TÜRKİYE",
+                _artwork);
+
+            Assert.That(
+                _landmark.GetDisplayTitle(SupportedLanguage.English),
+                Is.EqualTo("Galata Tower"));
+            Assert.That(
+                _landmark.GetShortDescription(SupportedLanguage.English),
+                Is.EqualTo("An English description."));
+            Assert.That(
+                _landmark.GetSector(SupportedLanguage.English),
+                Is.EqualTo("Istanbul / TURKEY"));
+            Assert.That(
+                _landmark.GetDisplayTitle(SupportedLanguage.Turkish),
+                Is.EqualTo("Galata Kulesi"));
+            Assert.That(
+                _landmark.GetShortDescription(SupportedLanguage.Turkish),
+                Is.EqualTo("Türkçe bir açıklama."));
+            Assert.That(
+                _landmark.GetSector(SupportedLanguage.Turkish),
+                Is.EqualTo("İstanbul / TÜRKİYE"));
+        }
+
+        [Test]
+        public void LegacyConfiguration_FallsBackToEnglishForTurkish()
+        {
+            _landmark.ConfigureForSetup(
+                "legacy",
+                "Legacy Title",
+                "Legacy description.",
+                "Legacy sector",
+                null);
+
+            Assert.That(
+                _landmark.GetDisplayTitle(SupportedLanguage.Turkish),
+                Is.EqualTo("Legacy Title"));
+            Assert.That(
+                _landmark.GetShortDescription(SupportedLanguage.Turkish),
+                Is.EqualTo("Legacy description."));
+            Assert.That(
+                _landmark.GetSector(SupportedLanguage.Turkish),
+                Is.EqualTo("Legacy sector"));
         }
 
         [Test]

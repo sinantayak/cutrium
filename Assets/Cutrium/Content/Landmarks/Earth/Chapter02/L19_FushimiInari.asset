@@ -14,12 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: fushimi-inari-taisha
   _displayTitle: Fushimi Inari Taisha
-  _shortDescription: "Bereket ve pirin\xE7le ili\u015Fkilendirilen \u0130nari\u2019ye
+  _shortDescription: Dedicated to Inari, associated with prosperity and rice, this
+    Shinto shrine is famous for thousands of bright red torii gates climbing the
+    mountain. The gates form a seemingly endless tunnel through the forest. Each
+    gate represents a donation by a person or business, while fox statues along the
+    path are regarded as Inari's messengers.
+  _sector: Kyoto / JAPAN
+  _displayTitleTurkish: Fushimi Inari Taisha
+  _shortDescriptionTurkish: "Bereket ve pirin\xE7le ili\u015Fkilendirilen \u0130nari\u2019ye
     adanan bu \u015Einto tap\u0131na\u011F\u0131, da\u011Fa do\u011Fru uzanan binlerce
     parlak k\u0131rm\u0131z\u0131 torii kap\u0131s\u0131yla \xFCnl\xFCd\xFCr. Kap\u0131lar,
     orman\u0131n i\xE7inde adeta sonsuz bir t\xFCnel olu\u015Fturur. Her kap\u0131
     bir ki\u015Fi ya da i\u015Fletmenin ba\u011F\u0131\u015F\u0131n\u0131 temsil
     eder; yol boyunca g\xF6r\xFClen tilki heykelleri ise \u0130nari\u2019nin habercileri
     kabul edilir."
-  _sector: Kyoto / JAPONYA
+  _sectorTurkish: Kyoto / JAPONYA
   _artwork: {fileID: -8487113702607003437, guid: 2015037147deacc478da23ec89a305f5, type: 3}

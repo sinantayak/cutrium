@@ -13,12 +13,18 @@ MonoBehaviour:
   m_Name: L12_CNKulesi
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: cn-kulesi
-  _displayTitle: CN Kulesi
-  _shortDescription: "553,3 metrelik CN Kulesi, bir d\xF6nem d\xFCnyan\u0131n en
-    y\xFCksek ba\u011F\u0131ms\u0131z yap\u0131s\u0131yd\u0131. Cam zeminli seyir
+  _displayTitle: CN Tower
+  _shortDescription: The 553.3-metre CN Tower was once the world's tallest free-standing
+    structure. Glass-floor observation areas and the outdoor EdgeWalk add a dramatic
+    sense of height to the Toronto view. Opened in 1976, the tower was originally
+    designed to carry communications signals above the city's rapidly rising skyscrapers.
+  _sector: Toronto / CANADA
+  _displayTitleTurkish: CN Kulesi
+  _shortDescriptionTurkish: "553,3 metrelik CN Kulesi, bir d\xF6nem d\xFCnyan\u0131n
+    en y\xFCksek ba\u011F\u0131ms\u0131z yap\u0131s\u0131yd\u0131. Cam zeminli seyir
     alanlar\u0131 ve d\u0131\u015Far\u0131da yap\u0131lan EdgeWalk deneyimi, Toronto
     manzaras\u0131na g\xFC\xE7l\xFC bir y\xFCkseklik hissi katar. 1976\u2019da a\xE7\u0131lan
     kule asl\u0131nda ileti\u015Fim sinyallerini \u015Fehrin h\u0131zla y\xFCkselen
     g\xF6kdelenlerinin \xFCzerinden iletmek i\xE7in tasarlanm\u0131\u015Ft\u0131."
-  _sector: Toronto / KANADA
+  _sectorTurkish: Toronto / KANADA
   _artwork: {fileID: 6557355943830332546, guid: 0d774b5354df2514684a42eda8419be8, type: 3}

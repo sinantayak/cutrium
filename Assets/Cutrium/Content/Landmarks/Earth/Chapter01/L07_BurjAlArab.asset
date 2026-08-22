@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: L07_BurjAlArab
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: burj-al-arab
-  _displayTitle: "Bur\xE7 el-Arab"
-  _shortDescription: "Yelken bi\xE7imli Burj Al Arab, Dubai k\u0131y\u0131s\u0131ndaki
+  _displayTitle: Burj Al Arab
+  _shortDescription: The sail-shaped Burj Al Arab rises from an artificial island
+    off Dubai's coast. Its bold silhouette and lavish interiors have made it one
+    of modern Dubai's most recognisable landmarks. An atrium nearly 180 metres high
+    and a helipad projecting over the sea give the hotel's architecture an unexpected
+    sense of scale.
+  _sector: Dubai / UNITED ARAB EMIRATES
+  _displayTitleTurkish: "Bur\xE7 el-Arab"
+  _shortDescriptionTurkish: "Yelken bi\xE7imli Burj Al Arab, Dubai k\u0131y\u0131s\u0131ndaki
     yapay bir ada \xFCzerinde y\xFCkselir. Cesur sil\xFCeti ve g\xF6steri\u015Fli
     i\xE7 mek\xE2nlar\u0131, yap\u0131y\u0131 modern Dubai\u2019nin en tan\u0131nan
     simgelerinden biri yapm\u0131\u015Ft\u0131r. Yakla\u015F\u0131k 180 metre y\xFCksekli\u011Findeki
     dev atriyumu ve denizin \xFCzerinde uzanan helikopter pisti, otelin mimarisine
     beklenmedik bir \xF6l\xE7ek duygusu katar."
-  _sector: "Dubai / B\u0130RLE\u015E\u0130K ARAP EM\u0130RL\u0130KLER\u0130"
+  _sectorTurkish: "Dubai / B\u0130RLE\u015E\u0130K ARAP EM\u0130RL\u0130KLER\u0130"
   _artwork: {fileID: 9055853470648467927, guid: 16365c12bf240cb4e9d882fba27d3b95, type: 3}

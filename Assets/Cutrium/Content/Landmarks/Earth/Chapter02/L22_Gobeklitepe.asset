@@ -13,8 +13,15 @@ MonoBehaviour:
   m_Name: L22_Gobeklitepe
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: gobeklitepe
-  _displayTitle: "G\xF6beklitepe"
-  _shortDescription: "G\xF6beklitepe\u2019nin hayvan kabartmal\u0131 T bi\xE7imli
+  _displayTitle: Gobekli Tepe
+  _shortDescription: Gobekli Tepe's T-shaped stone pillars, carved with animals,
+    date back to around 9600 BC. Older than pottery and settled farming communities,
+    this monumental site transformed how we understand human history. The lack of
+    clear domestic traces in its circular structures, whose pillars can exceed five
+    metres, suggests that the site may have hosted large gatherings and rituals.
+  _sector: Sanliurfa / TURKEY
+  _displayTitleTurkish: "G\xF6beklitepe"
+  _shortDescriptionTurkish: "G\xF6beklitepe\u2019nin hayvan kabartmal\u0131 T bi\xE7imli
     ta\u015F s\xFCtunlar\u0131 yakla\u015F\u0131k M\xD6 9600\u2019e kadar uzan\u0131r.
     Bu an\u0131tsal alan, \xE7anak \xE7\xF6mlekten ve yerle\u015Fik tar\u0131m toplumlar\u0131ndan
     bile daha eski olmas\u0131yla insanl\u0131k tarihine bak\u0131\u015F\u0131 de\u011Fi\u015Ftirdi.
@@ -22,5 +29,5 @@ MonoBehaviour:
     dairesel yap\u0131larda belirgin ev izlerine rastlanmamas\u0131, alan\u0131n
     b\xFCy\xFCk bulu\u015Fmalar ve rit\xFCeller i\xE7in kullan\u0131lm\u0131\u015F
     olabilece\u011Fini d\xFC\u015F\xFCnd\xFCr\xFCr."
-  _sector: "\u015Eanl\u0131urfa / T\xDCRK\u0130YE"
+  _sectorTurkish: "\u015Eanl\u0131urfa / T\xDCRK\u0130YE"
   _artwork: {fileID: 9132063075479195388, guid: faf9552e4edc66a40894ad2b2154029e, type: 3}

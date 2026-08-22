@@ -14,12 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: angkor-wat
   _displayTitle: Angkor Wat
-  _shortDescription: "12. y\xFCzy\u0131lda dev bir Hindu tap\u0131na\u011F\u0131
+  _shortDescription: Founded in the 12th century as an immense Hindu temple, Angkor
+    Wat later became a Buddhist sacred site. Its five-towered silhouette and more
+    than a kilometre of reliefs make it one of the world's largest religious monuments.
+    Its unusual west-facing plan and stone scenes of war, court life, and epic tales
+    recount the power of the Khmer Empire in remarkable detail.
+  _sector: Siem Reap / CAMBODIA
+  _displayTitleTurkish: Angkor Wat
+  _shortDescriptionTurkish: "12. y\xFCzy\u0131lda dev bir Hindu tap\u0131na\u011F\u0131
     olarak kurulan Angkor Wat, zamanla Budist bir kutsal alana d\xF6n\xFC\u015Ft\xFC.
     Be\u015F kuleli sil\xFCeti ve bir kilometreyi a\u015Fan kabartmalar\u0131yla
     d\xFCnyan\u0131n en b\xFCy\xFCk din\xEE an\u0131t komplekslerinden biridir. Bat\u0131ya
     d\xF6n\xFCk s\u0131ra d\u0131\u015F\u0131 plan\u0131 ve ta\u015Flara i\u015Flenen
     sava\u015F, saray ya\u015Fam\u0131 ve destan sahneleri, Khmer \u0130mparatorlu\u011Fu\u2019nun
     g\xFCc\xFCn\xFC ayr\u0131nt\u0131lar\u0131yla anlat\u0131r."
-  _sector: "Siem Reap / KAMBO\xC7YA"
+  _sectorTurkish: "Siem Reap / KAMBO\xC7YA"
   _artwork: {fileID: -370570139020711758, guid: 7981f4c3b80835342953bc6b7debfb72, type: 3}

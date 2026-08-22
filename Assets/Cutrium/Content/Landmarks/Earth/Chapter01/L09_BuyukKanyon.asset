@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: L09_BuyukKanyon
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: buyuk-kanyon
-  _displayTitle: "B\xFCy\xFCk Kanyon"
-  _shortDescription: "Colorado Nehri\u2019nin milyonlarca y\u0131lda a\u015F\u0131nd\u0131rd\u0131\u011F\u0131
+  _displayTitle: Grand Canyon
+  _shortDescription: Carved by the Colorado River over millions of years, the Grand
+    Canyon displays Earth's geological past in colourful layers of rock. Some of
+    its oldest exposed layers are nearly two billion years old. Stretching about
+    446 kilometres and dropping more than 1.6 kilometres in places, its scale is
+    almost impossible to grasp at a glance.
+  _sector: Arizona / USA
+  _displayTitleTurkish: "B\xFCy\xFCk Kanyon"
+  _shortDescriptionTurkish: "Colorado Nehri\u2019nin milyonlarca y\u0131lda a\u015F\u0131nd\u0131rd\u0131\u011F\u0131
     B\xFCy\xFCk Kanyon, D\xFCnya\u2019n\u0131n jeolojik ge\xE7mi\u015Fini renkli
     kaya katmanlar\u0131 h\xE2linde sergiler. En eski katmanlar\u0131ndan baz\u0131lar\u0131
     yakla\u015F\u0131k iki milyar y\u0131ll\u0131kt\u0131r. Yakla\u015F\u0131k 446
     kilometre boyunca uzanan kanyon, baz\u0131 noktalarda 1,6 kilometreden daha derine
     inerek boyutlar\u0131n\u0131 tek bak\u0131\u015Fta kavramay\u0131 neredeyse imk\xE2ns\u0131zla\u015Ft\u0131r\u0131r."
-  _sector: Arizona / ABD
+  _sectorTurkish: Arizona / ABD
   _artwork: {fileID: 3963535869500263827, guid: 204860898e86dc9468bfc0d49ac8731e, type: 3}

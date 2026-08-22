@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: L20_GalataKulesi
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: galata-kulesi
-  _displayTitle: Galata Kulesi
-  _shortDescription: "G\xFCn\xFCm\xFCzdeki bi\xE7iminin k\xF6kleri 14. y\xFCzy\u0131ldaki
+  _displayTitle: Galata Tower
+  _shortDescription: The roots of Galata Tower's present form reach back to the 14th-century
+    Genoese settlement, and the tower rises above the Golden Horn. Its summit offers
+    a wide panorama of the Bosphorus and the historic peninsula. Used over the centuries
+    as a defensive tower, prison, and fire lookout, it was repaired many times after
+    earthquakes and fires.
+  _sector: Istanbul / TURKEY
+  _displayTitleTurkish: Galata Kulesi
+  _shortDescriptionTurkish: "G\xFCn\xFCm\xFCzdeki bi\xE7iminin k\xF6kleri 14. y\xFCzy\u0131ldaki
     Ceneviz yerle\u015Fimine uzanan Galata Kulesi, Hali\xE7\u2019in \xFCzerinde y\xFCkselir.
     Tepesinden Bo\u011Faz ve tarih\xEE yar\u0131madan\u0131n geni\u015F panoramas\u0131
     g\xF6r\xFCl\xFCr. Y\xFCzy\u0131llar boyunca savunma kulesi, hapishane ve yang\u0131n
     g\xF6zetleme noktas\u0131 gibi farkl\u0131 g\xF6revler \xFCstlenen yap\u0131,
     deprem ve yang\u0131nlardan sonra bir\xE7ok kez onar\u0131ld\u0131."
-  _sector: "\u0130stanbul / T\xDCRK\u0130YE"
+  _sectorTurkish: "\u0130stanbul / T\xDCRK\u0130YE"
   _artwork: {fileID: 2372416621740891543, guid: 3595c6bff91f0114593eb5290ffd053f, type: 3}

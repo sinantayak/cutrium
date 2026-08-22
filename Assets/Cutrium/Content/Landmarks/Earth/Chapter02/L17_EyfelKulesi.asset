@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: L17_EyfelKulesi
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: eyfel-kulesi
-  _displayTitle: Eyfel Kulesi
-  _shortDescription: "1889 D\xFCnya Fuar\u0131 i\xE7in in\u015Fa edilen Eyfel Kulesi
-    ba\u015Flang\u0131\xE7ta ge\xE7ici bir yap\u0131 olarak tasarlanm\u0131\u015Ft\u0131.
+  _displayTitle: Eiffel Tower
+  _shortDescription: Built for the 1889 World's Fair, the Eiffel Tower was initially
+    designed as a temporary structure. Its iron lattice was once criticised, but
+    is now Paris's most powerful symbol. The roughly 300-metre tower proved its practical
+    value through radio experiments and communications antennas, saving it from the
+    planned dismantling.
+  _sector: Paris / FRANCE
+  _displayTitleTurkish: Eyfel Kulesi
+  _shortDescriptionTurkish: "1889 D\xFCnya Fuar\u0131 i\xE7in in\u015Fa edilen Eyfel
+    Kulesi ba\u015Flang\u0131\xE7ta ge\xE7ici bir yap\u0131 olarak tasarlanm\u0131\u015Ft\u0131.
     Bir zamanlar ele\u015Ftirilen demir kafes, bug\xFCn Paris\u2019in en g\xFC\xE7l\xFC
     simgesidir. Yakla\u015F\u0131k 300 metrelik kule, radyo deneyleri ve haberle\u015Fme
     antenleri sayesinde kullan\u0131m de\u011Ferini kan\u0131tlayarak planlanan s\xF6k\xFCl\xFC\u015Ften
     kurtuldu."
-  _sector: Paris / FRANSA
+  _sectorTurkish: Paris / FRANSA
   _artwork: {fileID: -3723603176774370489, guid: 6db472337166c22479c597f26b402b44, type: 3}

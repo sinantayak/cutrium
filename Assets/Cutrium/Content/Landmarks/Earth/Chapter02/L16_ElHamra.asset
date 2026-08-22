@@ -13,13 +13,19 @@ MonoBehaviour:
   m_Name: L16_ElHamra
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: el-hamra-sarayi
-  _displayTitle: "El Hamra Saray\u0131"
-  _shortDescription: "El Hamra, Nasr\xEE h\xFCk\xFCmdarlar\u0131n\u0131n saray ve
-    kale kompleksidir. \u0130nce geometrik s\xFCslemeler, yaz\u0131lar, avlular ve
-    akan suyun birlikte kullan\u0131m\u0131 yap\u0131ya sakin ama b\xFCy\xFCleyici
+  _displayTitle: Alhambra Palace
+  _shortDescription: The Alhambra is the palace and fortress complex of the Nasrid
+    rulers. Fine geometric decoration, inscriptions, courtyards, and flowing water
+    create a calm yet captivating atmosphere. Its Arabic name means Red Castle, a
+    meaning made clear when the outer walls take on a warm colour at sunset.
+  _sector: Granada / SPAIN
+  _displayTitleTurkish: "El Hamra Saray\u0131"
+  _shortDescriptionTurkish: "El Hamra, Nasr\xEE h\xFCk\xFCmdarlar\u0131n\u0131n saray
+    ve kale kompleksidir. \u0130nce geometrik s\xFCslemeler, yaz\u0131lar, avlular
+    ve akan suyun birlikte kullan\u0131m\u0131 yap\u0131ya sakin ama b\xFCy\xFCleyici
     bir atmosfer kazand\u0131r\u0131r. Ad\u0131 Arap\xE7ada \u201CK\u0131z\u0131l
     Kale\u201D anlam\u0131na gelir; g\xFCn bat\u0131m\u0131nda s\u0131cak bir renge
     b\xFCr\xFCnen d\u0131\u015F duvarlar\u0131 bu ismi hemen anla\u015F\u0131l\u0131r
     k\u0131lar."
-  _sector: "Granada / \u0130SPANYA"
+  _sectorTurkish: "Granada / \u0130SPANYA"
   _artwork: {fileID: -8663457701665149985, guid: d2a3c3564b424e540b43459b92ac7871, type: 3}

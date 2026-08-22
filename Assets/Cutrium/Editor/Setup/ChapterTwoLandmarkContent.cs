@@ -96,8 +96,13 @@ namespace Cutrium.Editor.Setup
                     AssetDatabase.CreateAsset(definition, entry.DefinitionPath);
                 }
 
-                definition.ConfigureForSetup(
+                EarthLandmarkLocalizationContent.EnglishEntry english =
+                    EarthLandmarkLocalizationContent.GetEnglish(entry.Id);
+                definition.ConfigureLocalizedForSetup(
                     entry.Id,
+                    english.Title,
+                    english.Description,
+                    english.Sector,
                     entry.Title,
                     entry.Description,
                     entry.Sector,

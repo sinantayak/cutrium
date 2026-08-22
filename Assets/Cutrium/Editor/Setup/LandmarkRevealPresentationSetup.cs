@@ -101,7 +101,7 @@ namespace Cutrium.Editor.Setup
         private const float BottomHudPreferredHeight = 116f;
         private const int BottomHudPadding = 8;
         private const float TopHudBarHeight = 84f;
-        private const float TopHudSettingsSize = 34f;
+        private const float TopHudSettingsSize = 48f;
         private const float TopHudIconSizeMultiplier = 0.74f;
         private const float SkillCellSize = 100f;
         private const float SkillRowRightInset = 18f;

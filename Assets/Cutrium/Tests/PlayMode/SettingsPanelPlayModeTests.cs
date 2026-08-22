@@ -2,6 +2,7 @@ using System.Collections;
 using System.Linq;
 using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.Frontend;
+using Cutrium.Presentation.Localization;
 using Cutrium.Presentation.Settings;
 using Cutrium.Unity.Simulation;
 using NUnit.Framework;
@@ -32,6 +33,13 @@ namespace Cutrium.PlayModeTests
             SettingsPanelPresenter presenter = root
                 .GetComponentInChildren<SettingsPanelPresenter>(true);
             Assert.That(presenter, Is.Not.Null);
+            Assert.That(presenter.Localization, Is.Not.Null);
+            presenter.Localization.SetLanguage(
+                SupportedLanguage.English,
+                false);
+            presenter.Localization
+                .GetComponent<LocalizationPresenter>()
+                .RefreshNow();
             Assert.That(presenter.Controller, Is.Not.Null);
             Assert.That(presenter.PanelCanvasGroup, Is.Not.Null);
             Assert.That(presenter.PanelCanvasGroup.alpha, Is.Zero);
@@ -39,6 +47,19 @@ namespace Cutrium.PlayModeTests
             Assert.That(presenter.PanelCanvasGroup.blocksRaycasts, Is.False);
             Assert.That(presenter.OpenButton, Is.Not.Null);
             Assert.That(presenter.OpenButton.interactable, Is.True);
+            Assert.That(presenter.HomeOpenButton, Is.Not.Null);
+            Assert.That(presenter.HomeOpenButton.interactable, Is.True);
+            Assert.That(
+                ((RectTransform)presenter.OpenButton.transform.parent)
+                    .sizeDelta,
+                Is.EqualTo(new Vector2(48f, 48f)));
+            Assert.That(
+                ((RectTransform)presenter.HomeOpenButton.transform.parent)
+                    .sizeDelta,
+                Is.EqualTo(new Vector2(48f, 48f)));
+            Assert.That(
+                ((Image)presenter.HomeOpenButton.targetGraphic).sprite,
+                Is.SameAs(((Image)presenter.OpenButton.targetGraphic).sprite));
 
             Transform settingsRoot = root.transform.Find(
                 "Canvas/SettingsPanelRoot");
@@ -105,6 +126,13 @@ namespace Cutrium.PlayModeTests
             AssertAction(panel, "LanguageButton", "English");
             AssertAction(panel, "HomeButton", "Home");
             AssertAction(panel, "ExitButton", "Exit");
+
+            presenter.HomeOpenButton.onClick.Invoke();
+            Assert.That(presenter.IsOpen, Is.True);
+            presenter.CloseButton.onClick.Invoke();
+            presenter.OpenButton.onClick.Invoke();
+            Assert.That(presenter.IsOpen, Is.True);
+            presenter.Close();
         }
 
         [Test]
@@ -198,6 +226,22 @@ namespace Cutrium.PlayModeTests
 
             rig.ExitButton.onClick.Invoke();
             Assert.That(exitRequested, Is.True);
+        }
+
+        [Test]
+        public void LanguageButton_TogglesTheSharedLocalizationService()
+        {
+            using var rig = new SettingsRig();
+            rig.ActivateWithoutFrontend();
+
+            Assert.That(rig.Localization.CurrentLanguage,
+                Is.EqualTo(SupportedLanguage.English));
+            rig.LanguageButton.onClick.Invoke();
+            Assert.That(rig.Localization.CurrentLanguage,
+                Is.EqualTo(SupportedLanguage.Turkish));
+            rig.LanguageButton.onClick.Invoke();
+            Assert.That(rig.Localization.CurrentLanguage,
+                Is.EqualTo(SupportedLanguage.English));
         }
 
         private static void AssertIcon(
@@ -294,7 +338,8 @@ namespace Cutrium.PlayModeTests
                 SoundButton = CreateButton("SoundButton");
                 MusicButton = CreateButton("MusicButton");
                 HapticButton = CreateButton("HapticButton");
-                Button languageButton = CreateButton("LanguageButton");
+                LanguageButton = CreateButton("LanguageButton");
+                HomeOpenButton = CreateButton("HomeOpenButton");
                 HomeButton = CreateButton("SettingsHomeButton");
                 ExitButton = CreateButton("ExitButton");
                 Image soundBackground = SoundButton.GetComponent<Image>();
@@ -306,6 +351,19 @@ namespace Cutrium.PlayModeTests
                 SoundState = CreateText("SoundState");
                 MusicState = CreateText("MusicState");
                 HapticState = CreateText("HapticState");
+
+                LocalizationTable = ScriptableObject.CreateInstance<
+                    LocalizationTable>();
+                LocalizationTable.ConfigureForSetup(new[]
+                {
+                    new LocalizationEntry("English", "Türkçe"),
+                });
+                Localization = CreateChild("Localization")
+                    .AddComponent<LocalizationService>();
+                Localization.ConfigureForSetup(
+                    LocalizationTable,
+                    false,
+                    SupportedLanguage.English);
 
                 Presenter = CreateChild("SettingsPresenter")
                     .AddComponent<SettingsPanelPresenter>();
@@ -320,7 +378,7 @@ namespace Cutrium.PlayModeTests
                     SoundButton,
                     MusicButton,
                     HapticButton,
-                    languageButton,
+                    LanguageButton,
                     HomeButton,
                     ExitButton,
                     soundBackground,
@@ -333,7 +391,9 @@ namespace Cutrium.PlayModeTests
                     MusicState,
                     HapticState,
                     new[] { MusicSource },
-                    false);
+                    false,
+                    HomeOpenButton,
+                    Localization);
             }
 
             public FirstPlayableController Controller { get; }
@@ -348,11 +408,15 @@ namespace Cutrium.PlayModeTests
             public Button SoundButton { get; }
             public Button MusicButton { get; }
             public Button HapticButton { get; }
+            public Button LanguageButton { get; }
+            public Button HomeOpenButton { get; }
             public Button HomeButton { get; }
             public Button ExitButton { get; }
             public TMP_Text SoundState { get; }
             public TMP_Text MusicState { get; }
             public TMP_Text HapticState { get; }
+            public LocalizationTable LocalizationTable { get; }
+            public LocalizationService Localization { get; }
 
             public void ActivateWithoutFrontend()
             {
@@ -363,6 +427,7 @@ namespace Cutrium.PlayModeTests
             public void Dispose()
             {
                 Object.DestroyImmediate(_root);
+                Object.DestroyImmediate(LocalizationTable);
             }
 
             private GameObject CreateChild(string name)

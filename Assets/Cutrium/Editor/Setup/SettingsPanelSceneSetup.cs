@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.Frontend;
+using Cutrium.Presentation.Localization;
 using Cutrium.Presentation.Settings;
 using Cutrium.Unity.Layout;
 using Cutrium.Unity.Simulation;
@@ -35,6 +36,7 @@ namespace Cutrium.Editor.Setup
         private const string SettingsButtonScenePath =
             "Canvas/SafeAreaRoot/TopHUD/GameplayHudRow/" +
             "SettingsSlot/SettingsButton";
+        private const float SettingsEntrySize = 48f;
 
         private static readonly Color ScrimColor =
             new Color(0.07f, 0.035f, 0.02f, 0.82f);
@@ -79,6 +81,9 @@ namespace Cutrium.Editor.Setup
             SettingsArtwork artwork = LoadArtwork();
             TMP_FontAsset font =
                 LandmarkRevealPresentationSetup.LoadTmpUiFontForSetup();
+            Button homeOpenButton = ConfigureSettingsEntryPoints(
+                frontEnd,
+                openButton);
 
             RectTransform settingsRoot = GetOrCreateUiChild(
                 canvas,
@@ -195,6 +200,8 @@ namespace Cutrium.Editor.Setup
                 .Where(source => source != feedbackAudio.AudioSource
                     && source.loop)
                 .ToArray();
+            LocalizationSceneSetup.LocalizationSetupResult localization =
+                LocalizationSceneSetup.ApplyToScene(root);
             SettingsPanelPresenter presenter =
                 GetOrAddComponent<SettingsPanelPresenter>(
                     settingsRoot.gameObject);
@@ -221,7 +228,10 @@ namespace Cutrium.Editor.Setup
                 sound.StateLabel,
                 music.StateLabel,
                 haptic.StateLabel,
-                musicSources);
+                musicSources,
+                true,
+                homeOpenButton,
+                localization.Service);
 
             Validate(
                 settingsRoot,
@@ -229,7 +239,8 @@ namespace Cutrium.Editor.Setup
                 panel,
                 gameOverPanelBounds,
                 presenter,
-                artwork);
+                artwork,
+                localization);
             EditorUtility.SetDirty(openButton);
             EditorUtility.SetDirty(presenter);
             EditorUtility.SetDirty(panelGroup);
@@ -242,8 +253,85 @@ namespace Cutrium.Editor.Setup
 
             AssetDatabase.SaveAssets();
             Debug.Log(
-                "Settings panel ready: Sound, Music, Haptic, English, " +
-                "Home, Exit, and Close are wired in VerticalSlice.unity.");
+                "Settings panel ready: shared Home/gameplay entry points, " +
+                "Sound, Music, Haptic, EN/TR, Home, Exit, and Close are " +
+                "wired in VerticalSlice.unity.");
+        }
+
+        private static Button ConfigureSettingsEntryPoints(
+            FrontEndPresenter frontEnd,
+            Button gameplayOpenButton)
+        {
+            if (frontEnd.HomePage == null)
+            {
+                throw new InvalidOperationException(
+                    "The frontend Home page is required for Settings.");
+            }
+
+            RectTransform gameplayButtonRect =
+                (RectTransform)gameplayOpenButton.transform;
+            RectTransform gameplaySlot =
+                gameplayButtonRect.parent as RectTransform;
+            if (gameplaySlot == null)
+            {
+                throw new InvalidOperationException(
+                    "The gameplay Settings button needs a UI slot.");
+            }
+
+            gameplaySlot.sizeDelta = new Vector2(
+                SettingsEntrySize,
+                SettingsEntrySize);
+            Stretch(gameplayButtonRect);
+
+            Image gameplayImage = gameplayOpenButton.targetGraphic as Image
+                ?? gameplayOpenButton.GetComponent<Image>();
+            if (gameplayImage == null || gameplayImage.sprite == null)
+            {
+                throw new InvalidOperationException(
+                    "The gameplay Settings button needs its gear Sprite.");
+            }
+
+            RectTransform homeSlot = GetOrCreateUiChild(
+                frontEnd.HomePage.transform,
+                "SettingsSlot");
+            homeSlot.gameObject.SetActive(true);
+            homeSlot.anchorMin = Vector2.one;
+            homeSlot.anchorMax = Vector2.one;
+            homeSlot.pivot = Vector2.one;
+            homeSlot.anchoredPosition = new Vector2(-20f, -20f);
+            homeSlot.sizeDelta = new Vector2(
+                SettingsEntrySize,
+                SettingsEntrySize);
+            homeSlot.SetAsLastSibling();
+
+            RectTransform homeButtonRect = GetOrCreateUiChild(
+                homeSlot,
+                "SettingsButton");
+            Stretch(homeButtonRect);
+            Image homeImage = GetOrAddComponent<Image>(
+                homeButtonRect.gameObject);
+            homeImage.sprite = gameplayImage.sprite;
+            homeImage.type = gameplayImage.type;
+            homeImage.color = gameplayImage.color;
+            homeImage.preserveAspect = gameplayImage.preserveAspect;
+            homeImage.raycastTarget = true;
+
+            Button homeButton = GetOrAddComponent<Button>(
+                homeButtonRect.gameObject);
+            homeButton.targetGraphic = homeImage;
+            homeButton.transition = gameplayOpenButton.transition;
+            homeButton.colors = gameplayOpenButton.colors;
+            homeButton.spriteState = gameplayOpenButton.spriteState;
+            homeButton.interactable = true;
+            Navigation navigation = homeButton.navigation;
+            navigation.mode = Navigation.Mode.None;
+            homeButton.navigation = navigation;
+
+            EditorUtility.SetDirty(gameplaySlot);
+            EditorUtility.SetDirty(gameplayOpenButton);
+            EditorUtility.SetDirty(homeImage);
+            EditorUtility.SetDirty(homeButton);
+            return homeButton;
         }
 
         private static ToggleSetupResult ConfigureToggle(
@@ -454,7 +542,8 @@ namespace Cutrium.Editor.Setup
             RectTransform panel,
             RectTransform gameOverPanelBounds,
             SettingsPanelPresenter presenter,
-            SettingsArtwork artwork)
+            SettingsArtwork artwork,
+            LocalizationSceneSetup.LocalizationSetupResult localization)
         {
             Image panelImage = panel.GetComponent<Image>();
             AspectRatioFitter panelAspect =
@@ -480,6 +569,9 @@ namespace Cutrium.Editor.Setup
                 || presenter.PanelCanvasGroup == null
                 || presenter.OpenButton == null
                 || !presenter.OpenButton.interactable
+                || presenter.HomeOpenButton == null
+                || !presenter.HomeOpenButton.interactable
+                || presenter.Localization != localization.Service
                 || presenter.CloseButton == null
                 || presenter.SoundButton == null
                 || presenter.MusicButton == null
@@ -491,6 +583,30 @@ namespace Cutrium.Editor.Setup
                 throw new InvalidOperationException(
                     "Settings hierarchy or serialized references are incomplete.");
             }
+
+            RectTransform gameplaySlot =
+                presenter.OpenButton.transform.parent as RectTransform;
+            RectTransform homeSlot =
+                presenter.HomeOpenButton.transform.parent as RectTransform;
+            Image gameplayGear = presenter.OpenButton.targetGraphic as Image;
+            Image homeGear = presenter.HomeOpenButton.targetGraphic as Image;
+            if (gameplaySlot == null
+                || homeSlot == null
+                || gameplaySlot.sizeDelta
+                    != new Vector2(SettingsEntrySize, SettingsEntrySize)
+                || homeSlot.sizeDelta
+                    != new Vector2(SettingsEntrySize, SettingsEntrySize)
+                || gameplayGear == null
+                || homeGear == null
+                || homeGear.sprite != gameplayGear.sprite)
+            {
+                throw new InvalidOperationException(
+                    "Home and gameplay Settings gears must match at 48x48.");
+            }
+
+            LocalizationSceneSetup.Validate(
+                settingsRoot.root.gameObject,
+                localization);
 
             Image soundIcon = RequireChild(
                     panel,

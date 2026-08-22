@@ -10,6 +10,7 @@ using Cutrium.Presentation.Capture;
 using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
+using Cutrium.Presentation.Localization;
 using Cutrium.Presentation.Powers;
 using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Bootstrap;
@@ -1127,6 +1128,60 @@ namespace Cutrium.PlayModeTests
                     Is.EqualTo(rig.Landmarks[0].ShortDescription));
                 Assert.That(rig.Presenter.CompletionSectorText.text,
                     Is.EqualTo(rig.Landmarks[0].Sector));
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [Test]
+        public void CompletionCopy_RefreshesImmediatelyWhenLanguageChanges()
+        {
+            var rig = new IsolatedRig(1);
+            try
+            {
+                LandmarkDefinition landmark = rig.Landmarks[0];
+                landmark.ConfigureLocalizedForSetup(
+                    "localized-landmark",
+                    "English Landmark",
+                    "English landmark description.",
+                    "English sector",
+                    "Türkçe Simgesel Yapı",
+                    "Türkçe simgesel yapı açıklaması.",
+                    "Türkçe bölge",
+                    landmark.Artwork);
+
+                var localizationObject = new GameObject("Localization");
+                localizationObject.transform.SetParent(rig.Root, false);
+                LocalizationService localization =
+                    localizationObject.AddComponent<LocalizationService>();
+                localization.ConfigureForSetup(
+                    null,
+                    false,
+                    SupportedLanguage.English);
+                rig.Presenter.ConfigureLocalizationForSetup(localization);
+
+                rig.Controller.AdvanceSimulation(0f);
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+                Assert.That(
+                    rig.Presenter.CompletionDescriptionText.text,
+                    Is.EqualTo("English landmark description."));
+
+                localization.SetLanguage(
+                    SupportedLanguage.Turkish,
+                    false);
+
+                Assert.That(
+                    rig.Presenter.CompletionTitleText.text,
+                    Is.EqualTo("Türkçe Simgesel Yapı"));
+                Assert.That(
+                    rig.Presenter.CompletionDescriptionText.text,
+                    Is.EqualTo("Türkçe simgesel yapı açıklaması."));
+                Assert.That(
+                    rig.Presenter.CompletionSectorText.text,
+                    Is.EqualTo("Türkçe bölge"));
             }
             finally
             {

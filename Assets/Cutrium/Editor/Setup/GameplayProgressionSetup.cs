@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
+using Cutrium.Presentation.Localization;
 using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Simulation;
 using TMPro;
@@ -333,11 +334,22 @@ namespace Cutrium.Editor.Setup
             for (int index = 0; index < entries.Length; index++)
             {
                 FirstTwelveLandmarkContent.Entry expected = entries[index];
+                EarthLandmarkLocalizationContent.EnglishEntry english =
+                    EarthLandmarkLocalizationContent.GetEnglish(expected.Id);
                 LandmarkDefinition actual = landmarkCatalog.Landmarks[index];
                 if (actual.LandmarkId != expected.Id
-                    || actual.DisplayTitle != expected.Title
-                    || actual.ShortDescription != expected.Description
-                    || actual.Sector != expected.Sector
+                    || actual.GetDisplayTitle(SupportedLanguage.English)
+                        != english.Title
+                    || actual.GetShortDescription(SupportedLanguage.English)
+                        != english.Description
+                    || actual.GetSector(SupportedLanguage.English)
+                        != english.Sector
+                    || actual.GetDisplayTitle(SupportedLanguage.Turkish)
+                        != expected.Title
+                    || actual.GetShortDescription(SupportedLanguage.Turkish)
+                        != expected.Description
+                    || actual.GetSector(SupportedLanguage.Turkish)
+                        != expected.Sector
                     || actual.Artwork == null
                     || AssetDatabase.GetAssetPath(actual) != expected.DefinitionPath
                     || AssetDatabase.GetAssetPath(actual.Artwork)
@@ -372,11 +384,22 @@ namespace Cutrium.Editor.Setup
                     index < chapterOne.Length
                         ? chapterOne[index]
                         : chapterTwo[index - chapterOne.Length];
+                EarthLandmarkLocalizationContent.EnglishEntry english =
+                    EarthLandmarkLocalizationContent.GetEnglish(expected.Id);
                 LandmarkDefinition actual = landmarkCatalog.Landmarks[index];
                 if (actual.LandmarkId != expected.Id
-                    || actual.DisplayTitle != expected.Title
-                    || actual.ShortDescription != expected.Description
-                    || actual.Sector != expected.Sector
+                    || actual.GetDisplayTitle(SupportedLanguage.English)
+                        != english.Title
+                    || actual.GetShortDescription(SupportedLanguage.English)
+                        != english.Description
+                    || actual.GetSector(SupportedLanguage.English)
+                        != english.Sector
+                    || actual.GetDisplayTitle(SupportedLanguage.Turkish)
+                        != expected.Title
+                    || actual.GetShortDescription(SupportedLanguage.Turkish)
+                        != expected.Description
+                    || actual.GetSector(SupportedLanguage.Turkish)
+                        != expected.Sector
                     || actual.Artwork == null
                     || AssetDatabase.GetAssetPath(actual)
                         != expected.DefinitionPath

@@ -1748,3 +1748,57 @@ logic depends on the supplied artwork, no third-party audio/haptic/localization
 package is introduced, and future localization or mixer work can replace only
 the presentation dependencies. The Editor-authored scene and required phone,
 tall-phone, and tablet views still require licensed Unity validation.
+
+## ADR-042 — EN/TR Localization Uses a Serialized Presentation Pass
+
+**Status:** Accepted for implementation and visual playtesting.
+
+**Context:**
+The frontend, Settings modal, HUD, level intro, feedback cues, completion flow,
+and landmark reveal contain a mixture of scene-authored labels and text written
+by runtime presenters. English and Turkish are required before more UI content
+is added. The project does not include the Unity Localization package, and
+production dependencies cannot be added without approval. Existing gameplay
+and content systems must not start depending on translated strings.
+
+**Decision:**
+Add a repository-native `LocalizationTable` ScriptableObject and one serialized
+`LocalizationService` in the presentation assembly. Store English/Turkish
+pairs for player-facing UI, the current level purposes and intro copy, and
+feedback cues. The service accepts either authored
+language as its source, uses exact table entries for authored copy, and applies
+deterministic pattern translation to runtime values such as `LEVEL N`,
+`TARGET N%`, `PLAY LEVEL N`, cut counters, and rich completion summaries.
+English remains the default and explicit language changes are persisted under
+the namespaced `Cutrium.Settings.Language` PlayerPrefs key.
+
+Use one late-executing `LocalizationPresenter` with explicit serialized
+bindings to every TMP and legacy uGUI label in the scene. It remembers each
+label's authored source, refreshes immediately on language changes, and detects
+new text written by existing presenters before translating it. It skips writes
+when the visible value is already correct. This keeps localization out of
+gameplay logic, avoids runtime scene searches, and bounds the work to one small
+presentation loop instead of one updater per label.
+
+Extend the idempotent Settings setup command to create/update the table and
+bindings, connect the language action, and configure LapsusPro's existing TMP
+font asset for dynamic multi-atlas population from its source OTF. Preload the
+required Turkish glyphs so phone and tablet builds do not show missing-character
+boxes. Add a 48-by-48 top-right Settings gear to Home, resize the gameplay gear
+to the same dimensions, reuse the same sprite, and serialize both buttons into
+the single existing Settings popup presenter.
+
+**Consequences:**
+Changing language updates static and live numeric text without restarting the
+scene. Current level copy can be expanded by adding table entries. Active Earth
+landmark titles, descriptions, and sectors are stored as explicit English and
+Turkish fields on `LandmarkDefinition`; `LandmarkRevealPresenter` selects them
+through the same service and refreshes an open completion view immediately.
+This avoids duplicating long, punctuation-sensitive descriptions in the
+general UI table while keeping landmark identity out of gameplay definitions.
+One localization pass runs late each frame but does not dirty unchanged labels.
+The TMP source font
+must ship for dynamic glyph population, and new locale additions will need a
+more scalable content workflow or adoption of Unity Localization. The scene,
+font atlas, popup, and both gear positions still require phone, tall-phone, and
+4:3 tablet visual verification after running the setup command.

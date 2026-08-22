@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: L15_Efes
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: efes-antik-kenti
-  _displayTitle: Efes Antik Kenti
-  _shortDescription: "Efes, Roma d\xF6neminin en b\xFCy\xFCk liman ve ticaret kentlerinden
-    biriydi. Celsus K\xFCt\xFCphanesi, mermer caddeleri ve B\xFCy\xFCk Tiyatrosu
-    kentin g\xF6rkemini bug\xFCn h\xE2l\xE2 g\xFC\xE7l\xFC bi\xE7imde hissettirir.
+  _displayTitle: Ancient City of Ephesus
+  _shortDescription: Ephesus was one of the largest port and trading cities of the
+    Roman era. The Library of Celsus, marble streets, and Great Theatre still convey
+    its splendour. The nearby Temple of Artemis was counted among the Seven Wonders
+    of the Ancient World, while mosaics and frescoes in the terrace houses offer
+    a close view of wealthy urban life.
+  _sector: Izmir / TURKEY
+  _displayTitleTurkish: Efes Antik Kenti
+  _shortDescriptionTurkish: "Efes, Roma d\xF6neminin en b\xFCy\xFCk liman ve ticaret
+    kentlerinden biriydi. Celsus K\xFCt\xFCphanesi, mermer caddeleri ve B\xFCy\xFCk
+    Tiyatrosu kentin g\xF6rkemini bug\xFCn h\xE2l\xE2 g\xFC\xE7l\xFC bi\xE7imde hissettirir.
     Yak\u0131ndaki Artemis Tap\u0131na\u011F\u0131 Antik D\xFCnyan\u0131n Yedi Harikas\u0131
     aras\u0131nda say\u0131l\u0131rken, teras evlerdeki mozaik ve freskler zengin
     kentlilerin g\xFCnl\xFCk ya\u015Fam\u0131na yak\u0131ndan bakmay\u0131 sa\u011Flar."
-  _sector: "\u0130zmir / T\xDCRK\u0130YE"
+  _sectorTurkish: "\u0130zmir / T\xDCRK\u0130YE"
   _artwork: {fileID: -2565220726319960746, guid: 477556d7742ab614a98602583d6b3f91, type: 3}

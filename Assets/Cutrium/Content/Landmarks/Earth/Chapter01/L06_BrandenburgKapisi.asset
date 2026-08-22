@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: L06_BrandenburgKapisi
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: brandenburg-kapisi
-  _displayTitle: "Brandenburg Kap\u0131s\u0131"
-  _shortDescription: "18. y\xFCzy\u0131l\u0131n sonunda yap\u0131lan Brandenburg
+  _displayTitle: Brandenburg Gate
+  _shortDescription: Built at the end of the 18th century, the Brandenburg Gate is
+    one of Berlin's most powerful symbols. It stood at the boundary of division during
+    the Cold War and came to represent German reunification after 1989. The Quadriga
+    above the gate shows the goddess of victory driving a four-horse chariot toward
+    the city.
+  _sector: Berlin / GERMANY
+  _displayTitleTurkish: "Brandenburg Kap\u0131s\u0131"
+  _shortDescriptionTurkish: "18. y\xFCzy\u0131l\u0131n sonunda yap\u0131lan Brandenburg
     Kap\u0131s\u0131, Berlin\u2019in en g\xFC\xE7l\xFC simgelerinden biridir. So\u011Fuk
     Sava\u015F y\u0131llar\u0131nda b\xF6l\xFCnmenin s\u0131n\u0131r\u0131nda kald\u0131;
     1989\u2019dan sonra Almanya\u2019n\u0131n yeniden birle\u015Fmesini temsil etmeye
     ba\u015Flad\u0131. Kap\u0131n\u0131n tepesindeki d\xF6rt atl\u0131 Quadriga heykeli,
     zafer tanr\u0131\xE7as\u0131n\u0131 \u015Fehre do\u011Fru ilerlerken g\xF6sterir."
-  _sector: Berlin / ALMANYA
+  _sectorTurkish: Berlin / ALMANYA
   _artwork: {fileID: -6606637857269559732, guid: 7451781f19388244fae36606e4ba28f1, type: 3}

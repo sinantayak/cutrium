@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: L13_CinSeddi
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: cin-seddi
-  _displayTitle: "\xC7in Seddi"
-  _shortDescription: "\xC7in Seddi tek ve kesintisiz bir duvar de\u011Fil, farkl\u0131
-    hanedanlar\u0131n y\xFCzy\u0131llar boyunca kurdu\u011Fu geni\u015F bir savunma
-    a\u011F\u0131d\u0131r. Duvarlar, ge\xE7itler ve g\xF6zetleme kuleleri binlerce
-    kilometrelik bir sistem olu\u015Fturur. B\xF6lgeye g\xF6re s\u0131k\u0131\u015Ft\u0131r\u0131lm\u0131\u015F
+  _displayTitle: Great Wall of China
+  _shortDescription: The Great Wall is not one continuous wall, but a vast defensive
+    network built by different dynasties over many centuries. Its walls, passes,
+    and watchtowers form a system spanning thousands of kilometres. Depending on
+    the region, builders used rammed earth, stone, or brick, while smoke, fire, and
+    flag signals carried messages rapidly between towers.
+  _sector: CHINA
+  _displayTitleTurkish: "\xC7in Seddi"
+  _shortDescriptionTurkish: "\xC7in Seddi tek ve kesintisiz bir duvar de\u011Fil,
+    farkl\u0131 hanedanlar\u0131n y\xFCzy\u0131llar boyunca kurdu\u011Fu geni\u015F
+    bir savunma a\u011F\u0131d\u0131r. Duvarlar, ge\xE7itler ve g\xF6zetleme kuleleri
+    binlerce kilometrelik bir sistem olu\u015Fturur. B\xF6lgeye g\xF6re s\u0131k\u0131\u015Ft\u0131r\u0131lm\u0131\u015F
     toprak, ta\u015F ya da tu\u011Fla kullan\u0131lan kulelerde duman, ate\u015F
     ve bayrak sinyalleriyle haberler h\u0131zla aktar\u0131l\u0131rd\u0131."
-  _sector: "\xC7\u0130N"
+  _sectorTurkish: "\xC7\u0130N"
   _artwork: {fileID: 8068504576610999302, guid: 2639107870faa1c489a99e330fa563d2, type: 3}

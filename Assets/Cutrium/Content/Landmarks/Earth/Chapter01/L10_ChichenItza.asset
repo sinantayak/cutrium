@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: L10_ChichenItza
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: chichen-itza
-  _displayTitle: "Chich\xE9n Itz\xE1"
-  _shortDescription: "Chich\xE9n Itz\xE1, Maya d\xFCnyas\u0131n\u0131n en \xF6nemli
-    kentlerinden biriydi. Kukulk\xE1n Piramidi\u2019nin basamaklar\u0131 ve g\xF6lgeleri,
-    \xF6zellikle ekinoks g\xFCnlerinde y\u0131lan\u0131 and\u0131ran etkileyici bir
-    \u0131\u015F\u0131k oyunu olu\u015Fturur. Dev Top Oyunu Sahas\u0131 ve kurban
-    t\xF6renleriyle ili\u015Fkilendirilen Kutsal Kuyu, kentin spor, inan\xE7 ve g\xF6ky\xFCz\xFC
-    g\xF6zlemlerini ayn\u0131 merkezde bulu\u015Fturdu\u011Funu g\xF6sterir."
-  _sector: "Yucat\xE1n / MEKS\u0130KA"
+  _displayTitle: Chichen Itza
+  _shortDescription: Chichen Itza was one of the most important cities of the Maya
+    world. The steps and shadows of the Pyramid of Kukulcan create a striking serpent-like
+    play of light, especially around the equinoxes. Its Great Ball Court and Sacred
+    Cenote show how sport, belief, and observation of the sky met at the same centre.
+  _sector: Yucatan / MEXICO
+  _displayTitleTurkish: "Chich\xE9n Itz\xE1"
+  _shortDescriptionTurkish: "Chich\xE9n Itz\xE1, Maya d\xFCnyas\u0131n\u0131n en
+    \xF6nemli kentlerinden biriydi. Kukulk\xE1n Piramidi\u2019nin basamaklar\u0131
+    ve g\xF6lgeleri, \xF6zellikle ekinoks g\xFCnlerinde y\u0131lan\u0131 and\u0131ran
+    etkileyici bir \u0131\u015F\u0131k oyunu olu\u015Fturur. Dev Top Oyunu Sahas\u0131
+    ve kurban t\xF6renleriyle ili\u015Fkilendirilen Kutsal Kuyu, kentin spor, inan\xE7
+    ve g\xF6ky\xFCz\xFC g\xF6zlemlerini ayn\u0131 merkezde bulu\u015Fturdu\u011Funu
+    g\xF6sterir."
+  _sectorTurkish: "Yucat\xE1n / MEKS\u0130KA"
   _artwork: {fileID: 8264955966141097663, guid: d036b210ef3f4b842b7b07dd9589b8a9, type: 3}

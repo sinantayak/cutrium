@@ -13,13 +13,21 @@ MonoBehaviour:
   m_Name: L24_Ayasofya
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: ayasofya
-  _displayTitle: Ayasofya
-  _shortDescription: "537\u2019de tamamlanan Ayasofya\u2019n\u0131n dev kubbesi,
+  _displayTitle: Hagia Sophia
+  _shortDescription: Completed in 537, Hagia Sophia's immense dome was a turning
+    point in architectural history. Used over the centuries as a church, mosque,
+    and museum, the building brings Byzantine and Ottoman heritage together in one
+    space. The pendentives connecting the dome to the square main hall were a major
+    engineering innovation, while mosaics and monumental calligraphic roundels make
+    its different eras visible side by side.
+  _sector: Istanbul / TURKEY
+  _displayTitleTurkish: Ayasofya
+  _shortDescriptionTurkish: "537\u2019de tamamlanan Ayasofya\u2019n\u0131n dev kubbesi,
     mimarl\u0131k tarihinde bir d\xF6n\xFCm noktas\u0131yd\u0131. Y\xFCzy\u0131llar
     boyunca kilise, cami ve m\xFCze olarak kullan\u0131lan yap\u0131, Bizans ve Osmanl\u0131
     miras\u0131n\u0131 ayn\u0131 mek\xE2nda bulu\u015Fturur. Kubbeyi kare ana mek\xE2na
     ba\u011Flayan pandantifler b\xFCy\xFCk bir m\xFChendislik yenili\u011Fiydi; mozaikler
     ile dev hat levhalar\u0131 da farkl\u0131 d\xF6nemleri yan yana g\xF6r\xFCn\xFCr
     k\u0131lar."
-  _sector: "\u0130stanbul / T\xDCRK\u0130YE"
+  _sectorTurkish: "\u0130stanbul / T\xDCRK\u0130YE"
   _artwork: {fileID: -8581728456637405341, guid: 31fad58d54e36e1458b54f587f804ca4, type: 3}

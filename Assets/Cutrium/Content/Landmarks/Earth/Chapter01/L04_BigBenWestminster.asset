@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: L04_BigBenWestminster
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: big-ben-westminster
-  _displayTitle: "Big Ben ve Westminster Saray\u0131"
-  _shortDescription: "\u201CBig Ben\u201D asl\u0131nda saat kulesinin de\u011Fil,
+  _displayTitle: Big Ben and the Palace of Westminster
+  _shortDescription: Big Ben is actually the nickname of the Great Bell inside Elizabeth
+    Tower, not the tower itself. The neighbouring Palace of Westminster is home to
+    the Parliament of the United Kingdom. Rebuilt in the Gothic Revival style after
+    the 1834 fire destroyed most of the old palace, its famous clock has marked London's
+    rhythm since 1859.
+  _sector: London / UNITED KINGDOM
+  _displayTitleTurkish: "Big Ben ve Westminster Saray\u0131"
+  _shortDescriptionTurkish: "\u201CBig Ben\u201D asl\u0131nda saat kulesinin de\u011Fil,
     Elizabeth Kulesi i\xE7indeki B\xFCy\xFCk \xC7an\u2019\u0131n takma ad\u0131d\u0131r.
     Yan\u0131ndaki Westminster Saray\u0131, Birle\u015Fik Krall\u0131k Parlamentosuna
     ev sahipli\u011Fi yapar. Eski saray\u0131n b\xFCy\xFCk b\xF6l\xFCm\xFCn\xFC yok
     eden 1834 yang\u0131n\u0131ndan sonra Gotik Canlanma \xFCslubunda yeniden kurulan
     kompleksin \xFCnl\xFC saati 1859\u2019dan beri Londra\u2019n\u0131n ritmini belirler."
-  _sector: "Londra / B\u0130RLE\u015E\u0130K KRALLIK"
+  _sectorTurkish: "Londra / B\u0130RLE\u015E\u0130K KRALLIK"
   _artwork: {fileID: 7766269430644573550, guid: 0b6b43b598e83bf4ba1cd4d50c96e909, type: 3}

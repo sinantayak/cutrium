@@ -13,13 +13,20 @@ MonoBehaviour:
   m_Name: L18_FujiDagi
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: fuji-dagi
-  _displayTitle: "Fuji Da\u011F\u0131"
-  _shortDescription: "3.776 metre y\xFCksekli\u011Findeki Fuji, Japonya\u2019n\u0131n
+  _displayTitle: Mount Fuji
+  _shortDescription: At 3,776 metres, Mount Fuji is Japan's highest mountain and
+    a stratovolcano still considered active. Its nearly perfect cone has inspired
+    artists, pilgrims, and travellers for centuries. The sacred mountain last erupted
+    in 1707 and became an enduring symbol in art beyond Japan through Hokusai's celebrated
+    prints.
+  _sector: JAPAN
+  _displayTitleTurkish: "Fuji Da\u011F\u0131"
+  _shortDescriptionTurkish: "3.776 metre y\xFCksekli\u011Findeki Fuji, Japonya\u2019n\u0131n
     en y\xFCksek da\u011F\u0131 ve h\xE2l\xE2 aktif kabul edilen bir stratovolkand\u0131r.
     Neredeyse kusursuz konisi y\xFCzy\u0131llard\u0131r sanat\xE7\u0131lara, hac\u0131lara
     ve gezginlere ilham verir. Son b\xFCy\xFCk patlamas\u0131 1707\u2019de ger\xE7ekle\u015Fen
     kutsal da\u011F, Hokusai\u2019nin \xFCnl\xFC bask\u0131lar\u0131 sayesinde Japonya
     d\u0131\u015F\u0131ndaki sanat d\xFCnyas\u0131nda da kal\u0131c\u0131 bir simgeye
     d\xF6n\xFC\u015Ft\xFC."
-  _sector: JAPONYA
+  _sectorTurkish: JAPONYA
   _artwork: {fileID: 8483081600426724900, guid: d294c0879677a2545adeef0ddcbce373, type: 3}

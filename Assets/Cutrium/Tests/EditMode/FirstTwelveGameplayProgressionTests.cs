@@ -7,6 +7,7 @@ using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
 using Cutrium.Gameplay.Threats;
 using Cutrium.Presentation.Landmark;
+using Cutrium.Presentation.Localization;
 using Cutrium.Unity.Simulation;
 using NUnit.Framework;
 using UnityEditor;
@@ -402,10 +403,25 @@ namespace Cutrium.Gameplay.EditModeTests
             {
                 LandmarkDefinition landmark = catalog.Landmarks[index];
                 FirstTwelveLandmarkContent.Entry source = expected[index];
-                Assert.That(landmark.DisplayTitle, Is.EqualTo(source.Title));
-                Assert.That(landmark.ShortDescription,
+                EarthLandmarkLocalizationContent.EnglishEntry english =
+                    EarthLandmarkLocalizationContent.GetEnglish(source.Id);
+                Assert.That(
+                    landmark.GetDisplayTitle(SupportedLanguage.English),
+                    Is.EqualTo(english.Title));
+                Assert.That(
+                    landmark.GetShortDescription(SupportedLanguage.English),
+                    Is.EqualTo(english.Description));
+                Assert.That(
+                    landmark.GetSector(SupportedLanguage.English),
+                    Is.EqualTo(english.Sector));
+                Assert.That(
+                    landmark.GetDisplayTitle(SupportedLanguage.Turkish),
+                    Is.EqualTo(source.Title));
+                Assert.That(
+                    landmark.GetShortDescription(SupportedLanguage.Turkish),
                     Is.EqualTo(source.Description));
-                Assert.That(landmark.Sector,
+                Assert.That(
+                    landmark.GetSector(SupportedLanguage.Turkish),
                     Is.EqualTo(source.Sector));
                 Assert.That(landmark.Artwork, Is.Not.Null);
                 Assert.That(AssetDatabase.GetAssetPath(landmark),
@@ -415,6 +431,32 @@ namespace Cutrium.Gameplay.EditModeTests
             }
 
             Assert.DoesNotThrow(GameplayProgressionSetup.ValidateExistingAssets);
+        }
+
+        [Test]
+        public void AllEarthLandmarks_HaveCompleteEnglishLocalization()
+        {
+            FirstTwelveLandmarkContent.Entry[] sources =
+                FirstTwelveLandmarkContent.Entries
+                    .Concat(ChapterTwoLandmarkContent.Entries)
+                    .ToArray();
+
+            Assert.That(sources, Has.Length.EqualTo(24));
+            foreach (FirstTwelveLandmarkContent.Entry source in sources)
+            {
+                EarthLandmarkLocalizationContent.EnglishEntry english =
+                    EarthLandmarkLocalizationContent.GetEnglish(source.Id);
+                Assert.That(english.Title, Is.Not.Null.And.Not.Empty);
+                Assert.That(english.Sector, Is.Not.Null.And.Not.Empty);
+                Assert.That(
+                    english.Description,
+                    Is.Not.Null.And.Length.GreaterThan(100),
+                    source.Id);
+                Assert.That(
+                    english.Description,
+                    Is.Not.EqualTo(source.Description),
+                    source.Id);
+            }
         }
 
         [Test]

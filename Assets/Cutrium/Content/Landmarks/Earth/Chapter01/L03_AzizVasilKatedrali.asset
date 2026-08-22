@@ -13,13 +13,20 @@ MonoBehaviour:
   m_Name: L03_AzizVasilKatedrali
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: aziz-vasil-katedrali
-  _displayTitle: Aziz Vasil Katedrali
-  _shortDescription: "16. y\xFCzy\u0131lda K\u0131z\u0131l Meydan\u2019da in\u015Fa
-    edilen katedral, birbirinden farkl\u0131 renk ve desenlere sahip so\u011Fan kubbeleriyle
-    tan\u0131n\u0131r. Yap\u0131 asl\u0131nda tek bir salon de\u011Fil, birbirine
-    ba\u011Flanan dokuz \u015Fapelden olu\u015Fur. Korkun\xE7 \u0130van\u2019\u0131n
+  _displayTitle: Saint Basil's Cathedral
+  _shortDescription: Built on Red Square in the 16th century, the cathedral is known
+    for onion domes with distinct colours and patterns. It is not a single hall,
+    but nine interconnected chapels. Commissioned by Ivan the Terrible to commemorate
+    the conquest of Kazan, its now-iconic vivid colours were developed during the
+    centuries after its original construction.
+  _sector: Moscow / RUSSIA
+  _displayTitleTurkish: Aziz Vasil Katedrali
+  _shortDescriptionTurkish: "16. y\xFCzy\u0131lda K\u0131z\u0131l Meydan\u2019da
+    in\u015Fa edilen katedral, birbirinden farkl\u0131 renk ve desenlere sahip so\u011Fan
+    kubbeleriyle tan\u0131n\u0131r. Yap\u0131 asl\u0131nda tek bir salon de\u011Fil,
+    birbirine ba\u011Flanan dokuz \u015Fapelden olu\u015Fur. Korkun\xE7 \u0130van\u2019\u0131n
     Kazan zaferini anmak i\xE7in yapt\u0131rd\u0131\u011F\u0131 yap\u0131n\u0131n
     bug\xFCn ikonik olan canl\u0131 renkleri, ilk in\u015Fas\u0131ndan sonraki y\xFCzy\u0131llarda
     geli\u015Ftirilmi\u015Ftir."
-  _sector: Moskova / RUSYA
+  _sectorTurkish: Moskova / RUSYA
   _artwork: {fileID: -4440307213740135715, guid: ab03924503d73e1429f9da800f423b49, type: 3}

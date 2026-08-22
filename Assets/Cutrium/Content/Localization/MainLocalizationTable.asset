@@ -1,0 +1,192 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 900e8e3ac344437298144481bdef74fe, type: 3}
+  m_Name: MainLocalizationTable
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Localization.LocalizationTable
+  _entries:
+  - _english: SHOP
+    _turkish: "MA\u011EAZA"
+  - _english: HOME
+    _turkish: ANA SAYFA
+  - _english: CHALLENGE
+    _turkish: "B\xD6L\xDCMLER"
+  - _english: COMING SOON
+    _turkish: YAKINDA
+  - _english: PLAY
+    _turkish: OYNA
+  - _english: English
+    _turkish: "T\xFCrk\xE7e"
+  - _english: Home
+    _turkish: Ana Sayfa
+  - _english: Exit
+    _turkish: "\xC7\u0131k\u0131\u015F"
+  - _english: NEXT
+    _turkish: "SONRAK\u0130"
+  - _english: RETRY
+    _turkish: TEKRAR DENE
+  - _english: Retry
+    _turkish: Tekrar Dene
+  - _english: RESTART SEQUENCE
+    _turkish: "BA\u015ETAN BA\u015ELA"
+  - _english: Watch AD
+    _turkish: "REKLAM \u0130ZLE"
+  - _english: 'Watch an AD
+
+      to Continue!'
+    _turkish: "Devam Etmek \u0130\xE7in\nReklam \u0130zle!"
+  - _english: TARGET
+    _turkish: HEDEF
+  - _english: LEVEL COMPLETE
+    _turkish: "SEV\u0130YE TAMAMLANDI"
+  - _english: Description
+    _turkish: "A\xE7\u0131klama"
+  - _english: Sector
+    _turkish: "B\xF6lge"
+  - _english: Landmark
+    _turkish: "Simgesel Yap\u0131"
+  - _english: LOCKED
+    _turkish: "SAB\u0130TLEND\u0130"
+  - _english: TRY AGAIN
+    _turkish: TEKRAR DENE
+  - _english: BIG CUT
+    _turkish: "B\xDCY\xDCK KES\u0130M"
+  - _english: CLOSE!
+    _turkish: "\xC7OK YAKIN!"
+  - _english: ON
+    _turkish: "A\xC7IK"
+  - _english: OFF
+    _turkish: KAPALI
+  - _english: UI TEST
+    _turkish: "ARAY\xDCZ TEST\u0130"
+  - _english: 'Pointer: waiting'
+    _turkish: "\u0130\u015Faret\xE7i: bekliyor"
+  - _english: "Board: move or press to inspect 10 \xD7 16 mapping"
+    _turkish: "Tahta: 10 \xD7 16 e\u015Flemesini incelemek i\xE7in hareket ettir
+      veya bas"
+  - _english: LEARN THE CUT
+    _turkish: "KES\u0130M\u0130 \xD6\u011EREN"
+  - _english: WATCH THE THREAT
+    _turkish: "TEHD\u0130D\u0130 \u0130ZLE"
+  - _english: KEEP THEM TOGETHER
+    _turkish: "ONLARI B\u0130RL\u0130KTE TUT"
+  - _english: CUT WITH CONFIDENCE
+    _turkish: KARARLI KES
+  - _english: MEET THE HUNTER
+    _turkish: "AVCIYLA TANI\u015E"
+  - _english: READ THE PULSE
+    _turkish: NABZI OKU
+  - _english: CREATE A FREEZE WINDOW
+    _turkish: DONDURMA FIRSATI YARAT
+  - _english: FINISH IT INSTANTLY
+    _turkish: "ANINDA B\u0130T\u0130R"
+  - _english: TRACK TWO INTENTIONS
+    _turkish: "\u0130K\u0130 N\u0130YET\u0130 TAK\u0130P ET"
+  - _english: FIND THE SHARED WINDOW
+    _turkish: ORTAK FIRSATI BUL
+  - _english: CHOOSE THE RIGHT POWER
+    _turkish: "DO\u011ERU G\xDCC\xDC SE\xC7"
+  - _english: MASTER THE BOARD
+    _turkish: "TAHTADA USTALA\u015E"
+  - _english: READ THE ROOM
+    _turkish: ALANI OKU
+  - _english: MOVE WITH THEM
+    _turkish: ONLARLA HAREKET ET
+  - _english: WAIT FOR THE CROSS
+    _turkish: "KES\u0130\u015E\u0130M\u0130 BEKLE"
+  - _english: MEET THE COMET
+    _turkish: "KUYRUKLU YILDIZLA TANI\u015E"
+  - _english: GIVE IT SPACE
+    _turkish: ONA ALAN BIRAK
+  - _english: READ TWO SPEEDS
+    _turkish: "\u0130K\u0130 HIZI OKU"
+  - _english: BALANCE THE PAIR
+    _turkish: "\u0130K\u0130L\u0130Y\u0130 DENGELE"
+  - _english: BEND THEIR PATH
+    _turkish: "YOLLARINI B\xDCK"
+  - _english: SHAPE THE GROUP
+    _turkish: "GRUBU \u015EEK\u0130LLEND\u0130R"
+  - _english: CONTROL THE BURST
+    _turkish: PATLAMAYI KONTROL ET
+  - _english: GATHER THE CROWD
+    _turkish: "KALABALI\u011EI TOPLA"
+  - _english: MASTER THE MOTION
+    _turkish: "HAREKETTE USTALA\u015E"
+  - _english: MAKE THEM COUNT
+    _turkish: "\u0130Y\u0130 DE\u011EERLEND\u0130R"
+  - _english: HUNTER
+    _turkish: AVCI
+  - _english: REACTS TO YOUR CUTS
+    _turkish: "KES\u0130MLER\u0130NE TEPK\u0130 VER\u0130R"
+  - _english: PULSE
+    _turkish: NABIZ
+  - _english: WATCH ITS SPEED
+    _turkish: "HIZINI \u0130ZLE"
+  - _english: FREEZE
+    _turkish: DONDUR
+  - _english: CREATE A SAFE WINDOW
+    _turkish: "G\xDCVENL\u0130 B\u0130R FIRSAT YARAT"
+  - _english: INSTANT
+    _turkish: ANINDA
+  - _english: SAVE IT FOR A RISKY CUT
+    _turkish: "R\u0130SKL\u0130 B\u0130R KES\u0130M \u0130\xC7\u0130N SAKLA"
+  - _english: COMET
+    _turkish: KUYRUKLU YILDIZ
+  - _english: SMALL AND FAST
+    _turkish: "K\xDC\xC7\xDCK VE HIZLI"
+  - _english: HEAVY
+    _turkish: "A\u011EIR"
+  - _english: SLOW BUT LARGE
+    _turkish: "YAVA\u015E AMA B\xDCY\xDCK"
+  - _english: GRAVITY WELL
+    _turkish: "\xC7EK\u0130M KUYUSU"
+  - _english: TAP A POINT TO PULL
+    _turkish: "\xC7EKMEK \u0130\xC7\u0130N B\u0130R NOKTAYA DOKUN"
+  - _english: CHAPTER MASTERY
+    _turkish: "B\xD6L\xDCM USTALI\u011EI"
+  - _english: SHAPE THEN CUT
+    _turkish: "\u015EEK\u0130LLEND\u0130R, SONRA KES"
+  - _english: Coastal Lagoon
+    _turkish: "K\u0131y\u0131 Lag\xFCn\xFC"
+  - _english: Warm turquoise water meets soft white sand beneath an endless open
+      sky.
+    _turkish: "Il\u0131k turkuaz su, u\xE7suz bucaks\u0131z g\xF6ky\xFCz\xFCn\xFCn
+      alt\u0131nda yumu\u015Fak beyaz kumla bulu\u015Fur."
+  - _english: Oceania
+    _turkish: Okyanusya
+  - _english: Desert Dunes
+    _turkish: "\xC7\xF6l Kumullar\u0131"
+  - _english: Rolling amber dunes catch the last light of dusk across a silent horizon.
+    _turkish: "Dalgalanan kehribar kumullar sessiz ufukta g\xFCn\xFCn son \u0131\u015F\u0131klar\u0131n\u0131
+      yakalar."
+  - _english: Middle East
+    _turkish: "Orta Do\u011Fu"
+  - _english: Galata Tower
+    _turkish: Galata Kulesi
+  - _english: Galata Tower is one of Istanbul's best-known symbols and a defining
+      part of the city's centuries-old silhouette. The foundations of today's tower
+      were laid during the Genoese colony period in Galata in the 14th century, and
+      the structure served different purposes over time. Standing about 67 metres
+      tall, its location offers sweeping views of the Bosphorus, the Golden Horn,
+      and the historic peninsula. Today, Galata Tower remains one of Istanbul's strongest
+      historical reminders of the Byzantine, Genoese, and Ottoman eras.
+    _turkish: "Galata Kulesi, \u0130stanbul\u2019un en tan\u0131nan simgelerinden
+      biri ve \u015Fehrin y\xFCzy\u0131llara yay\u0131lan sil\xFCetinin \xF6nemli
+      par\xE7alar\u0131ndand\u0131r. G\xFCn\xFCm\xFCzdeki kulenin temelleri, 14.
+      y\xFCzy\u0131lda Galata\u2019daki Ceneviz kolonisi d\xF6neminde at\u0131lm\u0131\u015F
+      ve yap\u0131 zaman i\xE7inde farkl\u0131 ama\xE7larla kullan\u0131lm\u0131\u015Ft\u0131r.
+      Yakla\u015F\u0131k 67 metre y\xFCksekli\u011Findeki kule, bulundu\u011Fu konum
+      sayesinde \u0130stanbul Bo\u011Faz\u0131, Hali\xE7 ve tarih\xEE yar\u0131madaya
+      h\xE2kim geni\u015F bir manzara sunar. Galata Kulesi bug\xFCn \u0130stanbul\u2019un
+      Bizans, Ceneviz ve Osmanl\u0131 d\xF6nemlerini bir arada hat\u0131rlatan en
+      g\xFC\xE7l\xFC tarih\xEE yap\u0131lardan biridir."
+  - _english: Istanbul / TURKEY
+    _turkish: "\u0130stanbul / T\xDCRK\u0130YE"

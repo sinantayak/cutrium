@@ -13,13 +13,20 @@ MonoBehaviour:
   m_Name: L02_AspendosTiyatrosu
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: aspendos-tiyatrosu
-  _displayTitle: Aspendos Antik Tiyatrosu
-  _shortDescription: "MS 2. y\xFCzy\u0131lda in\u015Fa edilen Aspendos, Roma d\xFCnyas\u0131ndan
-    g\xFCn\xFCm\xFCze ula\u015Fan en iyi korunmu\u015F tiyatrolardan biridir. An\u0131tsal
-    sahne binas\u0131 ve g\xFC\xE7l\xFC akusti\u011Fi, Roma m\xFChendisli\u011Finin
-    etkileyici bir g\xF6stergesidir. Yakla\u015F\u0131k 15 bin ki\u015Filik seyirci
-    d\xFCzeni sesi uzak s\u0131ralara ta\u015F\u0131rken, yap\u0131n\u0131n bug\xFCn
-    de g\xF6steriler i\xE7in kullan\u0131labilmesi ola\u011Fan\xFCst\xFC b\xFCt\xFCnl\xFC\u011F\xFCn\xFC
-    kan\u0131tlar."
-  _sector: "Antalya / T\xDCRK\u0130YE"
+  _displayTitle: Aspendos Ancient Theatre
+  _shortDescription: Built in the 2nd century AD, Aspendos is one of the best-preserved
+    theatres surviving from the Roman world. Its monumental stage building and powerful
+    acoustics are striking examples of Roman engineering. The seating carries sound
+    to an audience of roughly 15,000, while its continued use for performances demonstrates
+    the structure's extraordinary integrity.
+  _sector: Antalya / TURKEY
+  _displayTitleTurkish: Aspendos Antik Tiyatrosu
+  _shortDescriptionTurkish: "MS 2. y\xFCzy\u0131lda in\u015Fa edilen Aspendos, Roma
+    d\xFCnyas\u0131ndan g\xFCn\xFCm\xFCze ula\u015Fan en iyi korunmu\u015F tiyatrolardan
+    biridir. An\u0131tsal sahne binas\u0131 ve g\xFC\xE7l\xFC akusti\u011Fi, Roma
+    m\xFChendisli\u011Finin etkileyici bir g\xF6stergesidir. Yakla\u015F\u0131k 15
+    bin ki\u015Filik seyirci d\xFCzeni sesi uzak s\u0131ralara ta\u015F\u0131rken,
+    yap\u0131n\u0131n bug\xFCn de g\xF6steriler i\xE7in kullan\u0131labilmesi ola\u011Fan\xFCst\xFC
+    b\xFCt\xFCnl\xFC\u011F\xFCn\xFC kan\u0131tlar."
+  _sectorTurkish: "Antalya / T\xDCRK\u0130YE"
   _artwork: {fileID: -2434723355848054739, guid: d83d0b7b31323e5478a4bde73708bee8, type: 3}

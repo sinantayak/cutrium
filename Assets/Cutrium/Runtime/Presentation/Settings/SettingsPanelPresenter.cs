@@ -1,6 +1,7 @@
 using System;
 using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.Frontend;
+using Cutrium.Presentation.Localization;
 using Cutrium.Unity.Simulation;
 using TMPro;
 using UnityEngine;
@@ -23,10 +24,12 @@ namespace Cutrium.Presentation.Settings
         [SerializeField] private FrontEndPresenter _frontEnd;
         [SerializeField] private FeedbackAudioPresenter _feedbackAudio;
         [SerializeField] private FeedbackHapticPresenter _feedbackHaptics;
+        [SerializeField] private LocalizationService _localization;
         [SerializeField] private CanvasGroup _panelCanvasGroup;
 
         [Header("Actions")]
         [SerializeField] private Button _openButton;
+        [SerializeField] private Button _homeOpenButton;
         [SerializeField] private Button _closeButton;
         [SerializeField] private Button _soundButton;
         [SerializeField] private Button _musicButton;
@@ -72,6 +75,7 @@ namespace Cutrium.Presentation.Settings
         public FirstPlayableController Controller => _controller;
         public CanvasGroup PanelCanvasGroup => _panelCanvasGroup;
         public Button OpenButton => _openButton;
+        public Button HomeOpenButton => _homeOpenButton;
         public Button CloseButton => _closeButton;
         public Button SoundButton => _soundButton;
         public Button MusicButton => _musicButton;
@@ -79,6 +83,7 @@ namespace Cutrium.Presentation.Settings
         public Button LanguageButton => _languageButton;
         public Button HomeButton => _homeButton;
         public Button ExitButton => _exitButton;
+        public LocalizationService Localization => _localization;
         public bool IsOpen { get; private set; }
         public bool SoundEnabled => _soundEnabled;
         public bool MusicEnabled => _musicEnabled;
@@ -110,15 +115,19 @@ namespace Cutrium.Presentation.Settings
             TMP_Text musicStateLabel,
             TMP_Text hapticStateLabel,
             AudioSource[] musicSources,
-            bool persistPreferences = true)
+            bool persistPreferences = true,
+            Button homeOpenButton = null,
+            LocalizationService localization = null)
         {
             Unsubscribe();
             _controller = controller;
             _frontEnd = frontEnd;
             _feedbackAudio = feedbackAudio;
             _feedbackHaptics = feedbackHaptics;
+            _localization = localization;
             _panelCanvasGroup = panelCanvasGroup;
             _openButton = openButton;
+            _homeOpenButton = homeOpenButton;
             _closeButton = closeButton;
             _soundButton = soundButton;
             _musicButton = musicButton;
@@ -207,6 +216,7 @@ namespace Cutrium.Presentation.Settings
             }
 
             _openButton?.onClick.AddListener(OnOpenClicked);
+            _homeOpenButton?.onClick.AddListener(OnOpenClicked);
             _closeButton?.onClick.AddListener(OnCloseClicked);
             _soundButton?.onClick.AddListener(OnSoundClicked);
             _musicButton?.onClick.AddListener(OnMusicClicked);
@@ -225,6 +235,7 @@ namespace Cutrium.Presentation.Settings
             }
 
             _openButton?.onClick.RemoveListener(OnOpenClicked);
+            _homeOpenButton?.onClick.RemoveListener(OnOpenClicked);
             _closeButton?.onClick.RemoveListener(OnCloseClicked);
             _soundButton?.onClick.RemoveListener(OnSoundClicked);
             _musicButton?.onClick.RemoveListener(OnMusicClicked);
@@ -291,8 +302,8 @@ namespace Cutrium.Presentation.Settings
 
         private void OnLanguageClicked()
         {
-            // English is the only authored language in the vertical slice.
             _controller?.NotifyUiFeedback();
+            _localization?.ToggleLanguage();
         }
 
         private void OnHomeClicked()

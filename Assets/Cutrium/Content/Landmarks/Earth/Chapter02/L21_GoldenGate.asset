@@ -13,12 +13,19 @@ MonoBehaviour:
   m_Name: L21_GoldenGate
   m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.Landmark.LandmarkDefinition
   _landmarkId: golden-gate-koprusu
-  _displayTitle: "Golden Gate K\xF6pr\xFCs\xFC"
-  _shortDescription: "1937\u2019de a\xE7\u0131lan Golden Gate, sisli bo\u011Faz\u0131
+  _displayTitle: Golden Gate Bridge
+  _shortDescription: Opened in 1937, the Golden Gate is an immense suspension bridge
+    crossing a famously foggy strait. Its International Orange colour makes it visible
+    in the mist while harmonising with the surrounding hills. Its 1,280-metre main
+    span was a world record when completed, and its Art Deco towers rise about 227
+    metres above the water.
+  _sector: San Francisco / USA
+  _displayTitleTurkish: "Golden Gate K\xF6pr\xFCs\xFC"
+  _shortDescriptionTurkish: "1937\u2019de a\xE7\u0131lan Golden Gate, sisli bo\u011Faz\u0131
     ge\xE7en dev bir asma k\xF6pr\xFCd\xFCr. \u201CInternational Orange\u201D rengi,
     k\xF6pr\xFCn\xFCn hem sis i\xE7inde se\xE7ilmesini hem de \xE7evredeki tepelerle
     uyum kurmas\u0131n\u0131 sa\u011Flar. 1.280 metrelik ana a\xE7\u0131kl\u0131\u011F\u0131
     tamamland\u0131\u011F\u0131nda d\xFCnya rekoruydu; Art Deco ayr\u0131nt\u0131l\u0131
     kuleleri suyun yakla\u015F\u0131k 227 metre \xFCzerine y\xFCkselir."
-  _sector: San Francisco / ABD
+  _sectorTurkish: San Francisco / ABD
   _artwork: {fileID: 7268314836617758416, guid: ee522927b54c1d44cb55e5d30b57e889, type: 3}

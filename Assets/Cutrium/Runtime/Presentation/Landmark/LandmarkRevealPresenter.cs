@@ -6,6 +6,7 @@ using Cutrium.Gameplay.Session;
 using Cutrium.Presentation.Capture;
 using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.HUD;
+using Cutrium.Presentation.Localization;
 using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Simulation;
 using UnityEngine;
@@ -110,6 +111,7 @@ namespace Cutrium.Presentation.Landmark
         [SerializeField] private Text _descriptionText;
         [SerializeField] private Text _sectorText;
         [SerializeField] private Font _completionFont;
+        [SerializeField] private LocalizationService _localization;
         [SerializeField] private LandmarkCompletionTiming _timing =
             LandmarkCompletionTiming.Default;
         [Header("Completion Reward Flow")]
@@ -151,6 +153,7 @@ namespace Cutrium.Presentation.Landmark
             new Vector2(float.NaN, float.NaN);
         private Vector2 _completionContentBaseAnchoredPosition;
         private bool _completionFontResolutionAttempted;
+        private bool _localizationSubscribed;
 
         public FirstPlayableController Controller => _controller;
         public RectTransform BoardFrame => _boardFrame;
@@ -173,6 +176,7 @@ namespace Cutrium.Presentation.Landmark
         public Text CompletionDescriptionText => _descriptionText;
         public Text CompletionSectorText => _sectorText;
         public Font CompletionFont => _completionFont;
+        public LocalizationService Localization => _localization;
         public LandmarkCompletionTiming Timing => _timing;
         public ThreatPresenter ThreatPresenter => _threatPresenter;
         public CaptureBoardPresenter CaptureBoardPresenter =>
@@ -349,6 +353,19 @@ namespace Cutrium.Presentation.Landmark
             RefreshCompletionLayoutNow();
         }
 
+        public void ConfigureLocalizationForSetup(
+            LocalizationService localization)
+        {
+            UnsubscribeFromLocalization();
+            _localization = localization
+                ?? throw new ArgumentNullException(nameof(localization));
+            if (isActiveAndEnabled && Application.isPlaying)
+            {
+                SubscribeToLocalization();
+                RefreshCompletionText();
+            }
+        }
+
         public void RefreshNow()
         {
             if (_controller == null
@@ -400,6 +417,19 @@ namespace Cutrium.Presentation.Landmark
             RefreshNow();
         }
 
+        private void OnEnable()
+        {
+            if (Application.isPlaying)
+            {
+                SubscribeToLocalization();
+            }
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeFromLocalization();
+        }
+
         private LandmarkDefinition SelectCurrentLandmark()
         {
             if (_landmarkCatalog != null)
@@ -447,20 +477,56 @@ namespace Cutrium.Presentation.Landmark
                 return;
             }
 
+            SupportedLanguage language = _localization != null
+                ? _localization.CurrentLanguage
+                : SupportedLanguage.English;
             if (_titleText != null)
             {
-                _titleText.text = CurrentLandmark.DisplayTitle;
+                _titleText.text =
+                    CurrentLandmark.GetDisplayTitle(language);
             }
 
             if (_descriptionText != null)
             {
-                _descriptionText.text = CurrentLandmark.ShortDescription;
+                _descriptionText.text =
+                    CurrentLandmark.GetShortDescription(language);
             }
 
             if (_sectorText != null)
             {
-                _sectorText.text = CurrentLandmark.Sector;
+                _sectorText.text = CurrentLandmark.GetSector(language);
             }
+        }
+
+        private void SubscribeToLocalization()
+        {
+            if (_localizationSubscribed || _localization == null)
+            {
+                return;
+            }
+
+            _localization.LanguageChanged += OnLanguageChanged;
+            _localizationSubscribed = true;
+        }
+
+        private void UnsubscribeFromLocalization()
+        {
+            if (!_localizationSubscribed)
+            {
+                return;
+            }
+
+            if (_localization != null)
+            {
+                _localization.LanguageChanged -= OnLanguageChanged;
+            }
+
+            _localizationSubscribed = false;
+        }
+
+        private void OnLanguageChanged(SupportedLanguage language)
+        {
+            RefreshCompletionText();
         }
 
         private void StartCompletionSummary()
