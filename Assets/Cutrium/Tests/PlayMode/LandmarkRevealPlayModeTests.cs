@@ -6,9 +6,12 @@ using Cutrium.Gameplay.Board;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
 using Cutrium.Presentation.Barriers;
+using Cutrium.Presentation.Capture;
+using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
 using Cutrium.Presentation.Powers;
+using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Bootstrap;
 using Cutrium.Unity.Simulation;
 using NUnit.Framework;
@@ -143,8 +146,8 @@ namespace Cutrium.PlayModeTests
                 .All(text => text.font == font), Is.True);
             Assert.That(description.resizeTextForBestFit, Is.True);
             Assert.That(description.resizeTextMinSize,
-                Is.GreaterThanOrEqualTo(20));
-            Assert.That(description.resizeTextMaxSize, Is.EqualTo(32));
+                Is.GreaterThanOrEqualTo(22));
+            Assert.That(description.resizeTextMaxSize, Is.EqualTo(36));
             Assert.That(title.resizeTextMaxSize, Is.EqualTo(56));
             Assert.That(sector.resizeTextMaxSize, Is.EqualTo(30));
             Assert.That(summary.resizeTextMaxSize, Is.EqualTo(30));
@@ -196,10 +199,12 @@ namespace Cutrium.PlayModeTests
                 Assert.That(hero.rect.width,
                     Is.EqualTo(hero.rect.height).Within(0.01f));
                 float expectedHeroSize = Mathf.Min(
-                    width * 0.92f,
-                    height * 0.53f);
+                    width * 0.98f,
+                    height * 0.63f);
                 Assert.That(hero.rect.width,
                     Is.EqualTo(expectedHeroSize).Within(0.01f));
+                Assert.That(summary.rect.size, Is.EqualTo(Vector2.zero));
+                Assert.That(rig.Presenter.StatsCanvasGroup.alpha, Is.Zero);
                 Assert.That(content.rect.height,
                     Is.GreaterThanOrEqualTo(180f));
                 Assert.That(retry.rect.width,
@@ -210,8 +215,6 @@ namespace Cutrium.PlayModeTests
                     Is.EqualTo(retry.rect.height).Within(0.01f));
                 Assert.That(Left(next) - Right(retry),
                     Is.EqualTo(40f).Within(0.01f));
-                Assert.That(Bottom(summary) - Top(hero),
-                    Is.EqualTo(8f).Within(0.01f));
                 Assert.That(Bottom(hero) - Top(content),
                     Is.EqualTo(8f).Within(0.01f));
                 Assert.That(Bottom(content) - Top(retry),
@@ -1207,11 +1210,18 @@ namespace Cutrium.PlayModeTests
                 {
                     yield return null;
                     rig.Presenter.RefreshNow();
-                    hud.RefreshNow();
                     waited += Time.unscaledDeltaTime;
                 }
 
-                hud.RefreshNow();
+                hud.AdvancePercentageAnimation(
+                    hud.CompletionOverlayFadeSeconds * 0.5f);
+                Assert.That(overlayGroup.alpha,
+                    Is.EqualTo(0.5f).Within(0.001f));
+                Assert.That(overlayGroup.interactable, Is.False);
+                Assert.That(overlayGroup.blocksRaycasts, Is.True);
+
+                hud.AdvancePercentageAnimation(
+                    hud.CompletionOverlayFadeSeconds * 0.5f);
                 Assert.That(overlayGroup.alpha, Is.EqualTo(1f));
                 Assert.That(overlayGroup.interactable, Is.True);
                 Assert.That(overlayGroup.blocksRaycasts, Is.True);
@@ -1277,6 +1287,131 @@ namespace Cutrium.PlayModeTests
             }
         }
 
+        [UnityTest]
+        public IEnumerator CompletionSummaryHoldsOnCleanBoardThenPopupOpensAndRestoresVisibility()
+        {
+            var rig = new IsolatedRig(
+                1,
+                completionSummarySeconds: 0.4f);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+
+                float waited = 0f;
+                while (!rig.Presenter.CompletionSummaryInProgress
+                    && waited < 1f)
+                {
+                    yield return null;
+                    rig.Presenter.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                Assert.That(rig.Presenter.CompletionSummaryInProgress, Is.True);
+                Assert.That(rig.Presenter.CompletionPresentationReady, Is.False);
+                Assert.That(rig.Presenter.ActiveGrainCount, Is.GreaterThan(0));
+                Assert.That(
+                    rig.Presenter.GrainFlightRoot.gameObject.activeSelf,
+                    Is.False);
+                Assert.That(rig.ThreatPresenter.Visible, Is.False);
+                Assert.That(
+                    rig.CaptureBoardPresenter.CompletedBarriersVisible,
+                    Is.False);
+                Assert.That(rig.FeedbackPresenter.CompletionSummaryVisible,
+                    Is.True);
+                Assert.That(rig.FeedbackPresenter.CueLabel.text,
+                    Does.Contain("<color=#F4C15D>LEVEL 1 COMPLETE</color>"));
+                Assert.That(rig.FeedbackPresenter.CueLabel.text,
+                    Does.Contain("CAPTURED"));
+                Assert.That(rig.FeedbackPresenter.CueLabel.text,
+                    Does.Contain("CUT"));
+                Assert.That(rig.FeedbackPresenter.CueLabel.text,
+                    Does.Contain("TIME"));
+                Assert.That(rig.FeedbackPresenter.CueLabel.fontSize,
+                    Is.EqualTo(54));
+                Assert.That(rig.FeedbackPresenter.CueLabel.resizeTextMaxSize,
+                    Is.EqualTo(54));
+                Assert.That(rig.FeedbackPresenter.CueCanvasGroup.alpha,
+                    Is.Zero.Within(0.001f));
+                Assert.That(
+                    rig.FeedbackPresenter.CompletionSummaryBackground,
+                    Is.Not.Null);
+                Assert.That(
+                    rig.FeedbackPresenter.CompletionSummaryBackground
+                        .gameObject.activeSelf,
+                    Is.True);
+                Assert.That(
+                    rig.FeedbackPresenter.CompletionSummaryBackground
+                        .raycastTarget,
+                    Is.False);
+                Assert.That(
+                    rig.FeedbackPresenter.CompletionSummaryBackground
+                        .rectTransform.rect.width,
+                    Is.GreaterThan(
+                        rig.FeedbackPresenter.CueLabel.rectTransform
+                            .rect.width));
+                Assert.That(
+                    rig.FeedbackPresenter.CompletionSummaryBackground
+                        .rectTransform.rect.height,
+                    Is.GreaterThan(
+                        rig.FeedbackPresenter.CueLabel.rectTransform
+                            .rect.height));
+                Assert.That(rig.Presenter.StatsCanvasGroup.alpha, Is.Zero);
+                Assert.That(
+                    rig.Root.Find("CompletionArtworkTransition"),
+                    Is.Null,
+                    "No moving artwork duplicate should be created.");
+
+                yield return null;
+                rig.Presenter.RefreshNow();
+                Assert.That(rig.FeedbackPresenter.CueCanvasGroup.alpha,
+                    Is.GreaterThan(0f));
+
+                waited = 0f;
+                while (!rig.Presenter.CompletionPresentationReady
+                    && waited < 1f)
+                {
+                    yield return null;
+                    rig.Presenter.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                Assert.That(rig.Presenter.CompletionSummaryFinished, Is.True);
+                Assert.That(rig.Presenter.CompletionPresentationReady, Is.True);
+                Assert.That(rig.FeedbackPresenter.CompletionSummaryVisible,
+                    Is.False);
+                Assert.That(
+                    rig.FeedbackPresenter.CompletionSummaryBackground
+                        .gameObject.activeSelf,
+                    Is.False);
+                Assert.That(rig.Presenter.StatsCanvasGroup.alpha, Is.Zero);
+
+                // Simulate the next pre-level intro taking ownership before
+                // completion resets. Removing completion's visibility reason
+                // must not override the intro's independent hidden state.
+                rig.ThreatPresenter.SetVisible(false);
+                rig.Controller.RetryLevel();
+                rig.Presenter.RefreshNow();
+                Assert.That(rig.ThreatPresenter.Visible, Is.False);
+                Assert.That(
+                    rig.CaptureBoardPresenter.CompletedBarriersVisible,
+                    Is.True);
+                Assert.That(
+                    rig.Presenter.GrainFlightRoot.gameObject.activeSelf,
+                    Is.True);
+                Assert.That(rig.Presenter.CompletionPresentationReady,
+                    Is.False);
+
+                rig.ThreatPresenter.SetVisible(true);
+                Assert.That(rig.ThreatPresenter.Visible, Is.True);
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
         private sealed class IsolatedRig
         {
             private readonly List<Texture2D> _textures = new List<Texture2D>();
@@ -1287,11 +1422,14 @@ namespace Cutrium.PlayModeTests
             public IsolatedRig(
                 int levelCount,
                 LandmarkCompletionTiming? timing = null,
+                float? completionSummarySeconds = null,
                 IReadOnlyList<CoreFunLevelDefinition> explicitLevels = null)
             {
                 _simulationObject = new GameObject(
                     "LandmarkRevealTestRig",
-                    typeof(RectTransform));
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(Image));
                 ((RectTransform)_simulationObject.transform).sizeDelta =
                     new Vector2(1080f, 1920f);
                 _simulationObject.SetActive(false);
@@ -1396,18 +1534,25 @@ namespace Cutrium.PlayModeTests
                 Text titleText = CreateText(_simulationObject.transform);
                 Text descriptionText = CreateText(_simulationObject.transform);
                 Text sectorText = CreateText(_simulationObject.transform);
+                CanvasGroup scrimGroup = CreateGroup(
+                    _simulationObject.transform);
                 var completionArtworkObject = new GameObject(
                     "CompletionArtwork",
                     typeof(RectTransform),
                     typeof(CanvasRenderer),
                     typeof(Image));
                 completionArtworkObject.transform.SetParent(
-                    _simulationObject.transform,
+                    scrimGroup.transform,
                     false);
+                var completionArtworkRect =
+                    (RectTransform)completionArtworkObject.transform;
+                completionArtworkRect.anchorMin = Vector2.zero;
+                completionArtworkRect.anchorMax = Vector2.one;
+                completionArtworkRect.offsetMin = Vector2.zero;
+                completionArtworkRect.offsetMax = Vector2.zero;
                 Image completionArtworkImage =
                     completionArtworkObject.GetComponent<Image>();
 
-                CanvasGroup scrimGroup = CreateGroup(_simulationObject.transform);
                 CanvasGroup contentGroup = CreateGroup(_simulationObject.transform);
                 CanvasGroup statsGroup = CreateGroup(_simulationObject.transform);
                 CanvasGroup retryGroup = CreateGroup(_simulationObject.transform);
@@ -1437,6 +1582,77 @@ namespace Cutrium.PlayModeTests
                     timing ?? LandmarkCompletionTiming.Default,
                     Landmarks);
 
+                var threatVisualObject = new GameObject(
+                    "ThreatVisual",
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(Image));
+                threatVisualObject.transform.SetParent(frame, false);
+                var threatPresenterObject = new GameObject("ThreatPresenter");
+                threatPresenterObject.transform.SetParent(
+                    _simulationObject.transform,
+                    false);
+                ThreatPresenter = threatPresenterObject
+                    .AddComponent<ThreatPresenter>();
+                ThreatPresenter.Configure(
+                    Controller,
+                    frame,
+                    (RectTransform)threatVisualObject.transform,
+                    threatVisualObject.GetComponent<Image>(),
+                    null,
+                    0.9f);
+
+                var capturedRootObject = new GameObject(
+                    "CapturedRoot",
+                    typeof(RectTransform));
+                capturedRootObject.transform.SetParent(frame, false);
+                var completedBarrierRootObject = new GameObject(
+                    "CompletedBarrierRoot",
+                    typeof(RectTransform));
+                completedBarrierRootObject.transform.SetParent(frame, false);
+                var capturePresenterObject = new GameObject(
+                    "CaptureBoardPresenter");
+                capturePresenterObject.transform.SetParent(
+                    _simulationObject.transform,
+                    false);
+                CaptureBoardPresenter = capturePresenterObject
+                    .AddComponent<CaptureBoardPresenter>();
+                CaptureBoardPresenter.Configure(
+                    Controller,
+                    frame,
+                    (RectTransform)capturedRootObject.transform,
+                    (RectTransform)completedBarrierRootObject.transform,
+                    0.22f);
+
+                var feedbackCueObject = new GameObject(
+                    "CompletionFeedbackCue",
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(Text),
+                    typeof(CanvasGroup));
+                feedbackCueObject.transform.SetParent(
+                    _simulationObject.transform,
+                    false);
+                var feedbackPresenterObject = new GameObject(
+                    "FeedbackPresenter");
+                feedbackPresenterObject.transform.SetParent(
+                    _simulationObject.transform,
+                    false);
+                FeedbackPresenter = feedbackPresenterObject
+                    .AddComponent<FeedbackPresenter>();
+                FeedbackPresenter.Configure(
+                    Controller,
+                    null,
+                    feedbackCueObject.GetComponent<Text>(),
+                    feedbackCueObject.GetComponent<CanvasGroup>(),
+                    null);
+
+                Presenter.ConfigureCompletionRewardFlowForSetup(
+                    ThreatPresenter,
+                    CaptureBoardPresenter,
+                    FeedbackPresenter,
+                    completionSummarySeconds ?? 0.12f);
+
                 _simulationObject.SetActive(true);
             }
 
@@ -1444,6 +1660,9 @@ namespace Cutrium.PlayModeTests
             public LandmarkRevealPresenter Presenter { get; }
             public LandmarkDefinition[] Landmarks { get; }
             public RectTransform SandDestination { get; }
+            public ThreatPresenter ThreatPresenter { get; }
+            public CaptureBoardPresenter CaptureBoardPresenter { get; }
+            public FeedbackPresenter FeedbackPresenter { get; }
             public Transform Root => _simulationObject.transform;
 
             public void SetCompletionLayoutSize(float width, float height)

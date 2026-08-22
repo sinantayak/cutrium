@@ -61,6 +61,10 @@ namespace Cutrium.Presentation.HUD
         [Min(0f)]
         private float _percentageAnimationSeconds = 0.22f;
 
+        [SerializeField]
+        [Min(0f)]
+        private float _completionOverlayFadeSeconds = 0.45f;
+
         private bool _retryButtonSubscribed;
         private bool _nextButtonSubscribed;
         private bool _percentageInitialized;
@@ -68,6 +72,7 @@ namespace Cutrium.Presentation.HUD
         private float _percentageAnimationStart;
         private float _percentageAnimationTarget;
         private float _percentageAnimationElapsed;
+        private float _completionOverlayAlpha;
 
         public FirstPlayableController Controller => _controller;
 
@@ -105,6 +110,9 @@ namespace Cutrium.Presentation.HUD
 
         public float PercentageAnimationSeconds =>
             _percentageAnimationSeconds;
+
+        public float CompletionOverlayFadeSeconds =>
+            _completionOverlayFadeSeconds;
 
         public void Configure(
             FirstPlayableController controller,
@@ -155,7 +163,8 @@ namespace Cutrium.Presentation.HUD
             _nextButton = nextButton;
             _nextButtonLabel = nextButtonLabel;
             _percentageInitialized = false;
-            SetCompletionVisible(false);
+            _completionOverlayAlpha = 0f;
+            SetCompletionVisible(false, true, 0f);
             if (isActiveAndEnabled && Application.isPlaying)
             {
                 SubscribeButtons();
@@ -211,6 +220,19 @@ namespace Cutrium.Presentation.HUD
         {
             _completionRevealGate = completionRevealGate;
             RefreshNow();
+        }
+
+        public void ConfigureCompletionOverlayFadeForSetup(float duration)
+        {
+            if (float.IsNaN(duration)
+                || float.IsInfinity(duration)
+                || duration < 0f)
+            {
+                throw new System.ArgumentOutOfRangeException(
+                    nameof(duration));
+            }
+
+            _completionOverlayFadeSeconds = duration;
         }
 
         private void RefreshPresentation(
@@ -270,7 +292,9 @@ namespace Cutrium.Presentation.HUD
                 _completionRevealGate == null
                 || _completionRevealGate.CompletionPresentationReady;
             SetCompletionVisible(
-                completed && completionPresentationReady);
+                completed && completionPresentationReady,
+                settleImmediately,
+                elapsedTime);
 
             if (_completeText != null)
             {
@@ -440,7 +464,10 @@ namespace Cutrium.Presentation.HUD
             RefreshNow();
         }
 
-        private void SetCompletionVisible(bool visible)
+        private void SetCompletionVisible(
+            bool visible,
+            bool settleImmediately,
+            float elapsedTime)
         {
             if (_completeOverlay != null && !_completeOverlay.activeSelf)
             {
@@ -452,8 +479,27 @@ namespace Cutrium.Presentation.HUD
                 return;
             }
 
-            _completionCanvasGroup.alpha = visible ? 1f : 0f;
-            _completionCanvasGroup.interactable = visible;
+            float target = visible ? 1f : 0f;
+            if (!visible
+                || settleImmediately
+                || _completionOverlayFadeSeconds <= 0f)
+            {
+                _completionOverlayAlpha = target;
+            }
+            else
+            {
+                _completionOverlayAlpha = Mathf.MoveTowards(
+                    _completionOverlayAlpha,
+                    target,
+                    elapsedTime / _completionOverlayFadeSeconds);
+            }
+
+            _completionCanvasGroup.alpha = _completionOverlayAlpha;
+            bool interactionReady = visible
+                && _completionOverlayAlpha >= 0.999f;
+            _completionCanvasGroup.interactable = interactionReady;
+            // Block gameplay/HUD input from the first fade frame, but only
+            // allow popup controls once the overlay is fully readable.
             _completionCanvasGroup.blocksRaycasts = visible;
         }
 

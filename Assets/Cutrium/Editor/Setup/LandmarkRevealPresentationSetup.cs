@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Cutrium.Presentation.Barriers;
 using Cutrium.Presentation.Capture;
+using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
 using Cutrium.Presentation.Powers;
@@ -32,6 +33,8 @@ namespace Cutrium.Editor.Setup
     /// See ADR-026 and ADR-027.
     public static class LandmarkRevealPresentationSetup
     {
+        private const float CompletionSummarySeconds = 2.2f;
+        private const float CompletionOverlayFadeSeconds = 0.45f;
         public const string GeneratedFolder =
             "Assets/Cutrium/Art/Generated/Landmark";
         public const string LandmarkContentFolder =
@@ -187,11 +190,16 @@ namespace Cutrium.Editor.Setup
                 .GetComponentInChildren<FirstPlayableController>(true);
             PowerHudPresenter powerHud = root
                 .GetComponentInChildren<PowerHudPresenter>(true);
-            if (controller == null || powerHud == null)
+            LandmarkRevealPresenter landmarkPresenter = root
+                .GetComponentInChildren<LandmarkRevealPresenter>(true);
+            if (controller == null
+                || powerHud == null
+                || landmarkPresenter == null)
             {
                 throw new InvalidOperationException(
                     "Chapter 2 presentation requires the gameplay " +
-                    "controller and PowerHudPresenter.");
+                    "controller, PowerHudPresenter, and " +
+                    "LandmarkRevealPresenter.");
             }
 
             Transform safeArea = RequireChild(
@@ -213,6 +221,9 @@ namespace Cutrium.Editor.Setup
                 boardFrame,
                 controller,
                 LoadUiSpriteForSetup(GravityWellVortexPath));
+            ConfigureCompletionRewardFlowForSetup(
+                root,
+                landmarkPresenter);
             ApplyCompletionReadability(completion, LoadCompletionFont());
             ConfigureGeneralActionButtonLayoutForSetup(safeArea);
             ApplyGeneralButtonStylesForSetup(root);
@@ -447,6 +458,67 @@ namespace Cutrium.Editor.Setup
             Debug.Log(
                 "Completion popup readability updated without changing its " +
                 "background, gameplay HUD, board, sand, or theme assets.");
+        }
+
+        [MenuItem("Cutrium/Setup/Apply Completion Reward Flow Only")]
+        public static void ApplyCompletionRewardFlowOnly()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                throw new InvalidOperationException(
+                    "Exit Play Mode before wiring the completion reward flow.");
+            }
+
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.path != Milestone2SceneSetup.VerticalSliceScenePath)
+            {
+                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                {
+                    throw new OperationCanceledException(
+                        "Completion reward setup cancelled before " +
+                        "opening VerticalSlice.unity.");
+                }
+
+                scene = EditorSceneManager.OpenScene(
+                    Milestone2SceneSetup.VerticalSliceScenePath,
+                    OpenSceneMode.Single);
+            }
+
+            GameObject root = RequireRoot(scene, "VerticalSliceRoot");
+            LandmarkRevealPresenter presenter = root
+                .GetComponentInChildren<LandmarkRevealPresenter>(true);
+            if (presenter == null)
+            {
+                throw new InvalidOperationException(
+                    "Completion reward flow requires LandmarkRevealPresenter.");
+            }
+
+            Transform safeArea = RequireChild(
+                root.transform,
+                "Canvas/SafeAreaRoot");
+            Transform completionOverlay = RequireChild(
+                safeArea,
+                "LevelCompleteOverlay");
+            ConfigureFeedbackReadabilityForSetup(safeArea);
+            ConfigureCompletionRewardFlowForSetup(root, presenter);
+            ApplyCompletionReadability(
+                completionOverlay,
+                LoadCompletionFont());
+            presenter.RefreshCompletionLayoutNow();
+            ValidateCompletionRewardFlow(root, presenter);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(
+                    scene,
+                    Milestone2SceneSetup.VerticalSliceScenePath))
+            {
+                throw new InvalidOperationException(
+                    "Unity could not save the completion reward-flow wiring.");
+            }
+
+            AssetDatabase.SaveAssets();
+            Debug.Log(
+                "Completion reward flow wired: clean-board performance " +
+                "summary followed by the enlarged landmark popup.");
         }
 
         [MenuItem("Cutrium/Setup/Apply Lapsus-Pro Bold Fonts Only")]
@@ -1611,15 +1683,15 @@ namespace Cutrium.Editor.Setup
             Text descriptionText = ConfigureText(
                 descriptionRect,
                 "Description",
-                32,
+                36,
                 TextAnchor.UpperCenter,
                 new Color(0.9f, 0.89f, 0.86f, 0.9f));
             descriptionText.horizontalOverflow = HorizontalWrapMode.Wrap;
             descriptionText.verticalOverflow = VerticalWrapMode.Truncate;
             LayoutElement descriptionLayout =
                 GetOrAddComponent<LayoutElement>(descriptionRect.gameObject);
-            descriptionLayout.minHeight = 160f;
-            descriptionLayout.preferredHeight = 210f;
+            descriptionLayout.minHeight = 170f;
+            descriptionLayout.preferredHeight = 230f;
             descriptionLayout.flexibleHeight = 1f;
 
             // The stats line reuses the existing CompleteText element rather
@@ -1695,6 +1767,9 @@ namespace Cutrium.Editor.Setup
                 descriptionText,
                 LandmarkCompletionTiming.Default,
                 landmarks);
+            ConfigureCompletionRewardFlowForSetup(
+                root,
+                landmarkPresenter);
             Font completionFont = LoadCompletionFont();
             ApplyCompletionReadability(
                 completionOverlay,
@@ -1719,6 +1794,72 @@ namespace Cutrium.Editor.Setup
             EditorUtility.SetDirty(descriptionText);
             EditorUtility.SetDirty(statsText);
             EditorUtility.SetDirty(hud);
+        }
+
+        private static void ConfigureCompletionRewardFlowForSetup(
+            GameObject root,
+            LandmarkRevealPresenter presenter)
+        {
+            ThreatPresenter threatPresenter = root
+                .GetComponentInChildren<ThreatPresenter>(true);
+            CaptureBoardPresenter captureBoardPresenter = root
+                .GetComponentInChildren<CaptureBoardPresenter>(true);
+            FeedbackPresenter feedbackPresenter = root
+                .GetComponentInChildren<FeedbackPresenter>(true);
+            CaptureHudPresenter captureHudPresenter = root
+                .GetComponentInChildren<CaptureHudPresenter>(true);
+            if (threatPresenter == null
+                || captureBoardPresenter == null
+                || feedbackPresenter == null
+                || captureHudPresenter == null)
+            {
+                throw new InvalidOperationException(
+                    "Completion reward flow requires ThreatPresenter, " +
+                    "CaptureBoardPresenter, FeedbackPresenter, and " +
+                    "CaptureHudPresenter.");
+            }
+
+            Undo.RecordObject(presenter, "Wire Completion Reward Flow");
+            presenter.ConfigureCompletionRewardFlowForSetup(
+                threatPresenter,
+                captureBoardPresenter,
+                feedbackPresenter,
+                CompletionSummarySeconds);
+            Undo.RecordObject(captureHudPresenter, "Tune Completion Fade");
+            captureHudPresenter.ConfigureCompletionOverlayFadeForSetup(
+                CompletionOverlayFadeSeconds);
+            EditorUtility.SetDirty(presenter);
+            EditorUtility.SetDirty(captureHudPresenter);
+        }
+
+        private static void ValidateCompletionRewardFlow(
+            GameObject root,
+            LandmarkRevealPresenter presenter)
+        {
+            ThreatPresenter threatPresenter = root
+                .GetComponentInChildren<ThreatPresenter>(true);
+            CaptureBoardPresenter captureBoardPresenter = root
+                .GetComponentInChildren<CaptureBoardPresenter>(true);
+            FeedbackPresenter feedbackPresenter = root
+                .GetComponentInChildren<FeedbackPresenter>(true);
+            CaptureHudPresenter captureHudPresenter = root
+                .GetComponentInChildren<CaptureHudPresenter>(true);
+            if (presenter.ThreatPresenter != threatPresenter
+                || presenter.CaptureBoardPresenter != captureBoardPresenter
+                || presenter.CompletionFeedbackPresenter != feedbackPresenter
+                || captureHudPresenter == null
+                || !Mathf.Approximately(
+                    captureHudPresenter.CompletionOverlayFadeSeconds,
+                    CompletionOverlayFadeSeconds)
+                || feedbackPresenter == null
+                || feedbackPresenter.CompletionSummaryBackground == null
+                || presenter.CompletionArtworkImage == null
+                || presenter.ScrimCanvasGroup == null)
+            {
+                throw new InvalidOperationException(
+                    "Completion reward-flow dependencies are not " +
+                    "serialized correctly.");
+            }
         }
 
         private static void FinalizeThemeTextSync(
@@ -2809,7 +2950,10 @@ namespace Cutrium.Editor.Setup
         private static void ConfigureFeedbackReadabilityForSetup(
             Transform safeArea)
         {
-            Transform cueTransform = safeArea.Find("FeedbackOverlay/CueLabel");
+            Transform feedbackOverlay = safeArea.Find("FeedbackOverlay");
+            Transform cueTransform = feedbackOverlay != null
+                ? feedbackOverlay.Find("CueLabel")
+                : null;
             if (cueTransform != null)
             {
                 RectTransform cueRect = (RectTransform)cueTransform;
@@ -2826,6 +2970,28 @@ namespace Cutrium.Editor.Setup
                     cueText.resizeTextMaxSize = 76;
                     ConfigureButtonTextShadow(cueText);
                     EditorUtility.SetDirty(cueText);
+                }
+
+                RectTransform backgroundRect = GetOrCreateUiChild(
+                    feedbackOverlay,
+                    "CompletionSummaryBackground");
+                Image backgroundImage = GetOrAddComponent<Image>(
+                    backgroundRect.gameObject);
+                FeedbackPresenter feedbackPresenter = feedbackOverlay
+                    .GetComponent<FeedbackPresenter>();
+                if (feedbackPresenter != null)
+                {
+                    Undo.RecordObject(
+                        feedbackPresenter,
+                        "Wire Completion Summary Background");
+                    feedbackPresenter
+                        .ConfigureCompletionSummaryBackgroundForSetup(
+                            backgroundImage);
+                    backgroundRect.SetSiblingIndex(Mathf.Max(
+                        0,
+                        cueTransform.GetSiblingIndex() - 1));
+                    EditorUtility.SetDirty(backgroundImage);
+                    EditorUtility.SetDirty(feedbackPresenter);
                 }
             }
 
@@ -3518,6 +3684,9 @@ namespace Cutrium.Editor.Setup
                 || landmarkPresenter.CompletionTitleText == null
                 || landmarkPresenter.CompletionDescriptionText == null
                 || landmarkPresenter.CompletionSectorText == null
+                || landmarkPresenter.ThreatPresenter == null
+                || landmarkPresenter.CaptureBoardPresenter == null
+                || landmarkPresenter.CompletionFeedbackPresenter == null
                 || landmarkPresenter.Landmarks.Count
                     != MainGameplayProgression.LevelCount)
             {
@@ -3526,6 +3695,8 @@ namespace Cutrium.Editor.Setup
                     "serialized reference, or is not wired to the complete " +
                     "first-24 landmark catalog.");
             }
+
+            ValidateCompletionRewardFlow(root, landmarkPresenter);
 
             for (int index = 0; index < landmarks.Length; index++)
             {
@@ -4278,16 +4449,16 @@ namespace Cutrium.Editor.Setup
             ConfigureCompletionText(
                 description,
                 font,
-                32,
-                20,
+                36,
+                22,
                 TextAnchor.UpperCenter,
                 1f);
             description.horizontalOverflow = HorizontalWrapMode.Wrap;
             description.verticalOverflow = VerticalWrapMode.Truncate;
             ConfigureCompletionLayoutElement(
                 description.rectTransform,
-                160f,
-                210f,
+                170f,
+                230f,
                 1f);
 
             Text summary = RequireChild(completionOverlay, "CompleteText")

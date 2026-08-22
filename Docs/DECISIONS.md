@@ -1570,3 +1570,51 @@ The visual footprint still follows the configured logical Gravity radius on
 phones and tablets, while gameplay position, force, duration, collision, and
 room isolation remain unchanged. A focused Editor setup command can replace
 the old cue without rebuilding Chapter 2 content.
+
+## ADR-039 — Completion Uses a Static Clean-Board Summary Beat
+
+**Status:** Accepted for visual playtesting.
+
+**Context:**
+The completion popup already waits for the final sand reveal. Visual playtesting
+rejected both full-screen enlargement and board-to-frame shrinking: moving the
+landmark artwork read as an inexpensive zoom and distracted from the clean image
+the player had just uncovered.
+
+**Decision:**
+Keep logical completion immediate and extend only
+`LandmarkRevealPresenter`'s presentation gate. After every final sand wipe,
+and the progress interpolation have settled, visually hide any trailing
+cosmetic grain flights while they finish and return to their pool, and hide
+threats and completed barrier views through independent presentation-only
+visibility reasons. Ask the existing `FeedbackPresenter` to show level,
+captured percentage, cuts, elapsed time, and breaks over the now-clean board.
+Keep `LevelCompleteOverlay` hidden during this bounded summary phase and create
+no moving artwork duplicate. When the summary ends, open the popup in place.
+Keep its legacy `CompleteText` direct child serialized but visually hidden, and
+use the freed top area for a larger aspect-preserving hero image before title,
+sector, description, Retry, and Next finish their existing staged reveal.
+Render the first summary line in the existing HUD-gold accent, cap the three-line
+summary at 54 points, ease it in and out over 2.2 seconds, then fade the entire
+popup root in over 0.45 seconds while immediately blocking gameplay raycasts.
+For clean-board readability, create or reuse one non-raycasting translucent
+brown Image behind the summary. Mirror the live cue rect with 28px horizontal
+and 18px vertical padding so the plate shares the same responsive geometry and
+fade; keep it inactive for ordinary feedback cues. Increase the popup hero's
+responsive caps to 98% of width / 63% of height and description type to a
+bounded 22–36 point range.
+
+Serialize the normal `ThreatPresenter`, `CaptureBoardPresenter`, and
+`FeedbackPresenter` dependencies
+through a focused idempotent setup command. Keep a root-scoped lookup only as a
+compatibility fallback for a scene saved before that setup is run. Do not move
+the live board or hero hierarchy and do not add a tween package or shader.
+
+**Consequences:**
+Capture percentage, target checks, metrics, level status, board geometry,
+barrier resolution, threat state, and input rules do not change. Completion
+presentation takes roughly 2.2 additional unscaled seconds after the existing
+final-reveal gate before the popup begins. Threat visibility now combines pre-level
+and completion ownership so resetting one cannot reveal content still hidden by
+the other. Phone, tall-phone, and 4:3 tablet Game View checks remain required to
+approve summary readability/timing and the enlarged popup layout.

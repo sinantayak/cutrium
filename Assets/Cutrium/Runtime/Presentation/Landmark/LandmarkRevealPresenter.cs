@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using Cutrium.Gameplay.Board;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
+using Cutrium.Presentation.Capture;
+using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.HUD;
+using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Simulation;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -70,8 +73,8 @@ namespace Cutrium.Presentation.Landmark
         private const float GrainMaxRotationSpeed = 190f;
         private const float ReferenceLinearFraction = 0.5f;
         private const float CompletionHorizontalInsetFraction = 0.06f;
-        private const float CompletionHeroWidthFraction = 0.92f;
-        private const float CompletionHeroHeightFraction = 0.53f;
+        private const float CompletionHeroWidthFraction = 0.98f;
+        private const float CompletionHeroHeightFraction = 0.63f;
         private const float CompletionButtonWidth = 280f;
         private const float CompletionButtonAspect = 512f / 210f;
         private const float CompletionButtonHorizontalGap = 40f;
@@ -109,6 +112,13 @@ namespace Cutrium.Presentation.Landmark
         [SerializeField] private Font _completionFont;
         [SerializeField] private LandmarkCompletionTiming _timing =
             LandmarkCompletionTiming.Default;
+        [Header("Completion Reward Flow")]
+        [SerializeField] private ThreatPresenter _threatPresenter;
+        [SerializeField] private CaptureBoardPresenter _captureBoardPresenter;
+        [SerializeField] private FeedbackPresenter
+            _completionFeedbackPresenter;
+        [SerializeField] [Min(0f)] private float _completionSummarySeconds =
+            2.2f;
         [SerializeField] private LandmarkCatalog _landmarkCatalog;
         [SerializeField] private LandmarkDefinition[] _landmarks = Array.Empty<LandmarkDefinition>();
 
@@ -132,6 +142,11 @@ namespace Cutrium.Presentation.Landmark
         private bool _wasCompleted;
         private bool _completionSequenceStarted;
         private float _completionRevealStartTime;
+        private bool _completionSummaryStarted;
+        private bool _completionSummaryFinished;
+        private bool _completionDecorationsHidden;
+        private bool _grainFlightRootWasActive;
+        private float _completionSummaryStartTime;
         private Vector2 _lastCompletionLayoutSize =
             new Vector2(float.NaN, float.NaN);
         private Vector2 _completionContentBaseAnchoredPosition;
@@ -159,6 +174,13 @@ namespace Cutrium.Presentation.Landmark
         public Text CompletionSectorText => _sectorText;
         public Font CompletionFont => _completionFont;
         public LandmarkCompletionTiming Timing => _timing;
+        public ThreatPresenter ThreatPresenter => _threatPresenter;
+        public CaptureBoardPresenter CaptureBoardPresenter =>
+            _captureBoardPresenter;
+        public FeedbackPresenter CompletionFeedbackPresenter =>
+            _completionFeedbackPresenter;
+        public float CompletionSummarySeconds =>
+            _completionSummarySeconds;
         public LandmarkCatalog Catalog => _landmarkCatalog;
         public IReadOnlyList<LandmarkDefinition> Landmarks =>
             _landmarkCatalog != null
@@ -170,8 +192,16 @@ namespace Cutrium.Presentation.Landmark
             _completionSequenceStarted
                 ? Time.unscaledTime - _completionRevealStartTime
                 : 0f;
+        public float CompletionSummaryElapsedSeconds =>
+            _completionSummaryStarted
+                ? Time.unscaledTime - _completionSummaryStartTime
+                : 0f;
         public bool CompletionPresentationReady =>
-            _completionSequenceStarted;
+            _completionSummaryFinished;
+        public bool CompletionSummaryInProgress =>
+            _completionSummaryStarted && !_completionSummaryFinished;
+        public bool CompletionSummaryFinished =>
+            _completionSummaryFinished;
 
         /// True once every in-flight sand recede has finished (or none has
         /// ever started). Active (still sand-covered) rooms never affect
@@ -234,6 +264,7 @@ namespace Cutrium.Presentation.Landmark
                     nameof(revealFadeSeconds));
             }
 
+            RestoreCompletionDecorations();
             ReturnAllViewsToPool();
             _controller = controller;
             _boardFrame = boardFrame;
@@ -268,10 +299,36 @@ namespace Cutrium.Presentation.Landmark
             CurrentLandmark = null;
             _wasCompleted = false;
             _completionSequenceStarted = false;
+            _completionSummaryStarted = false;
+            _completionSummaryFinished = false;
             _lastSeenSession = null;
             _capturedRoomsSeen = 0;
             _lastCompletionLayoutSize = new Vector2(float.NaN, float.NaN);
             RefreshCompletionLayoutNow();
+        }
+
+        public void ConfigureCompletionRewardFlowForSetup(
+            ThreatPresenter threatPresenter,
+            CaptureBoardPresenter captureBoardPresenter,
+            FeedbackPresenter completionFeedbackPresenter,
+            float completionSummarySeconds)
+        {
+            if (!IsFinite(completionSummarySeconds)
+                || completionSummarySeconds < 0f)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(completionSummarySeconds));
+            }
+
+            _threatPresenter = threatPresenter
+                ?? throw new ArgumentNullException(nameof(threatPresenter));
+            _captureBoardPresenter = captureBoardPresenter
+                ?? throw new ArgumentNullException(
+                    nameof(captureBoardPresenter));
+            _completionFeedbackPresenter = completionFeedbackPresenter
+                ?? throw new ArgumentNullException(
+                    nameof(completionFeedbackPresenter));
+            _completionSummarySeconds = completionSummarySeconds;
         }
 
         public void ConfigureCatalogForSetup(LandmarkCatalog landmarkCatalog)
@@ -325,18 +382,17 @@ namespace Cutrium.Presentation.Landmark
                     || _sandProgressPresenter
                         .IsSettledAtLatestLogicalValue);
             if (finalCapturePresentationSettled
-                && !_completionSequenceStarted)
+                && !_completionSummaryStarted)
             {
-                _completionSequenceStarted = true;
-                _completionRevealStartTime = Time.unscaledTime;
+                StartCompletionSummary();
             }
             else if (!completed)
             {
-                _completionSequenceStarted = false;
+                ResetCompletionSummary();
             }
 
             _wasCompleted = completed;
-            UpdateCompletionSequence(_completionSequenceStarted);
+            UpdateCompletionPresentation(completed);
         }
 
         private void LateUpdate()
@@ -407,6 +463,140 @@ namespace Cutrium.Presentation.Landmark
             }
         }
 
+        private void StartCompletionSummary()
+        {
+            _completionSummaryStarted = true;
+            _completionSummaryFinished = false;
+            _completionSequenceStarted = false;
+            _completionSummaryStartTime = Time.unscaledTime;
+
+            ResolveCompletionRewardDependencies();
+            HideCompletionDecorations();
+            UpdateCompletionSequence(false);
+            _completionFeedbackPresenter?.ShowCompletionSummary(
+                _completionSummarySeconds);
+        }
+
+        private void UpdateCompletionPresentation(bool completed)
+        {
+            if (!completed)
+            {
+                UpdateCompletionSequence(false);
+                return;
+            }
+
+            if (!_completionSummaryStarted)
+            {
+                UpdateCompletionSequence(false);
+                return;
+            }
+
+            if (!_completionSummaryFinished)
+            {
+                UpdateCompletionSummary();
+                return;
+            }
+
+            UpdateCompletionSequence(_completionSequenceStarted);
+        }
+
+        private void UpdateCompletionSummary()
+        {
+            SetGroup(_scrimCanvasGroup, 0f, false);
+            SetGroup(_contentCanvasGroup, 0f, false);
+            SetGroup(_statsCanvasGroup, 0f, false);
+            SetGroup(_retryCanvasGroup, 0f, false);
+            SetGroup(_nextCanvasGroup, 0f, false);
+            if (CompletionSummaryElapsedSeconds
+                >= _completionSummarySeconds)
+            {
+                FinishCompletionSummary();
+            }
+        }
+
+        private void FinishCompletionSummary()
+        {
+            _completionFeedbackPresenter?.DismissCompletionSummary();
+            _completionSummaryFinished = true;
+            _completionSequenceStarted = true;
+            _completionRevealStartTime = Time.unscaledTime;
+        }
+
+        private void ResetCompletionSummary()
+        {
+            if (!_completionSummaryStarted
+                && !_completionSequenceStarted
+                && !_completionDecorationsHidden)
+            {
+                return;
+            }
+
+            _completionFeedbackPresenter?.DismissCompletionSummary();
+            RestoreCompletionDecorations();
+            _completionSummaryStarted = false;
+            _completionSummaryFinished = false;
+            _completionSequenceStarted = false;
+        }
+
+        private void ResolveCompletionRewardDependencies()
+        {
+            if (_controller == null)
+            {
+                return;
+            }
+
+            Transform root = _controller.transform.root;
+            if (_threatPresenter == null)
+            {
+                _threatPresenter = root
+                    .GetComponentInChildren<ThreatPresenter>(true);
+            }
+
+            if (_captureBoardPresenter == null)
+            {
+                _captureBoardPresenter = root
+                    .GetComponentInChildren<CaptureBoardPresenter>(true);
+            }
+
+            if (_completionFeedbackPresenter == null)
+            {
+                _completionFeedbackPresenter = root
+                    .GetComponentInChildren<FeedbackPresenter>(true);
+            }
+        }
+
+        private void HideCompletionDecorations()
+        {
+            _threatPresenter?.SetCompletionHidden(true);
+            _captureBoardPresenter?.SetCompletedBarriersVisible(false);
+            if (_grainFlightRoot != null)
+            {
+                _grainFlightRootWasActive =
+                    _grainFlightRoot.gameObject.activeSelf;
+                _grainFlightRoot.gameObject.SetActive(false);
+            }
+
+            _completionDecorationsHidden = true;
+        }
+
+        private void RestoreCompletionDecorations()
+        {
+            if (!_completionDecorationsHidden)
+            {
+                return;
+            }
+
+            _threatPresenter?.SetCompletionHidden(false);
+            _captureBoardPresenter?.SetCompletedBarriersVisible(true);
+            if (_grainFlightRoot != null)
+            {
+                _grainFlightRoot.gameObject.SetActive(
+                    _grainFlightRootWasActive);
+            }
+
+            _completionDecorationsHidden = false;
+        }
+
         private void UpdateCompletionSequence(bool completed)
         {
             if (!completed)
@@ -432,7 +622,10 @@ namespace Cutrium.Presentation.Landmark
                 _timing.ContentDelaySeconds,
                 _timing.ContentFadeSeconds);
             SetGroup(_contentCanvasGroup, contentProgress, false);
-            SetGroup(_statsCanvasGroup, contentProgress, false);
+            // The performance summary now appears over the clean board as a
+            // feedback cue before this popup opens. Keep the legacy direct
+            // child serialized for compatibility, but never repeat it here.
+            SetGroup(_statsCanvasGroup, 0f, false);
             ApplyContentOffset(contentProgress);
 
             float buttonsProgress = Progress(
@@ -534,7 +727,6 @@ namespace Cutrium.Presentation.Landmark
             _lastCompletionLayoutSize = size;
             float topPadding = Mathf.Clamp(size.y * 0.018f, 24f, 40f);
             float bottomPadding = Mathf.Clamp(size.y * 0.018f, 24f, 40f);
-            float summaryHeight = Mathf.Clamp(size.y * 0.06f, 88f, 120f);
             float heroSize = Mathf.Min(
                 size.x * CompletionHeroWidthFraction,
                 size.y * CompletionHeroHeightFraction);
@@ -544,8 +736,7 @@ namespace Cutrium.Presentation.Landmark
             float buttonHeight = buttonWidth / CompletionButtonAspect;
 
             float top = (size.y * 0.5f) - topPadding;
-            float summaryBottom = top - summaryHeight;
-            float heroTop = summaryBottom - CompletionSectionGap;
+            float heroTop = top;
             float heroBottom = heroTop - heroSize;
             float buttonBottom = (-size.y * 0.5f) + bottomPadding;
             float buttonTop = buttonBottom + buttonHeight;
@@ -555,9 +746,9 @@ namespace Cutrium.Presentation.Landmark
             SetCenteredRect(
                 (RectTransform)_statsCanvasGroup.transform,
                 Vector2.zero,
-                contentWidth,
-                summaryHeight,
-                (top + summaryBottom) * 0.5f);
+                0f,
+                0f,
+                top);
             SetCenteredRect(
                 (RectTransform)_scrimCanvasGroup.transform,
                 Vector2.zero,
@@ -629,12 +820,12 @@ namespace Cutrium.Presentation.Landmark
                 0f);
             ConfigureRuntimeText(
                 _descriptionText,
-                32,
-                20,
+                36,
+                22,
                 TextAnchor.UpperCenter,
                 1f,
-                160f,
-                210f,
+                170f,
+                230f,
                 1f);
             if (_descriptionText != null)
             {
@@ -924,6 +1115,11 @@ namespace Cutrium.Presentation.Landmark
             _wipeEntries.Clear();
             _capturedRoomsSeen = 0;
 
+            ReturnAllGrainFlightsToPool();
+        }
+
+        private void ReturnAllGrainFlightsToPool()
+        {
             for (int index = 0; index < _activeGrainFlights.Count; index++)
             {
                 ReturnGrainFlightToPool(_activeGrainFlights[index]);

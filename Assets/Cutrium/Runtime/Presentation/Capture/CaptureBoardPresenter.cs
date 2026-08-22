@@ -47,6 +47,7 @@ namespace Cutrium.Presentation.Capture
             new List<float>();
         private CaptureVisualStyle _themeStyle;
         private bool _hasThemeStyle;
+        private bool _completedBarriersVisible = true;
 
         public FirstPlayableController Controller => _controller;
 
@@ -65,6 +66,8 @@ namespace Cutrium.Presentation.Capture
         public CaptureVisualStyle ThemeStyle => _themeStyle;
 
         public bool HasThemeStyle => _hasThemeStyle;
+
+        public bool CompletedBarriersVisible => _completedBarriersVisible;
 
         public bool AllVisibleCapturesRevealed
         {
@@ -104,6 +107,16 @@ namespace Cutrium.Presentation.Capture
             _completedBarrierRoot = completedBarrierRoot;
             _completedBarrierLogicalThickness =
                 completedBarrierLogicalThickness;
+            SetCompletedBarriersVisible(true);
+        }
+
+        public void SetCompletedBarriersVisible(bool visible)
+        {
+            _completedBarriersVisible = visible;
+            if (_completedBarrierRoot != null)
+            {
+                _completedBarrierRoot.gameObject.SetActive(visible);
+            }
         }
 
         public void ConfigureFeedbackRevealForSetup(float duration)
@@ -210,6 +223,8 @@ namespace Cutrium.Presentation.Capture
         private void RenderCompletedBarriers(
             IReadOnlyList<BarrierState> barriers)
         {
+            _completedBarrierRoot.gameObject.SetActive(
+                _completedBarriersVisible);
             EnsureViews(_barrierViews, _completedBarrierRoot, barriers.Count,
                 "CompletedBarrier", CompletedBarrierColor);
             for (int index = 0; index < _barrierViews.Count; index++)

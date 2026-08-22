@@ -60,6 +60,7 @@ namespace Cutrium.Presentation.Threats
         private float _hunterReactionEmphasisUntil;
         private Material _hunterTrailMaterial;
         private bool _visible = true;
+        private bool _completionHidden;
 
         public FirstPlayableController Controller => _controller;
 
@@ -88,7 +89,7 @@ namespace Cutrium.Presentation.Threats
 
         public bool HasThemeStyle => _hasThemeStyle;
 
-        public bool Visible => _visible;
+        public bool Visible => _visible && !_completionHidden;
 
         // Lets the pre-level intro cinematic (PreLevelIntroPresenter) hide
         // just the threats -- not the board/sand/landmark art around them --
@@ -102,12 +103,24 @@ namespace Cutrium.Presentation.Threats
             }
         }
 
+        // Completion and the pre-level intro own separate visibility reasons.
+        // Clearing completion state must never reveal threats that a new
+        // level's intro is still intentionally hiding.
+        public void SetCompletionHidden(bool hidden)
+        {
+            _completionHidden = hidden;
+            foreach (ThreatView view in _activeViews.Values)
+            {
+                ApplyVisibility(view);
+            }
+        }
+
         private void ApplyVisibility(ThreatView view)
         {
-            view.RectTransform.gameObject.SetActive(_visible);
+            view.RectTransform.gameObject.SetActive(Visible);
             if (view.TrailImage != null)
             {
-                view.TrailImage.gameObject.SetActive(_visible);
+                view.TrailImage.gameObject.SetActive(Visible);
             }
         }
 
@@ -127,6 +140,7 @@ namespace Cutrium.Presentation.Threats
             _activeViews.Clear();
             _availableViews.Clear();
             _primaryView = null;
+            _completionHidden = false;
             SetVisualLogicalDiameter(visualLogicalDiameter);
             ApplyOptionalSprite(_image);
             SubscribeFeedback();
@@ -271,7 +285,7 @@ namespace Cutrium.Presentation.Threats
                 view.RectTransform.name = id.Value == 1
                     ? "ThreatVisual"
                     : $"ThreatVisual_{id.Value}";
-                view.RectTransform.gameObject.SetActive(_visible);
+                view.RectTransform.gameObject.SetActive(Visible);
                 ApplyStyle(
                     view,
                     _controller.Session.BehaviorFor(id).Kind);
@@ -453,7 +467,7 @@ namespace Cutrium.Presentation.Threats
             ThreatBehaviorKind behaviorKind)
         {
             EnsureDecorations(view);
-            view.TrailImage.gameObject.SetActive(_visible);
+            view.TrailImage.gameObject.SetActive(Visible);
             view.Image.sprite = _hasThemeStyle
                 ? _themeStyle.SpriteFor(behaviorKind) ?? _optionalSprite
                 : _optionalSprite;
