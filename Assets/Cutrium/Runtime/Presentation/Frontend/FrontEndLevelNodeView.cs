@@ -20,6 +20,7 @@ namespace Cutrium.Presentation.Frontend
         [SerializeField] private Image _nodeImage;
         [SerializeField] private Image _selectionGlow;
         [SerializeField] private TMP_Text _numberLabel;
+        [SerializeField] private Image _lockImage;
 
         private bool _subscribed;
 
@@ -30,6 +31,7 @@ namespace Cutrium.Presentation.Frontend
         public Image NodeImage => _nodeImage;
         public Image SelectionGlow => _selectionGlow;
         public TMP_Text NumberLabel => _numberLabel;
+        public Image LockImage => _lockImage;
         public FrontEndLevelNodeState State { get; private set; }
 
         public void ConfigureForSetup(
@@ -37,7 +39,8 @@ namespace Cutrium.Presentation.Frontend
             Button button,
             Image nodeImage,
             Image selectionGlow,
-            TMP_Text numberLabel)
+            TMP_Text numberLabel,
+            Image lockImage = null)
         {
             if (levelNumber <= 0)
             {
@@ -50,6 +53,7 @@ namespace Cutrium.Presentation.Frontend
             _nodeImage = nodeImage;
             _selectionGlow = selectionGlow;
             _numberLabel = numberLabel;
+            _lockImage = lockImage;
             if (isActiveAndEnabled && Application.isPlaying)
             {
                 Subscribe();
@@ -83,10 +87,17 @@ namespace Cutrium.Presentation.Frontend
                     state == FrontEndLevelNodeState.Selected);
             }
 
+            bool locked = state == FrontEndLevelNodeState.Upcoming;
             if (_numberLabel != null)
             {
                 _numberLabel.text = _levelNumber.ToString();
                 _numberLabel.color = numberColor;
+                _numberLabel.gameObject.SetActive(!locked);
+            }
+
+            if (_lockImage != null)
+            {
+                _lockImage.gameObject.SetActive(locked);
             }
 
             transform.localScale = state == FrontEndLevelNodeState.Selected

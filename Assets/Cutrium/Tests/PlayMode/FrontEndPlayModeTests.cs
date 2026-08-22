@@ -167,6 +167,22 @@ namespace Cutrium.PlayModeTests
             Assert.That(
                 selectedGlowPulse == null || !selectedGlowPulse.enabled,
                 Is.True);
+            Assert.That(
+                presenter.LevelNodes[0].NumberLabel.gameObject.activeSelf,
+                Is.True);
+            Assert.That(
+                presenter.LevelNodes[0].LockImage.gameObject.activeSelf,
+                Is.False);
+            Assert.That(
+                presenter.LevelNodes[1].LockImage, Is.Not.Null);
+            Assert.That(
+                presenter.LevelNodes[1].LockImage.sprite, Is.Not.Null);
+            Assert.That(
+                presenter.LevelNodes[1].LockImage.gameObject.activeSelf,
+                Is.True);
+            Assert.That(
+                presenter.LevelNodes[1].NumberLabel.gameObject.activeSelf,
+                Is.False);
 
             var mapCorners = new Vector3[4];
             var playCorners = new Vector3[4];

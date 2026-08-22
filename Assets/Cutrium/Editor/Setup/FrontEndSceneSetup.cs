@@ -25,6 +25,8 @@ namespace Cutrium.Editor.Setup
             "Assets/Cutrium/Content/Gui/ChallangeIcon.png";
         private const string NodeSpritePath =
             "Assets/Cutrium/Content/Gui/NodeAsset.png";
+        private const string NodeLockSpritePath =
+            "Assets/Cutrium/Content/Gui/NodeLockAsset.png";
         private const string PlayButtonSpritePath =
             "Assets/Cutrium/Content/Gui/GeneralButtonBackground.png";
         private const string HomeBackgroundPath =
@@ -85,6 +87,7 @@ namespace Cutrium.Editor.Setup
             Sprite homeIcon = EnsureUiSprite(HomeIconPath);
             Sprite challengeIcon = EnsureUiSprite(ChallengeIconPath);
             Sprite nodeSprite = EnsureUiSprite(NodeSpritePath);
+            Sprite nodeLockSprite = EnsureUiSprite(NodeLockSpritePath);
             Sprite playButtonSprite = EnsureUiSprite(PlayButtonSpritePath);
             Sprite homeBackground = EnsureUiSprite(HomeBackgroundPath);
             Sprite homeLogo = EnsureUiSprite(HomeLogoPath);
@@ -142,6 +145,7 @@ namespace Cutrium.Editor.Setup
                 font,
                 playButtonSprite,
                 nodeSprite,
+                nodeLockSprite,
                 levelCount);
 
             NavigationSetupResult navigation = ConfigureBottomNavigation(
@@ -184,6 +188,7 @@ namespace Cutrium.Editor.Setup
                 homeIcon,
                 challengeIcon,
                 nodeSprite,
+                nodeLockSprite,
                 homeBackground,
                 homeLogo);
 
@@ -338,6 +343,7 @@ namespace Cutrium.Editor.Setup
             TMP_FontAsset font,
             Sprite playButtonSprite,
             Sprite nodeSprite,
+            Sprite nodeLockSprite,
             int levelCount)
         {
             DestroyUiChildIfPresent(page.transform, "ChallengeHeader");
@@ -394,7 +400,8 @@ namespace Cutrium.Editor.Setup
                 nodesRoot,
                 positions,
                 font,
-                nodeSprite);
+                nodeSprite,
+                nodeLockSprite);
 
             ScrollRect scrollRect = GetOrAddComponent<ScrollRect>(
                 scrollRectTransform.gameObject);
@@ -486,7 +493,8 @@ namespace Cutrium.Editor.Setup
             RectTransform nodesRoot,
             IReadOnlyList<Vector2> positions,
             TMP_FontAsset font,
-            Sprite nodeSprite)
+            Sprite nodeSprite,
+            Sprite nodeLockSprite)
         {
             var nodes = new FrontEndLevelNodeView[positions.Count];
             for (int index = 0; index < positions.Count; index++)
@@ -534,6 +542,19 @@ namespace Cutrium.Editor.Setup
                     PrimaryText,
                     TextAlignmentOptions.Center);
 
+                RectTransform lockRect = CreateUiChild(root, "LockIcon");
+                Anchor(
+                    lockRect,
+                    new Vector2(0.5f, 0.5f),
+                    new Vector2(72f, 72f));
+                lockRect.anchoredPosition = Vector2.zero;
+                Image lockImage = lockRect.gameObject.AddComponent<Image>();
+                lockImage.sprite = nodeLockSprite;
+                lockImage.preserveAspect = true;
+                lockImage.color = Color.white;
+                lockImage.raycastTarget = false;
+                lockImage.gameObject.SetActive(false);
+
                 Button button = root.gameObject.AddComponent<Button>();
                 button.targetGraphic = visual;
                 button.transition = Selectable.Transition.ColorTint;
@@ -550,7 +571,8 @@ namespace Cutrium.Editor.Setup
                     button,
                     visual,
                     glow,
-                    label);
+                    label,
+                    lockImage);
                 nodes[index] = node;
             }
 
@@ -915,6 +937,7 @@ namespace Cutrium.Editor.Setup
             Sprite homeIcon,
             Sprite challengeIcon,
             Sprite nodeSprite,
+            Sprite nodeLockSprite,
             Sprite homeBackground,
             Sprite homeLogo)
         {
@@ -997,7 +1020,9 @@ namespace Cutrium.Editor.Setup
                     || node.NodeImage.sprite != nodeSprite
                     || node.SelectionGlow == null
                     || node.SelectionGlow
-                        .GetComponent<FrontEndPulseAnimator>() != null)
+                        .GetComponent<FrontEndPulseAnimator>() != null
+                    || node.LockImage == null
+                    || node.LockImage.sprite != nodeLockSprite)
                 {
                     throw new InvalidOperationException(
                         $"Challenge node {index + 1} is not wired correctly.");
