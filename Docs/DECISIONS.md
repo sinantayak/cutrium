@@ -1702,3 +1702,49 @@ future modal presentation can add another explicit hold reason. The Shop is a
 visible placeholder only; no IAP, ads, currency, lives, daily limits, or save
 format are introduced. The configured scene and three required aspect ratios
 still need licensed Unity Editor/Test Runner validation before visual approval.
+
+## ADR-041 — Settings Is a Same-Scene Modal with Owned Feedback Preferences
+
+**Status:** Accepted for visual playtesting.
+
+**Context:**
+The gameplay HUD already reserves a Settings button, but it is deliberately
+non-interactable and has no panel. The requested panel needs to pause live play,
+toggle effects, music, and haptics independently, return to Home, and quit a
+built player. Frontend and pre-level intro already hold simulation for their own
+lifetimes, and sharing either hold would let one surface release another.
+
+**Decision:**
+Add `Settings` as a separate composable simulation-hold reason and keep an
+always-active `SettingsPanelPresenter` on a hidden full-Canvas `CanvasGroup`.
+Wire the existing gameplay HUD button and all modal controls through serialized
+references authored by the idempotent `Cutrium/Setup/Apply Settings Panel`
+Editor command. Reuse Game Over's normalized safe-area bounds and aspect-fit
+strategy, while keeping the panel, square buttons, wide buttons, and icons as
+replaceable sprite references.
+
+Persist three namespaced local preferences. Apply Sound directly to
+`FeedbackAudioPresenter`, Haptic directly to `FeedbackHapticPresenter`, and
+Music to an Inspector-configurable collection of looping `AudioSource` targets.
+The current slice has no music player, so Music still owns a real persisted UI
+state and is ready to mute future serialized sources without inventing a global
+audio singleton or changing `AudioListener.volume`. Show enabled state through
+sprite tint and a small ON/OFF label. English remains the one honest authored
+language; Exit raises a request in Editor/tests and calls `Application.Quit`
+only in a built player. Home acquires the frontend hold before releasing the
+settings hold.
+
+After the first owner visual review, use the same centered 76%-wide safe-area
+bounds for Settings and Game Over. Keep the square toggle buttons and Close hit
+target unchanged, but reduce toggle art to 48% and Close art to 56% of their
+respective button rects so the controls remain easy to tap without dominating
+the panel.
+
+**Consequences:**
+Opening Settings freezes simulation and barrier input while leaving other modal
+ownership intact. Sound and haptic choices affect existing feedback immediately;
+music becomes effective as soon as a looping source is serialized. No gameplay
+logic depends on the supplied artwork, no third-party audio/haptic/localization
+package is introduced, and future localization or mixer work can replace only
+the presentation dependencies. The Editor-authored scene and required phone,
+tall-phone, and tablet views still require licensed Unity validation.

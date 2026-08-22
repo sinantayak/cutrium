@@ -9,5 +9,6 @@ namespace Cutrium.Unity.Simulation
         Legacy = 1 << 0,
         PreLevelIntro = 1 << 1,
         FrontEnd = 1 << 2,
+        Settings = 1 << 3,
     }
 }

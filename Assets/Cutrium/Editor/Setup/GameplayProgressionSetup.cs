@@ -19,6 +19,11 @@ namespace Cutrium.Editor.Setup
     /// place while Gravity Well and shared text-button styling are wired.
     public static class GameplayProgressionSetup
     {
+        internal static readonly Vector2 CompactModalPanelAnchorMin =
+            new Vector2(0.12f, 0.10f);
+        internal static readonly Vector2 CompactModalPanelAnchorMax =
+            new Vector2(0.88f, 0.90f);
+
         public const string GameplayCatalogPath =
             "Assets/Cutrium/Content/Levels/MainGameplayCatalog.asset";
 
@@ -182,6 +187,29 @@ namespace Cutrium.Editor.Setup
             AssetDatabase.SaveAssets();
             Debug.Log(
                 "Game Over panel configured with Retry and Watch AD art.");
+        }
+
+        internal static RectTransform ApplyCompactGameOverPanelBounds(
+            Transform verticalSliceRoot)
+        {
+            RectTransform panelBounds = verticalSliceRoot.Find(
+                    "Canvas/SafeAreaRoot/CutLimitFailureOverlay/" +
+                    "GameOverPanelBounds")
+                as RectTransform;
+            if (panelBounds == null)
+            {
+                throw new InvalidOperationException(
+                    "Game Over panel bounds are missing from VerticalSlice.");
+            }
+
+            panelBounds.anchorMin = CompactModalPanelAnchorMin;
+            panelBounds.anchorMax = CompactModalPanelAnchorMax;
+            panelBounds.anchoredPosition = Vector2.zero;
+            panelBounds.sizeDelta = Vector2.zero;
+            panelBounds.offsetMin = Vector2.zero;
+            panelBounds.offsetMax = Vector2.zero;
+            EditorUtility.SetDirty(panelBounds);
+            return panelBounds;
         }
 
         [MenuItem("Cutrium/Setup/Chapter 1 Earth Landmarks")]
@@ -521,8 +549,8 @@ namespace Cutrium.Editor.Setup
             RectTransform panelBounds = GetOrCreateRect(
                 failureRect,
                 "GameOverPanelBounds",
-                new Vector2(0.06f, 0.05f),
-                new Vector2(0.94f, 0.95f),
+                CompactModalPanelAnchorMin,
+                CompactModalPanelAnchorMax,
                 Vector2.zero,
                 Vector2.zero);
             RectTransform panelRect = GetOrCreateRect(
@@ -679,6 +707,9 @@ namespace Cutrium.Editor.Setup
             AspectRatioFitter panelAspect = panel != null
                 ? panel.GetComponent<AspectRatioFitter>()
                 : null;
+            RectTransform panelBounds = panel != null
+                ? panel.parent as RectTransform
+                : null;
             Text prompt = panel != null
                 ? panel.Find("FailureText")?.GetComponent<Text>()
                 : null;
@@ -695,7 +726,10 @@ namespace Cutrium.Editor.Setup
                 ? panel.Find("WatchAdLabel")?.GetComponent<Text>()
                 : null;
 
-            if (panelImage == null
+            if (panelBounds == null
+                || panelBounds.anchorMin != CompactModalPanelAnchorMin
+                || panelBounds.anchorMax != CompactModalPanelAnchorMax
+                || panelImage == null
                 || panelImage.sprite != panelSprite
                 || panelAspect == null
                 || panelAspect.aspectMode

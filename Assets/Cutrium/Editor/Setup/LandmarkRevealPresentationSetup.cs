@@ -2302,7 +2302,7 @@ namespace Cutrium.Editor.Setup
             Button button = GetOrAddComponent<Button>(buttonRect.gameObject);
             button.targetGraphic = image;
             button.transition = Selectable.Transition.None;
-            button.interactable = false;
+            button.interactable = true;
             Navigation navigation = button.navigation;
             navigation.mode = Navigation.Mode.None;
             button.navigation = navigation;

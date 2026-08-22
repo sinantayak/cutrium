@@ -21,11 +21,14 @@ namespace Cutrium.Presentation.Feedback
         [SerializeField] private AudioClip _uiClip;
 
         private bool _subscribed;
+        private bool _effectsEnabled = true;
         private BarrierId _growPlayedFor;
 
         public FirstPlayableController Controller => _controller;
 
         public AudioSource AudioSource => _audioSource;
+
+        public bool EffectsEnabled => _effectsEnabled;
 
         public int HandledEventCount { get; private set; }
 
@@ -45,6 +48,15 @@ namespace Cutrium.Presentation.Feedback
         public void PlayUi()
         {
             Play(_uiClip);
+        }
+
+        public void SetEffectsEnabled(bool enabled)
+        {
+            _effectsEnabled = enabled;
+            if (!enabled && _audioSource != null)
+            {
+                _audioSource.Stop();
+            }
         }
 
         private void OnEnable()
@@ -123,7 +135,7 @@ namespace Cutrium.Presentation.Feedback
 
         private void Play(AudioClip clip)
         {
-            if (_audioSource != null && clip != null)
+            if (_effectsEnabled && _audioSource != null && clip != null)
             {
                 _audioSource.PlayOneShot(clip);
             }

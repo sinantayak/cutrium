@@ -373,9 +373,9 @@ namespace Cutrium.PlayModeTests
 
             RectTransform panelBounds = (RectTransform)panel.parent;
             Assert.That(panelBounds.anchorMin,
-                Is.EqualTo(new Vector2(0.06f, 0.05f)));
+                Is.EqualTo(new Vector2(0.12f, 0.10f)));
             Assert.That(panelBounds.anchorMax,
-                Is.EqualTo(new Vector2(0.94f, 0.95f)));
+                Is.EqualTo(new Vector2(0.88f, 0.90f)));
 
             Image panelImage = panel.GetComponent<Image>();
             AspectRatioFitter panelAspect =
@@ -512,7 +512,7 @@ namespace Cutrium.PlayModeTests
             Assert.That(settings, Is.Not.Null);
             Assert.That(settings.GetComponent<Image>().sprite.name,
                 Is.EqualTo("Settings_Button_0"));
-            Assert.That(settings.GetComponent<Button>().interactable, Is.False);
+            Assert.That(settings.GetComponent<Button>().interactable, Is.True);
             RectTransform healthPanel = (RectTransform)bar.Find("HealthHUD");
             RectTransform cutPanel = (RectTransform)bar.Find("CutHUD");
             RectTransform speedPanel = (RectTransform)bar.Find("SpeedHUD");

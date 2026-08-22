@@ -15,8 +15,11 @@ namespace Cutrium.Presentation.Feedback
             new NoOpHapticFeedback();
         private IHapticFeedback _service;
         private bool _subscribed;
+        private bool _hapticsEnabled = true;
 
         public FirstPlayableController Controller => _controller;
+
+        public bool HapticsEnabled => _hapticsEnabled;
 
         public int HandledCueCount { get; private set; }
 
@@ -37,6 +40,11 @@ namespace Cutrium.Presentation.Feedback
         }
 
         public void PlayUi() => Play(HapticFeedbackCue.Ui);
+
+        public void SetHapticsEnabled(bool enabled)
+        {
+            _hapticsEnabled = enabled;
+        }
 
         private void OnEnable()
         {
@@ -97,6 +105,11 @@ namespace Cutrium.Presentation.Feedback
 
         private void Play(HapticFeedbackCue cue)
         {
+            if (!_hapticsEnabled)
+            {
+                return;
+            }
+
             (_service ?? _fallback).Play(cue);
             HandledCueCount++;
         }
