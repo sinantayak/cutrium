@@ -127,6 +127,15 @@ namespace Cutrium.PlayModeTests
             AssertAction(panel, "HomeButton", "Home");
             AssertAction(panel, "ExitButton", "Exit");
 
+            Assert.That(presenter.MusicSources.Count, Is.GreaterThanOrEqualTo(1));
+            AudioSource musicSource = presenter.MusicSources[0];
+            Assert.That(musicSource, Is.Not.Null);
+            Assert.That(musicSource.loop, Is.True);
+            Assert.That(musicSource.playOnAwake, Is.True);
+            Assert.That(musicSource, Is.Not.SameAs(
+                root.GetComponentInChildren<FeedbackAudioPresenter>(true)
+                    .AudioSource));
+
             presenter.HomeOpenButton.onClick.Invoke();
             Assert.That(presenter.IsOpen, Is.True);
             presenter.CloseButton.onClick.Invoke();

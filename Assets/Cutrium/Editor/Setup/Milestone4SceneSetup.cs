@@ -90,6 +90,7 @@ namespace Cutrium.Editor.Setup
                 0.45f,
                 0.75f,
                 0.2f,
+                3f,
                 0.18f,
                 0.22f,
                 0.65f);

@@ -141,6 +141,8 @@ Cutrium.PlayModeTests           — scene/integration tests
 - `Docs/TECHNICAL_CONSTRAINTS.md` — engine/platform baseline, performance targets, testing expectations.
 - `Docs/VERTICAL_SLICE_SCOPE.md` — in-scope/out-of-scope feature list and milestone shape for the decision build.
 - `Docs/VISUAL_AND_ART_PIPELINE.md` — how presentation must stay replaceable/theme-driven.
+- `Docs/AUDIO_ASSETS.md` — every named audio hook (`SFX_*`), what triggers it, and which
+  Inspector field it binds to; the reference for wiring in real audio clip assets.
 - `Docs/DECISIONS.md` — dated Architecture Decision Records (ADR-001 …); **check this before
   changing simulation timing, tolerance handling, board/capture representation, theme resolution,
   or input gesture** — the reasoning for the current approach (and rejected alternatives) is

@@ -123,6 +123,8 @@ namespace Cutrium.Presentation.Landmark
             2.2f;
         [SerializeField] private LandmarkCatalog _landmarkCatalog;
         [SerializeField] private LandmarkDefinition[] _landmarks = Array.Empty<LandmarkDefinition>();
+        [SerializeField] private AudioSource _audioSource;
+        [SerializeField] private AudioClip _photoRevealClip;
 
         private readonly Dictionary<RoomId, ActiveSandEntry> _activeViews =
             new Dictionary<RoomId, ActiveSandEntry>();
@@ -154,6 +156,7 @@ namespace Cutrium.Presentation.Landmark
         private Vector2 _completionContentBaseAnchoredPosition;
         private bool _completionFontResolutionAttempted;
         private bool _localizationSubscribed;
+        private bool _effectsEnabled = true;
 
         public FirstPlayableController Controller => _controller;
         public RectTransform BoardFrame => _boardFrame;
@@ -191,6 +194,8 @@ namespace Cutrium.Presentation.Landmark
                 ? _landmarkCatalog.Landmarks
                 : _landmarks;
         public LandmarkDefinition CurrentLandmark { get; private set; }
+        public AudioSource AudioSource => _audioSource;
+        public AudioClip PhotoRevealClip => _photoRevealClip;
         public int VisibleVeilCount { get; private set; }
         public float CompletionSequenceElapsedSeconds =>
             _completionSequenceStarted
@@ -351,6 +356,19 @@ namespace Cutrium.Presentation.Landmark
             _completionFontResolutionAttempted = true;
             _lastCompletionLayoutSize = new Vector2(float.NaN, float.NaN);
             RefreshCompletionLayoutNow();
+        }
+
+        public void ConfigureAudio(
+            AudioSource audioSource,
+            AudioClip photoRevealClip)
+        {
+            _audioSource = audioSource;
+            _photoRevealClip = photoRevealClip;
+        }
+
+        public void SetEffectsEnabled(bool enabled)
+        {
+            _effectsEnabled = enabled;
         }
 
         public void ConfigureLocalizationForSetup(
@@ -586,6 +604,11 @@ namespace Cutrium.Presentation.Landmark
             _completionSummaryFinished = true;
             _completionSequenceStarted = true;
             _completionRevealStartTime = Time.unscaledTime;
+            // This is the instant the completion popup itself begins
+            // fading in -- the hero photo (HeroFrameBounds/_scrimCanvasGroup)
+            // is the first element to fade, so this cue reads as the
+            // artwork's entrance.
+            Play(_photoRevealClip);
         }
 
         private void ResetCompletionSummary()
@@ -1623,6 +1646,14 @@ namespace Cutrium.Presentation.Landmark
             flight.NotifiesProgressOnArrival = false;
             flight.ProgressTargetOnArrival = 0f;
             _grainFlightPool.Add(flight);
+        }
+
+        private void Play(AudioClip clip)
+        {
+            if (_effectsEnabled && _audioSource != null && clip != null)
+            {
+                _audioSource.PlayOneShot(clip);
+            }
         }
 
         private static bool IsFinite(float value) =>

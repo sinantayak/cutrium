@@ -22,6 +22,10 @@ namespace Cutrium.Unity.Simulation
         [Range(0.01f, 1f)]
         private float _largeCaptureFraction = 0.2f;
 
+        [SerializeField]
+        [Min(0.01f)]
+        private float _comboTimeoutSeconds = 3f;
+
         [Header("Presentation Timing")]
         [SerializeField]
         [Min(0f)]
@@ -41,6 +45,8 @@ namespace Cutrium.Unity.Simulation
 
         public float LargeCaptureFraction => _largeCaptureFraction;
 
+        public float ComboTimeoutSeconds => _comboTimeoutSeconds;
+
         public float CaptureRevealSeconds => _captureRevealSeconds;
 
         public float PercentageAnimationSeconds =>
@@ -52,12 +58,14 @@ namespace Cutrium.Unity.Simulation
             new FeedbackTuningConfiguration(
                 _nearMissDistance,
                 _nearMissWindowSeconds,
-                _largeCaptureFraction);
+                _largeCaptureFraction,
+                _comboTimeoutSeconds);
 
         public void ConfigureForSetup(
             float nearMissDistance,
             float nearMissWindowSeconds,
             float largeCaptureFraction,
+            float comboTimeoutSeconds,
             float captureRevealSeconds,
             float percentageAnimationSeconds,
             float labelSeconds)
@@ -65,6 +73,9 @@ namespace Cutrium.Unity.Simulation
             _nearMissDistance = nearMissDistance;
             _nearMissWindowSeconds = nearMissWindowSeconds;
             _largeCaptureFraction = largeCaptureFraction;
+            _comboTimeoutSeconds = ValidateNonNegative(
+                comboTimeoutSeconds,
+                nameof(comboTimeoutSeconds));
             _captureRevealSeconds = ValidateNonNegative(
                 captureRevealSeconds,
                 nameof(captureRevealSeconds));

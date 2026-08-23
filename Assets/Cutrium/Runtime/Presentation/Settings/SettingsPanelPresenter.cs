@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.Frontend;
+using Cutrium.Presentation.HUD;
+using Cutrium.Presentation.Landmark;
 using Cutrium.Presentation.Localization;
 using Cutrium.Unity.Simulation;
 using TMPro;
@@ -24,6 +27,8 @@ namespace Cutrium.Presentation.Settings
         [SerializeField] private FrontEndPresenter _frontEnd;
         [SerializeField] private FeedbackAudioPresenter _feedbackAudio;
         [SerializeField] private FeedbackHapticPresenter _feedbackHaptics;
+        [SerializeField] private PreLevelIntroPresenter _preLevelIntro;
+        [SerializeField] private LandmarkRevealPresenter _landmarkReveal;
         [SerializeField] private LocalizationService _localization;
         [SerializeField] private CanvasGroup _panelCanvasGroup;
 
@@ -88,8 +93,29 @@ namespace Cutrium.Presentation.Settings
         public bool SoundEnabled => _soundEnabled;
         public bool MusicEnabled => _musicEnabled;
         public bool HapticEnabled => _hapticEnabled;
+        public IReadOnlyList<AudioSource> MusicSources => _musicSources;
+        public PreLevelIntroPresenter PreLevelIntro => _preLevelIntro;
+        public LandmarkRevealPresenter LandmarkReveal => _landmarkReveal;
 
         public event Action ExitRequested;
+
+        public void ConfigurePreLevelIntro(PreLevelIntroPresenter preLevelIntro)
+        {
+            _preLevelIntro = preLevelIntro;
+            if (isActiveAndEnabled && Application.isPlaying)
+            {
+                ApplyPreferences();
+            }
+        }
+
+        public void ConfigureLandmarkReveal(LandmarkRevealPresenter landmarkReveal)
+        {
+            _landmarkReveal = landmarkReveal;
+            if (isActiveAndEnabled && Application.isPlaying)
+            {
+                ApplyPreferences();
+            }
+        }
 
         public void ConfigureForSetup(
             FirstPlayableController controller,
@@ -362,6 +388,8 @@ namespace Cutrium.Presentation.Settings
         private void ApplyPreferences()
         {
             _feedbackAudio?.SetEffectsEnabled(_soundEnabled);
+            _preLevelIntro?.SetEffectsEnabled(_soundEnabled);
+            _landmarkReveal?.SetEffectsEnabled(_soundEnabled);
             _feedbackHaptics?.SetHapticsEnabled(_hapticEnabled);
             foreach (AudioSource musicSource in _musicSources)
             {

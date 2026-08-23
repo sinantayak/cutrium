@@ -363,12 +363,12 @@ namespace Cutrium.Presentation.Frontend
             }
 
             _selectedLevelNumber = oneBasedLevelNumber;
-            _preLevelIntro?.RefreshNow(0f);
             _frontEndVisible = false;
             SetGroup(_frontEndCanvasGroup, false, false);
             _controller.SetSimulationHold(
                 SimulationHoldReason.FrontEnd,
                 false);
+            _preLevelIntro?.RefreshNow(0f);
         }
 
         private int GetCurrentLevelNumber()

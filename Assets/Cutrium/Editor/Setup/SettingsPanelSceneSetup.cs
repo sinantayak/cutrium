@@ -195,6 +195,15 @@ namespace Cutrium.Editor.Setup
                     root.transform);
 
             openButton.interactable = true;
+            GameObject musicServices = GetOrCreateChild(
+                feedbackAudio.transform,
+                "MusicSource");
+            AudioSource musicSource =
+                GetOrAddComponent<AudioSource>(musicServices);
+            musicSource.playOnAwake = true;
+            musicSource.loop = true;
+            musicSource.spatialBlend = 0f;
+            musicSource.volume = 0.5f;
             AudioSource[] musicSources = root
                 .GetComponentsInChildren<AudioSource>(true)
                 .Where(source => source != feedbackAudio.AudioSource
@@ -241,6 +250,7 @@ namespace Cutrium.Editor.Setup
                 presenter,
                 artwork,
                 localization);
+            EditorUtility.SetDirty(musicSource);
             EditorUtility.SetDirty(openButton);
             EditorUtility.SetDirty(presenter);
             EditorUtility.SetDirty(panelGroup);
@@ -578,7 +588,11 @@ namespace Cutrium.Editor.Setup
                 || presenter.HapticButton == null
                 || presenter.LanguageButton == null
                 || presenter.HomeButton == null
-                || presenter.ExitButton == null)
+                || presenter.ExitButton == null
+                || presenter.MusicSources.Count < 1
+                || presenter.MusicSources[0] == null
+                || !presenter.MusicSources[0].loop
+                || !presenter.MusicSources[0].playOnAwake)
             {
                 throw new InvalidOperationException(
                     "Settings hierarchy or serialized references are incomplete.");
@@ -686,6 +700,19 @@ namespace Cutrium.Editor.Setup
                 : throw new InvalidOperationException(
                     $"Missing required scene path '{path}' below " +
                     $"'{parent.name}'.");
+        }
+
+        private static GameObject GetOrCreateChild(Transform parent, string name)
+        {
+            Transform existing = parent.Find(name);
+            if (existing != null)
+            {
+                return existing.gameObject;
+            }
+
+            var child = new GameObject(name);
+            child.transform.SetParent(parent, false);
+            return child;
         }
 
         private static RectTransform GetOrCreateUiChild(

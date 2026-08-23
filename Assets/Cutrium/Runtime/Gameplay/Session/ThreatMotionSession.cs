@@ -27,6 +27,7 @@ namespace Cutrium.Gameplay.Session
         private int _nextBarrierId;
         private float _barrierElapsed;
         private ComboState _combo;
+        private float _comboIdleSeconds;
 
         public ThreatMotionSession(
             ThreatMotionConfiguration configuration,
@@ -491,6 +492,7 @@ namespace Cutrium.Gameplay.Session
             _barrierElapsed = 0f;
             _approachSamples.Clear();
             _combo = _combo.Reset();
+            _comboIdleSeconds = 0f;
             Array.Clear(
                 _pulseElapsedSeconds,
                 0,
@@ -663,6 +665,11 @@ namespace Cutrium.Gameplay.Session
                 float.PositiveInfinity);
             if (capturedAreaDelta > _tolerance.AreaTolerance)
             {
+                // Combo increments before RegionCaptured is added so the
+                // capture chime's attached ComboCount already reflects this
+                // capture (used to pitch-rise the chime per combo step).
+                _combo = _combo.OnCapturingLock();
+                _comboIdleSeconds = 0f;
                 AddFeedback(
                     FeedbackEventKind.RegionCaptured,
                     representative.Barrier.Id,
@@ -681,7 +688,6 @@ namespace Cutrium.Gameplay.Session
                         float.PositiveInfinity);
                 }
 
-                _combo = _combo.OnCapturingLock();
                 AddFeedback(
                     FeedbackEventKind.ComboChanged,
                     representative.Barrier.Id,
@@ -789,6 +795,7 @@ namespace Cutrium.Gameplay.Session
             if (_combo.Count > 0)
             {
                 _combo = _combo.OnBarrierFailure();
+                _comboIdleSeconds = 0f;
                 AddFeedback(
                     FeedbackEventKind.ComboChanged,
                     failure.Barrier.Id,
@@ -949,6 +956,22 @@ namespace Cutrium.Gameplay.Session
 
         private void AdvanceBehaviorState(float elapsedTime)
         {
+            if (_combo.Count > 0 && !ActiveBarrier.HasValue)
+            {
+                _comboIdleSeconds += elapsedTime;
+                if (_comboIdleSeconds
+                    >= _feedbackConfiguration.ComboTimeoutSeconds)
+                {
+                    _combo = _combo.OnTimeout();
+                    _comboIdleSeconds = 0f;
+                    AddFeedback(
+                        FeedbackEventKind.ComboChanged,
+                        default,
+                        0f,
+                        float.PositiveInfinity);
+                }
+            }
+
             if (GravityWellActive)
             {
                 float influenceSeconds = Math.Min(

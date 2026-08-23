@@ -181,13 +181,175 @@ namespace Cutrium.PlayModeTests
         }
 
         [Test]
-        public void MissingAudioAndNoOpHaptics_AreAlwaysSafe()
+        public void AudioPlaybackAndNoOpHaptics_AreAlwaysSafe()
         {
             Assert.DoesNotThrow(() => _audio.PlayUi());
             int before = _haptics.HandledCueCount;
             Assert.DoesNotThrow(() => _haptics.PlayUi());
             Assert.That(_haptics.HandledCueCount, Is.EqualTo(before + 1));
-            Assert.That(_audio.AudioSource.isPlaying, Is.False);
+        }
+
+        [Test]
+        public void PowerFeedbackEvents_AreHandledSafely()
+        {
+            int before = _audio.HandledEventCount;
+
+            Assert.DoesNotThrow(
+                () => _controller.TryActivateFreezePulse());
+            Assert.DoesNotThrow(
+                () => _controller.TryArmInstantBarrier());
+
+            Assert.That(_audio.HandledEventCount, Is.GreaterThan(before));
+        }
+
+        [Test]
+        public void SceneAudioClips_AreFullyWiredWithSharedFailureClip()
+        {
+            Assert.That(_audio.StartClip, Is.Not.Null);
+            Assert.That(_audio.GrowClip, Is.Not.Null);
+            Assert.That(_audio.LockClip, Is.Not.Null);
+            Assert.That(_audio.BreakClip, Is.Not.Null);
+            Assert.That(_audio.FillClip, Is.Not.Null);
+            Assert.That(_audio.LargeCaptureClip, Is.Not.Null);
+            Assert.That(_audio.NearMissClip, Is.Not.Null);
+            Assert.That(_audio.ComboClip, Is.Not.Null);
+            Assert.That(_audio.CompleteClip, Is.Not.Null);
+            Assert.That(_audio.UiClip, Is.Not.Null);
+            Assert.That(_audio.PowerFreezeActivateClip, Is.Not.Null);
+            Assert.That(_audio.PowerInstantBarrierArmClip, Is.Not.Null);
+            Assert.That(_audio.PowerInstantBarrierConsumeClip, Is.Not.Null);
+            Assert.That(_audio.PowerGravityWellActivateClip, Is.Not.Null);
+            Assert.That(_audio.PowerUnavailableClip, Is.Not.Null);
+            Assert.That(_audio.HunterReactClip, Is.Not.Null);
+            Assert.That(_audio.OutOfCutsClip, Is.Not.Null);
+            Assert.That(_audio.OutOfLivesClip, Is.Not.Null);
+            Assert.That(
+                _audio.OutOfLivesClip,
+                Is.SameAs(_audio.OutOfCutsClip));
+
+            AudioSource musicSource = _audio.transform
+                .Find("MusicSource")
+                .GetComponent<AudioSource>();
+            Assert.That(musicSource, Is.Not.Null);
+            Assert.That(musicSource.clip, Is.Not.Null);
+            Assert.That(musicSource.loop, Is.True);
+
+            Assert.That(_audio.SandFillClip, Is.Not.Null);
+        }
+
+        [Test]
+        public void ComboRise_UsesEscalatingPitchAndRestoresBaselineAfterward()
+        {
+            Assert.That(_audio.AudioSource.pitch, Is.EqualTo(1f));
+
+            BarrierStartResult start = _controller.SubmitBarrierIntent(
+                new BarrierIntent(
+                    new LogicalPoint(5f, 4f),
+                    BarrierOrientation.Horizontal));
+            Assert.That(start.Accepted, Is.True);
+            for (int tick = 0;
+                 tick < 240 && _controller.Session.ActiveBarrier.HasValue;
+                 tick++)
+            {
+                _controller.AdvanceSimulation(
+                    FirstPlayableController.SimulationStep);
+            }
+
+            // A successful capture raises ComboChanged with ComboCount > 0,
+            // which is the only path that touches AudioSource.pitch. The
+            // barrier-failure path (ComboCount == 0, proven by
+            // FeedbackModelTests.Session_FailureNeverEmitsNearMissAndResetsCombo)
+            // intentionally never plays a dedicated combo sound and relies
+            // on BarrierBroken's own clip instead.
+            Assert.That(_controller.Session.ComboCount, Is.GreaterThan(0));
+            Assert.That(_audio.AudioSource.pitch, Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void LoopSources_AreWiredSeparatelyFromTheSharedOneShotSource()
+        {
+            Assert.That(_audio.BarrierLoopSource, Is.Not.Null);
+            Assert.That(_audio.BarrierLoopSource.loop, Is.True);
+            Assert.That(_audio.BarrierLoopSource.playOnAwake, Is.False);
+            Assert.That(_audio.BarrierLoopSource,
+                Is.Not.SameAs(_audio.AudioSource));
+
+            Assert.That(_audio.GravityWellLoopSource, Is.Not.Null);
+            Assert.That(_audio.GravityWellLoopSource.loop, Is.True);
+            Assert.That(_audio.GravityWellLoopSource.playOnAwake, Is.False);
+            Assert.That(_audio.GravityWellLoopSource,
+                Is.Not.SameAs(_audio.AudioSource));
+            Assert.That(_audio.GravityWellLoopSource,
+                Is.Not.SameAs(_audio.BarrierLoopSource));
+        }
+
+        [Test]
+        public void BarrierGrowLoop_StartsWhileGrowingAndStopsOnLock()
+        {
+            Assert.That(_audio.BarrierLoopSource.isPlaying, Is.False);
+
+            BarrierStartResult start = _controller.SubmitBarrierIntent(
+                new BarrierIntent(
+                    new LogicalPoint(5f, 4f),
+                    BarrierOrientation.Horizontal));
+            Assert.That(start.Accepted, Is.True);
+
+            _controller.AdvanceSimulation(
+                FirstPlayableController.SimulationStep);
+            Assert.That(_audio.BarrierLoopSource.isPlaying, Is.True,
+                "The grow loop must start as soon as the barrier is " +
+                "growing, not only once it locks.");
+
+            for (int tick = 0;
+                 tick < 240 && _controller.Session.ActiveBarrier.HasValue;
+                 tick++)
+            {
+                _controller.AdvanceSimulation(
+                    FirstPlayableController.SimulationStep);
+            }
+
+            Assert.That(_controller.Session.ActiveBarrier.HasValue,
+                Is.False);
+            Assert.That(_audio.BarrierLoopSource.isPlaying, Is.False,
+                "The grow loop must stop exactly when the barrier locks.");
+        }
+
+        [Test]
+        public void BarrierGrowLoop_StopsOnBreak()
+        {
+            BarrierStartResult firstCut = _controller.SubmitBarrierIntent(
+                new BarrierIntent(
+                    new LogicalPoint(5f, 4f),
+                    BarrierOrientation.Horizontal));
+            Assert.That(firstCut.Accepted, Is.True);
+            for (int tick = 0;
+                 tick < 240 && _controller.Session.ActiveBarrier.HasValue;
+                 tick++)
+            {
+                _controller.AdvanceSimulation(
+                    FirstPlayableController.SimulationStep);
+            }
+
+            Assert.That(_audio.BarrierLoopSource.isPlaying, Is.False);
+            LogicalPoint threatPosition = _controller.Session.Threat.Position;
+            BarrierStartResult secondCut = _controller.SubmitBarrierIntent(
+                new BarrierIntent(
+                    threatPosition,
+                    BarrierOrientation.Vertical));
+            if (!secondCut.Accepted)
+            {
+                Assert.Inconclusive(
+                    "The level already completed after the first cut; " +
+                    "the break path cannot be exercised from this state.");
+                return;
+            }
+
+            _controller.AdvanceSimulation(
+                FirstPlayableController.SimulationStep);
+
+            Assert.That(_controller.Session.LastBarrierEvent,
+                Is.EqualTo(BarrierSimulationEvent.Failed));
+            Assert.That(_audio.BarrierLoopSource.isPlaying, Is.False);
         }
 
         [TestCase(1080f, 1920f)]

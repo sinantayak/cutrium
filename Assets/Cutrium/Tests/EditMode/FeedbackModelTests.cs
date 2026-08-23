@@ -25,11 +25,21 @@ namespace Cutrium.Gameplay.EditModeTests
                 new FeedbackTuningConfiguration(0.5f, 0.5f, 0f));
             Assert.Throws<ArgumentOutOfRangeException>(() =>
                 new FeedbackTuningConfiguration(0.5f, 0.5f, 1.01f));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                new FeedbackTuningConfiguration(0.5f, 0.5f, 0.2f, 0f));
 
             var valid = new FeedbackTuningConfiguration(0.4f, 0.6f, 0.25f);
             Assert.That(valid.NearMissDistance, Is.EqualTo(0.4f));
             Assert.That(valid.NearMissWindowSeconds, Is.EqualTo(0.6f));
             Assert.That(valid.LargeCaptureFraction, Is.EqualTo(0.25f));
+            Assert.That(valid.ComboTimeoutSeconds, Is.EqualTo(3f),
+                "The 3-argument constructor must default to a sensible " +
+                "combo timeout for existing call sites.");
+
+            var explicitTimeout = new FeedbackTuningConfiguration(
+                0.4f, 0.6f, 0.25f, 1.5f);
+            Assert.That(explicitTimeout.ComboTimeoutSeconds,
+                Is.EqualTo(1.5f));
         }
 
         [TestCase(0.3998f, true)]
@@ -256,6 +266,104 @@ namespace Cutrium.Gameplay.EditModeTests
             CollectionAssert.DoesNotContain(
                 kinds,
                 FeedbackEventKind.NearMiss);
+        }
+
+        [Test]
+        public void Session_ComboExpiresAfterConfiguredIdleTimeout()
+        {
+            var threat = new ThreatMotionConfiguration(
+                new LogicalRect(0f, 0f, 10f, 16f),
+                new LogicalPoint(8f, 12f),
+                new LogicalVector(1f, 0f),
+                0.1f,
+                0.35f,
+                8);
+            var session = new ThreatMotionSession(
+                new[] { threat },
+                new BarrierConfiguration(100f, 0.08f, 0f, 16),
+                new CaptureLevelConfiguration(1f),
+                new FeedbackTuningConfiguration(0.45f, 0.75f, 0.2f, 0.2f),
+                Tolerance);
+
+            session.TryStartBarrier(new BarrierIntent(
+                new LogicalPoint(5f, 4f),
+                BarrierOrientation.Horizontal));
+            session.Tick(0.1f);
+            Assert.That(session.ComboCount, Is.EqualTo(1));
+
+            session.Tick(0.1f);
+            Assert.That(session.ComboCount, Is.EqualTo(1),
+                "Combo must not expire before the configured timeout.");
+            Assert.That(session.FeedbackEvents, Is.Empty);
+
+            session.Tick(0.15f);
+
+            Assert.That(session.ComboCount, Is.Zero);
+            Assert.That(session.FeedbackEvents.Select(item => item.Kind),
+                Is.EqualTo(new[] { FeedbackEventKind.ComboChanged }));
+            Assert.That(session.FeedbackEvents[0].ComboCount, Is.Zero);
+        }
+
+        [Test]
+        public void Session_ComboTimeoutPausesWhileBarrierIsActive()
+        {
+            // Growth speed is deliberately slow (not the 100f used by
+            // CreateRewardSession) so the second cut below is still
+            // mid-growth after a tick longer than the configured timeout.
+            // The threat only moves at 0.35 units/sec and starts ~8.5
+            // units from the first cut, so it cannot reach either cut
+            // within the few seconds this test simulates.
+            var threat = new ThreatMotionConfiguration(
+                new LogicalRect(0f, 0f, 10f, 16f),
+                new LogicalPoint(8f, 12f),
+                new LogicalVector(1f, 0f),
+                0.1f,
+                0.35f,
+                8);
+            var session = new ThreatMotionSession(
+                new[] { threat },
+                new BarrierConfiguration(1f, 0.08f, 0f, 16),
+                new CaptureLevelConfiguration(1f),
+                new FeedbackTuningConfiguration(0.45f, 0.75f, 0.2f, 0.2f),
+                Tolerance);
+
+            session.TryStartBarrier(new BarrierIntent(
+                new LogicalPoint(5f, 4f),
+                BarrierOrientation.Horizontal));
+            for (int tick = 0;
+                 tick < 200 && session.ActiveBarrier.HasValue;
+                 tick++)
+            {
+                session.Tick(0.1f);
+            }
+
+            Assert.That(session.ActiveBarrier.HasValue, Is.False);
+            Assert.That(session.ComboCount, Is.EqualTo(1));
+
+            // (5, 10) sits well inside the room half that keeps the
+            // threat (and therefore stays active) after the first
+            // capture removes the empty half below the first cut.
+            BarrierStartResult second = session.TryStartBarrier(
+                new BarrierIntent(
+                    new LogicalPoint(5f, 10f),
+                    BarrierOrientation.Horizontal));
+            if (!second.Accepted)
+            {
+                Assert.Inconclusive(
+                    "The first capture removed this point from any " +
+                    "active room; cannot exercise the pause path from " +
+                    "this exact scene state.");
+                return;
+            }
+
+            session.Tick(0.3f);
+
+            Assert.That(session.ActiveBarrier.HasValue, Is.True,
+                "Test setup assumption: growth speed must be slow enough " +
+                "for the second cut to still be active after this tick.");
+            Assert.That(session.ComboCount, Is.EqualTo(1),
+                "An idle-timeout must not cancel a combo while the " +
+                "player is still actively growing a barrier.");
         }
 
         [Test]

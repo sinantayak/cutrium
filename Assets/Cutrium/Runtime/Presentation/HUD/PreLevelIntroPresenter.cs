@@ -44,6 +44,13 @@ namespace Cutrium.Presentation.HUD
         [SerializeField] private RectTransform _progressFlightDestination;
         [SerializeField] private RectTransform _cutFlightDestination;
 
+        [SerializeField] private AudioSource _audioSource;
+        [SerializeField] private AudioClip _levelRevealClip;
+        [SerializeField] private AudioClip _targetRevealClip;
+        [SerializeField] private AudioClip _cutRevealClip;
+        [SerializeField] private AudioClip _infoRevealClip;
+        [SerializeField] private AudioClip _flightLandClip;
+
         [SerializeField] private float _stageFadeInSeconds = 0.2f;
         [SerializeField] private float _stageHoldSeconds = 0.85f;
         [SerializeField] private float _stageFadeOutSeconds = 0.25f;
@@ -51,6 +58,7 @@ namespace Cutrium.Presentation.HUD
         [SerializeField] private float _flightArcHeight = 46f;
         [SerializeField] private float _flightLandingScale = 0.35f;
 
+        private bool _effectsEnabled = true;
         private ThreatMotionSession _observedSession;
         private int _observedRetryCount;
         private Stage _stage = Stage.Idle;
@@ -58,6 +66,34 @@ namespace Cutrium.Presentation.HUD
         private Vector2 _flightStart;
 
         public bool IsPlaying => _stage != Stage.Idle && _stage != Stage.Done;
+
+        public AudioSource AudioSource => _audioSource;
+        public AudioClip LevelRevealClip => _levelRevealClip;
+        public AudioClip TargetRevealClip => _targetRevealClip;
+        public AudioClip CutRevealClip => _cutRevealClip;
+        public AudioClip InfoRevealClip => _infoRevealClip;
+        public AudioClip FlightLandClip => _flightLandClip;
+
+        public void ConfigureAudio(
+            AudioSource audioSource,
+            AudioClip levelRevealClip,
+            AudioClip targetRevealClip,
+            AudioClip cutRevealClip,
+            AudioClip infoRevealClip,
+            AudioClip flightLandClip)
+        {
+            _audioSource = audioSource;
+            _levelRevealClip = levelRevealClip;
+            _targetRevealClip = targetRevealClip;
+            _cutRevealClip = cutRevealClip;
+            _infoRevealClip = infoRevealClip;
+            _flightLandClip = flightLandClip;
+        }
+
+        public void SetEffectsEnabled(bool enabled)
+        {
+            _effectsEnabled = enabled;
+        }
 
         // Test-only escape hatch: most PlayMode tests exercise gameplay
         // systems that assume the board is immediately visible and
@@ -159,6 +195,18 @@ namespace Cutrium.Presentation.HUD
                 return;
             }
 
+            // FirstPlayableController.Awake() eagerly loads a session so
+            // the board is ready underneath the front-end menu; while that
+            // menu still covers the screen the player hasn't pressed Play
+            // yet, so this cinematic (and its cues) must not start/advance
+            // early. FrontEndPresenter releases this hold immediately
+            // before its own explicit RefreshNow(0f) call, so the real
+            // start still fires at the right moment.
+            if (_controller.HasSimulationHold(SimulationHoldReason.FrontEnd))
+            {
+                return;
+            }
+
             bool sessionChanged = !ReferenceEquals(
                 _observedSession,
                 _controller.Session);
@@ -222,6 +270,7 @@ namespace Cutrium.Presentation.HUD
                 _levelText.text = $"LEVEL {_controller.CurrentLevelNumber}";
             }
 
+            Play(_levelRevealClip);
             _stage = Stage.ShowingLevel;
         }
 
@@ -242,6 +291,7 @@ namespace Cutrium.Presentation.HUD
                                 _targetText.text = $"TARGET {percent}%";
                             }
 
+                            Play(_targetRevealClip);
                             _stage = Stage.ShowingTarget;
                         });
                     break;
@@ -270,6 +320,12 @@ namespace Cutrium.Presentation.HUD
                             }
                             else
                             {
+                                // No card follows immediately, so this is
+                                // the sequence's real "landed" moment --
+                                // otherwise the next card's own reveal clip
+                                // already covers it and layering both here
+                                // would mask/double up.
+                                Play(_flightLandClip);
                                 CompleteSequence();
                             }
                         });
@@ -295,6 +351,9 @@ namespace Cutrium.Presentation.HUD
                             }
                             else
                             {
+                                // See the matching comment in FlyingTarget's
+                                // onComplete above.
+                                Play(_flightLandClip);
                                 CompleteSequence();
                             }
                         });
@@ -479,6 +538,7 @@ namespace Cutrium.Presentation.HUD
                 _infoMessageText.text = message;
             }
 
+            Play(_infoRevealClip);
             return true;
         }
 
@@ -503,6 +563,7 @@ namespace Cutrium.Presentation.HUD
                 _infoMessageText.text = "MAKE THEM COUNT";
             }
 
+            Play(_cutRevealClip);
             return true;
         }
 
@@ -513,6 +574,14 @@ namespace Cutrium.Presentation.HUD
                 || normalized == $"{maximumCuts} CUTS"
                 || normalized == $"CUT {maximumCuts}"
                 || normalized == $"CUTS {maximumCuts}";
+        }
+
+        private void Play(AudioClip clip)
+        {
+            if (_effectsEnabled && _audioSource != null && clip != null)
+            {
+                _audioSource.PlayOneShot(clip);
+            }
         }
 
         private static void SetGroup(CanvasGroup group, float alpha)

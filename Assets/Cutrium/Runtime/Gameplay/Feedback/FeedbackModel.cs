@@ -66,6 +66,19 @@ namespace Cutrium.Gameplay.Feedback
             float nearMissDistance,
             float nearMissWindowSeconds,
             float largeCaptureFraction)
+            : this(
+                nearMissDistance,
+                nearMissWindowSeconds,
+                largeCaptureFraction,
+                3f)
+        {
+        }
+
+        public FeedbackTuningConfiguration(
+            float nearMissDistance,
+            float nearMissWindowSeconds,
+            float largeCaptureFraction,
+            float comboTimeoutSeconds)
         {
             ValidatePositive(nearMissDistance, nameof(nearMissDistance));
             ValidatePositive(
@@ -79,9 +92,12 @@ namespace Cutrium.Gameplay.Feedback
                     nameof(largeCaptureFraction));
             }
 
+            ValidatePositive(comboTimeoutSeconds, nameof(comboTimeoutSeconds));
+
             NearMissDistance = nearMissDistance;
             NearMissWindowSeconds = nearMissWindowSeconds;
             LargeCaptureFraction = largeCaptureFraction;
+            ComboTimeoutSeconds = comboTimeoutSeconds;
         }
 
         public float NearMissDistance { get; }
@@ -89,6 +105,10 @@ namespace Cutrium.Gameplay.Feedback
         public float NearMissWindowSeconds { get; }
 
         public float LargeCaptureFraction { get; }
+
+        /// Idle seconds (no barrier active, no new successful capture)
+        /// after which an in-progress combo automatically cancels.
+        public float ComboTimeoutSeconds { get; }
 
         public static FeedbackTuningConfiguration Default =>
             new FeedbackTuningConfiguration(0.45f, 0.75f, 0.2f);
@@ -288,6 +308,8 @@ namespace Cutrium.Gameplay.Feedback
         public ComboState OnNoAreaLock() => this;
 
         public ComboState OnBarrierFailure() => new ComboState(0);
+
+        public ComboState OnTimeout() => new ComboState(0);
 
         public ComboState Reset() => new ComboState(0);
     }
