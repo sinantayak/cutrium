@@ -5,6 +5,7 @@ using Cutrium.Gameplay.Feedback;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
 using Cutrium.Unity.Input;
+using Cutrium.Unity.Services;
 using UnityEngine;
 
 namespace Cutrium.Unity.Simulation
@@ -85,6 +86,8 @@ namespace Cutrium.Unity.Simulation
         private IReadOnlyList<CoreFunLevelDefinition> _activeLevelDefinitions;
         private bool _completionReported;
         private SimulationHoldReason _simulationHoldReasons;
+        private readonly PlayerProgressStore _progressStore =
+            new PlayerProgressStore();
 
         public bool GravityWellTargeting { get; private set; }
 
@@ -514,7 +517,7 @@ namespace Cutrium.Unity.Simulation
             }
 
             Metrics.StartSequence(_levelCatalog[index]);
-            CurrentLevelIndex = index;
+            SetCurrentLevelIndex(index);
             CurrentLevelConfiguration = _levelCatalog[index];
             LoadCurrentLevel();
             return true;
@@ -531,7 +534,7 @@ namespace Cutrium.Unity.Simulation
 
             int nextIndex = CurrentLevelIndex + 1;
             Metrics.AdvanceTo(_levelCatalog[nextIndex]);
-            CurrentLevelIndex = nextIndex;
+            SetCurrentLevelIndex(nextIndex);
             CurrentLevelConfiguration = _levelCatalog[nextIndex];
             LoadCurrentLevel();
             return true;
@@ -552,7 +555,7 @@ namespace Cutrium.Unity.Simulation
                 Metrics.StartSequence(_levelCatalog[0]);
             }
 
-            CurrentLevelIndex = 0;
+            SetCurrentLevelIndex(0);
             CurrentLevelConfiguration = _levelCatalog[0];
             LoadCurrentLevel();
             SequenceRestartCount++;
@@ -582,7 +585,7 @@ namespace Cutrium.Unity.Simulation
             }
 
             Metrics.StartSequence(_levelCatalog[index]);
-            CurrentLevelIndex = index;
+            SetCurrentLevelIndex(index);
             CurrentLevelConfiguration = _levelCatalog[index];
             LoadCurrentLevel();
             DevelopmentJumpCount++;
@@ -628,13 +631,23 @@ namespace Cutrium.Unity.Simulation
                 _cornerTimeTolerance,
                 _areaTolerance);
             _levelCatalog = BuildLevelCatalog();
-            CurrentLevelIndex = 0;
-            CurrentLevelConfiguration = _levelCatalog[0];
+            int savedLevelIndex = _progressStore.LoadLocalCurrentLevelIndex();
+            CurrentLevelIndex = savedLevelIndex >= 0
+                && savedLevelIndex < _levelCatalog.Count
+                ? savedLevelIndex
+                : 0;
+            CurrentLevelConfiguration = _levelCatalog[CurrentLevelIndex];
             Metrics = new CoreFunMetricsTracker();
             Metrics.StartSequence(CurrentLevelConfiguration);
             _tickAction = TickSession;
             InitializationCount++;
             LoadCurrentLevel();
+        }
+
+        private void SetCurrentLevelIndex(int index)
+        {
+            CurrentLevelIndex = index;
+            _progressStore.SaveCurrentLevelIndex(index);
         }
 
         private void TickSession(float elapsedTime)

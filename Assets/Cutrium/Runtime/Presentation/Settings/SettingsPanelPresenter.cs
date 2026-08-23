@@ -5,6 +5,7 @@ using Cutrium.Presentation.Frontend;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
 using Cutrium.Presentation.Localization;
+using Cutrium.Unity.Services;
 using Cutrium.Unity.Simulation;
 using TMPro;
 using UnityEngine;
@@ -76,6 +77,8 @@ namespace Cutrium.Presentation.Settings
         private bool _soundEnabled = true;
         private bool _musicEnabled = true;
         private bool _hapticEnabled = true;
+        private readonly PlayerProgressStore _progressStore =
+            new PlayerProgressStore();
 
         public FirstPlayableController Controller => _controller;
         public CanvasGroup PanelCanvasGroup => _panelCanvasGroup;
@@ -383,6 +386,9 @@ namespace Cutrium.Presentation.Settings
             PlayerPrefs.SetInt(MusicPreferenceKey, _musicEnabled ? 1 : 0);
             PlayerPrefs.SetInt(HapticPreferenceKey, _hapticEnabled ? 1 : 0);
             PlayerPrefs.Save();
+            _progressStore.SaveSoundEnabled(_soundEnabled);
+            _progressStore.SaveMusicEnabled(_musicEnabled);
+            _progressStore.SaveHapticEnabled(_hapticEnabled);
         }
 
         private void ApplyPreferences()

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Cutrium.Unity.Services;
 using UnityEngine;
 
 namespace Cutrium.Presentation.Localization
@@ -73,6 +74,8 @@ namespace Cutrium.Presentation.Localization
             new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _turkishLookup =
             new Dictionary<string, string>(StringComparer.Ordinal);
+        private readonly PlayerProgressStore _progressStore =
+            new PlayerProgressStore();
         private bool _initialized;
 
         public LocalizationTable Table => _table;
@@ -139,6 +142,7 @@ namespace Cutrium.Presentation.Localization
             {
                 PlayerPrefs.SetInt(LanguagePreferenceKey, (int)language);
                 PlayerPrefs.Save();
+                _progressStore.SaveLanguage((int)language);
             }
 
             if (changed)

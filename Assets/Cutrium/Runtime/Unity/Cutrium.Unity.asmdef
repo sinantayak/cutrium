@@ -4,7 +4,10 @@
   "references": [
     "Cutrium.Gameplay",
     "Unity.InputSystem",
-    "UnityEngine.UI"
+    "UnityEngine.UI",
+    "Unity.Services.Core",
+    "Unity.Services.Authentication",
+    "Unity.Services.CloudSave"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
