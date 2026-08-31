@@ -26,6 +26,10 @@ namespace Cutrium.Unity.Services
         private const string CurrentLevelIndexCloudKey = "CurrentLevelIndex";
         private const string CurrentLevelIndexPrefsKey =
             "Cutrium.Progress.CurrentLevelIndex";
+        private const string HighestUnlockedLevelIndexCloudKey =
+            "HighestUnlockedLevelIndex";
+        private const string HighestUnlockedLevelIndexPrefsKey =
+            "Cutrium.Progress.HighestUnlockedLevelIndex";
         private const string SoundEnabledCloudKey = "SoundEnabled";
         private const string MusicEnabledCloudKey = "MusicEnabled";
         private const string HapticEnabledCloudKey = "HapticEnabled";
@@ -61,6 +65,43 @@ namespace Cutrium.Unity.Services
             PlayerPrefs.SetInt(CurrentLevelIndexPrefsKey, levelIndex);
             PlayerPrefs.Save();
             PushToCloud(CurrentLevelIndexCloudKey, levelIndex);
+        }
+
+        /// Synchronous, offline-safe. Distinct from
+        /// `LoadLocalCurrentLevelIndex` (the resume point, which moves
+        /// backward when the player replays an earlier level) -- this is
+        /// the furthest level index ever unlocked, and only ever moves
+        /// forward. Falls back to the resume index for saves written
+        /// before this field existed, since under the old single-index
+        /// scheme that value was also the furthest reached level as long
+        /// as the player never replayed backward.
+        public int LoadLocalHighestUnlockedLevelIndex()
+        {
+            if (TestModeDetector.IsRunningTests)
+            {
+                return 0;
+            }
+
+            int stored = PlayerPrefs.GetInt(
+                HighestUnlockedLevelIndexPrefsKey,
+                -1);
+            return stored >= 0 ? stored : LoadLocalCurrentLevelIndex();
+        }
+
+        /// Writes the local mirror synchronously, then fires an unawaited,
+        /// best-effort Cloud Save write -- see `SaveCurrentLevelIndex`.
+        /// Callers must only ever pass a value at or above the previously
+        /// saved one; this store does not itself enforce monotonicity.
+        public void SaveHighestUnlockedLevelIndex(int levelIndex)
+        {
+            if (TestModeDetector.IsRunningTests)
+            {
+                return;
+            }
+
+            PlayerPrefs.SetInt(HighestUnlockedLevelIndexPrefsKey, levelIndex);
+            PlayerPrefs.Save();
+            PushToCloud(HighestUnlockedLevelIndexCloudKey, levelIndex);
         }
 
         /// Mirrors an already-locally-saved sound preference to Cloud
@@ -155,6 +196,48 @@ namespace Cutrium.Unity.Services
                 Debug.LogWarning(
                     "Cloud progress pull failed; local progress unchanged. "
                     + exception);
+            }
+        }
+
+        /// Best-effort background pull, meant to be called once shortly
+        /// after sign-in. Only ever *raises* the local value (never lowers
+        /// it) -- see `PullCloudCurrentLevelIndexAsync`.
+        public async Task PullCloudHighestUnlockedLevelIndexAsync()
+        {
+            try
+            {
+                if (TestModeDetector.IsRunningTests || !IsSignedIn())
+                {
+                    return;
+                }
+
+                var keys = new HashSet<string>
+                {
+                    HighestUnlockedLevelIndexCloudKey
+                };
+                Dictionary<string, Item> results = await CloudSaveService
+                    .Instance.Data.Player.LoadAsync(keys);
+                if (!results.TryGetValue(
+                        HighestUnlockedLevelIndexCloudKey,
+                        out Item item))
+                {
+                    return;
+                }
+
+                int cloudIndex = item.Value.GetAs<int>();
+                if (cloudIndex > LoadLocalHighestUnlockedLevelIndex())
+                {
+                    PlayerPrefs.SetInt(
+                        HighestUnlockedLevelIndexPrefsKey,
+                        cloudIndex);
+                    PlayerPrefs.Save();
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    "Cloud unlocked-level pull failed; local progress "
+                    + "unchanged. " + exception);
             }
         }
 

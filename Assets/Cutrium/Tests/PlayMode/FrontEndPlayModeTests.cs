@@ -248,27 +248,71 @@ namespace Cutrium.PlayModeTests
                 rig.Activate();
                 yield return null;
 
+                // Simulate progress already reaching level 2 (but not 3),
+                // so selecting/playing level 2 exercises the normal,
+                // already-unlocked path.
+                Assert.That(
+                    rig.Controller.TryJumpToLevelForDevelopment(2),
+                    Is.True);
+
                 rig.ChallengeTabButton.onClick.Invoke();
                 Assert.That(
                     rig.Presenter.ActiveTab,
                     Is.EqualTo(FrontEndTab.Challenge));
                 Assert.That(rig.ChallengePage.alpha, Is.EqualTo(1f));
 
-                rig.Nodes[2].Button.onClick.Invoke();
-                Assert.That(rig.Presenter.SelectedLevelNumber, Is.EqualTo(3));
+                rig.Nodes[1].Button.onClick.Invoke();
+                Assert.That(rig.Presenter.SelectedLevelNumber, Is.EqualTo(2));
                 Assert.That(
-                    rig.Nodes[2].State,
+                    rig.Nodes[1].State,
                     Is.EqualTo(FrontEndLevelNodeState.Selected));
-                Assert.That(rig.ChallengePlayLabel.text, Is.EqualTo("PLAY LEVEL 3"));
+                Assert.That(rig.ChallengePlayLabel.text, Is.EqualTo("PLAY LEVEL 2"));
 
                 rig.ChallengePlayButton.onClick.Invoke();
-                Assert.That(rig.Controller.CurrentLevelIndex, Is.EqualTo(2));
-                Assert.That(rig.Controller.CurrentLevelNumber, Is.EqualTo(3));
+                Assert.That(rig.Controller.CurrentLevelIndex, Is.EqualTo(1));
+                Assert.That(rig.Controller.CurrentLevelNumber, Is.EqualTo(2));
                 Assert.That(rig.Presenter.FrontEndVisible, Is.False);
                 Assert.That(
                     rig.Controller.HasSimulationHold(
                         SimulationHoldReason.FrontEnd),
                     Is.False);
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator ChallengeNode_LockedLevelCannotBeSelectedOrPlayed()
+        {
+            var rig = new FrontEndRig();
+            try
+            {
+                rig.Activate();
+                yield return null;
+
+                rig.ChallengeTabButton.onClick.Invoke();
+                Assert.That(rig.Controller.CurrentLevelIndex, Is.Zero);
+                Assert.That(rig.Nodes[2].Button.interactable, Is.False);
+
+                rig.Nodes[2].Button.onClick.Invoke();
+                Assert.That(
+                    rig.Presenter.SelectedLevelNumber,
+                    Is.Not.EqualTo(3),
+                    "Clicking a locked node must not select it.");
+                Assert.That(
+                    rig.Nodes[2].State,
+                    Is.EqualTo(FrontEndLevelNodeState.Locked));
+                Assert.That(
+                    rig.ChallengePlayLabel.text,
+                    Is.Not.EqualTo("PLAY LEVEL 3"));
+
+                // Even a direct attempt to start it is refused by the
+                // controller itself — the authoritative gate, independent
+                // of any UI state.
+                Assert.That(rig.Controller.TryStartLevel(3), Is.False);
+                Assert.That(rig.Controller.CurrentLevelIndex, Is.Zero);
             }
             finally
             {
@@ -384,6 +428,13 @@ namespace Cutrium.PlayModeTests
 
                 ScrollRect scrollRect = CreateChild("ScrollRect")
                     .AddComponent<ScrollRect>();
+                // ScrollRect.verticalNormalizedPosition's setter
+                // (ScrollToSelectedLevel) dereferences `content` with no
+                // null guard of its own, so an unset content throws a
+                // NullReferenceException the moment the Challenge tab is
+                // opened.
+                scrollRect.content = CreateChild("ScrollContent")
+                    .GetComponent<RectTransform>();
                 Nodes = new FrontEndLevelNodeView[3];
                 for (int index = 0; index < Nodes.Length; index++)
                 {
@@ -451,6 +502,18 @@ namespace Cutrium.PlayModeTests
             public void Dispose()
             {
                 Object.DestroyImmediate(_root);
+
+                // TestModeDetector.IsRunningTests only recognizes the
+                // documented `-batchmode -runTests` CLI invocation; a test
+                // driven live (e.g. via an Editor MCP tool) does not set
+                // that flag, so FirstPlayableController's progress calls
+                // read/write the developer's real local PlayerPrefs instead
+                // of no-op'ing. Any rig that advances CurrentLevelIndex
+                // (TryStartLevel/TryAdvanceToNextLevel/RestartSequence/
+                // TryJumpToLevelForDevelopment) must undo that on disposal
+                // so it can't leak into another test or the developer's own
+                // manual Play Mode session.
+                PlayerPrefs.DeleteKey("Cutrium.Progress.CurrentLevelIndex");
             }
 
             private GameObject CreateChild(string name)

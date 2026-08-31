@@ -7,9 +7,15 @@ namespace Cutrium.Presentation.Frontend
 {
     public enum FrontEndLevelNodeState
     {
+        // Reached and playable, but not the currently selected node (the
+        // "next up" frontier level, or an earlier unlocked-but-unfinished
+        // level). Distinct from Locked -- conflating the two used to make
+        // the frontier level itself uninteractable whenever a different
+        // node was selected.
         Upcoming,
         Traversed,
         Selected,
+        Locked,
     }
 
     [DisallowMultipleComponent]
@@ -87,7 +93,7 @@ namespace Cutrium.Presentation.Frontend
                     state == FrontEndLevelNodeState.Selected);
             }
 
-            bool locked = state == FrontEndLevelNodeState.Upcoming;
+            bool locked = state == FrontEndLevelNodeState.Locked;
             if (_numberLabel != null)
             {
                 _numberLabel.text = _levelNumber.ToString();
@@ -105,7 +111,7 @@ namespace Cutrium.Presentation.Frontend
                 : Vector3.one;
             if (_button != null)
             {
-                _button.interactable = true;
+                _button.interactable = !locked;
             }
         }
 

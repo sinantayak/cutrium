@@ -570,6 +570,119 @@ namespace Cutrium.Gameplay.EditModeTests
             }
         }
 
+        [Test]
+        public void Gesture_NotifiesInteractionAndLiveAxisChangesInOrder()
+        {
+            var gameObject = new GameObject("GestureObservationTest");
+            try
+            {
+                var gesture = gameObject.AddComponent<BarrierGestureAdapter>();
+                gesture.Configure(null, 0.35f, 0.1f);
+                int interactionStarts = 0;
+                LogicalPoint reportedOrigin = default;
+                var reportedOrientations = new BarrierOrientation[2];
+                int orientationCount = 0;
+                BarrierIntent committed = default;
+
+                gesture.InteractionStarted += origin =>
+                {
+                    interactionStarts++;
+                    reportedOrigin = origin;
+                };
+                gesture.OrientationChanged += orientation =>
+                {
+                    if (orientationCount < reportedOrientations.Length)
+                    {
+                        reportedOrientations[orientationCount] = orientation;
+                    }
+
+                    orientationCount++;
+                };
+                gesture.IntentCommitted += intent => committed = intent;
+
+                LogicalPoint origin = new LogicalPoint(5f, 8f);
+                gesture.ProcessSample(AcceptedSample(
+                    PointerSamplePhase.Started,
+                    origin));
+                gesture.ProcessSample(AcceptedSample(
+                    PointerSamplePhase.Moved,
+                    new LogicalPoint(6f, 8f)));
+                gesture.ProcessSample(AcceptedSample(
+                    PointerSamplePhase.Moved,
+                    new LogicalPoint(5f, 9f)));
+                gesture.ProcessSample(AcceptedSample(
+                    PointerSamplePhase.Released,
+                    new LogicalPoint(5f, 9f)));
+
+                Assert.That(interactionStarts, Is.EqualTo(1));
+                Assert.That(reportedOrigin, Is.EqualTo(origin));
+                Assert.That(orientationCount, Is.EqualTo(2));
+                Assert.That(
+                    reportedOrientations[0],
+                    Is.EqualTo(BarrierOrientation.Horizontal));
+                Assert.That(
+                    reportedOrientations[1],
+                    Is.EqualTo(BarrierOrientation.Vertical));
+                Assert.That(
+                    committed.Orientation,
+                    Is.EqualTo(BarrierOrientation.Vertical));
+                AssertGestureCleared(gesture);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(gameObject);
+            }
+        }
+
+        [Test]
+        public void RequiredOrientation_CancelsMismatchedRelease()
+        {
+            var gameObject = new GameObject("RequiredOrientationTest");
+            try
+            {
+                var gesture = gameObject.AddComponent<BarrierGestureAdapter>();
+                gesture.Configure(null, 0.35f, 0.1f);
+                gesture.SetRequiredOrientation(BarrierOrientation.Horizontal);
+
+                bool committed = false;
+                gesture.IntentCommitted += _ => committed = true;
+
+                LogicalPoint origin = new LogicalPoint(5f, 8f);
+                gesture.ProcessSample(AcceptedSample(
+                    PointerSamplePhase.Started,
+                    origin));
+                gesture.ProcessSample(AcceptedSample(
+                    PointerSamplePhase.Moved,
+                    new LogicalPoint(5f, 9f)));
+                gesture.ProcessSample(AcceptedSample(
+                    PointerSamplePhase.Released,
+                    new LogicalPoint(5f, 9f)));
+
+                Assert.That(committed, Is.False);
+                Assert.That(gesture.CancelledInteractionCount, Is.EqualTo(1));
+                Assert.That(gesture.CommittedIntentCount, Is.Zero);
+                AssertGestureCleared(gesture);
+
+                gesture.SetRequiredOrientation(BarrierOrientation.None);
+                gesture.ProcessSample(AcceptedSample(
+                    PointerSamplePhase.Started,
+                    origin));
+                gesture.ProcessSample(AcceptedSample(
+                    PointerSamplePhase.Moved,
+                    new LogicalPoint(5f, 9f)));
+                gesture.ProcessSample(AcceptedSample(
+                    PointerSamplePhase.Released,
+                    new LogicalPoint(5f, 9f)));
+
+                Assert.That(committed, Is.True);
+                Assert.That(gesture.CommittedIntentCount, Is.EqualTo(1));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(gameObject);
+            }
+        }
+
         private static BarrierState CreateBarrier(
             LogicalPoint origin,
             BarrierOrientation orientation,

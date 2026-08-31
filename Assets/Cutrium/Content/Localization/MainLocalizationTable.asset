@@ -72,6 +72,22 @@ MonoBehaviour:
   - _english: "Board: move or press to inspect 10 \xD7 16 mapping"
     _turkish: "Tahta: 10 \xD7 16 e\u015Flemesini incelemek i\xE7in hareket ettir
       veya bas"
+  - _english: SWIPE LEFT OR RIGHT
+    _turkish: "SA\u011EA VEYA SOLA KAYDIR"
+  - _english: SWIPE UP OR DOWN
+    _turkish: "YUKARI VEYA A\u015EA\u011EI KAYDIR"
+  - _english: WATCH IT GROW
+    _turkish: "B\xDCY\xDCMES\u0130N\u0130 \u0130ZLE"
+  - _english: NICE CUT! WATCH THE TARGET FILL
+    _turkish: "G\xDCZEL KES\u0130M! HEDEF\u0130N DOLU\u015EUNU \u0130ZLE"
+  - _english: GREAT! ALMOST THERE
+    _turkish: "HAR\u0130KA! NEREDEYSE B\u0130TT\u0130"
+  - _english: MAKE THE FINAL CUT
+    _turkish: "SON KES\u0130M\u0130 YAP"
+  - _english: THIS IS YOUR CUT SPEED
+    _turkish: "BU SEN\u0130N KES\u0130M HIZIN"
+  - _english: THESE ARE YOUR LIVES
+    _turkish: BUNLAR CANLARIN
   - _english: LEARN THE CUT
     _turkish: "KES\u0130M\u0130 \xD6\u011EREN"
   - _english: WATCH THE THREAT

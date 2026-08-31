@@ -15,6 +15,12 @@ namespace Cutrium.Unity.Simulation
     {
         public const float SimulationStep = 1f / 60f;
 
+        private const SimulationHoldReason BarrierInputBlockingHolds =
+            SimulationHoldReason.Legacy
+            | SimulationHoldReason.PreLevelIntro
+            | SimulationHoldReason.FrontEnd
+            | SimulationHoldReason.Settings;
+
         [Header("Threat Motion")]
         [SerializeField]
         private Vector2 _initialPosition = new Vector2(5f, 8f);
@@ -99,6 +105,10 @@ namespace Cutrium.Unity.Simulation
         public SimulationHoldReason ActiveSimulationHolds =>
             _simulationHoldReasons;
 
+        public bool BarrierInputBlocked =>
+            (_simulationHoldReasons & BarrierInputBlockingHolds)
+                != SimulationHoldReason.None;
+
         public event Action<FeedbackEvent> FeedbackEventRaised;
 
         public GeometryTolerancePolicy Tolerance { get; private set; }
@@ -181,6 +191,13 @@ namespace Cutrium.Unity.Simulation
         }
 
         public int CurrentLevelIndex { get; private set; }
+
+        // The furthest level index ever unlocked -- distinct from
+        // CurrentLevelIndex (the resume/active-play position, which moves
+        // backward whenever the player replays an earlier level). Level
+        // access is gated against this, not CurrentLevelIndex, so replaying
+        // an earlier level never re-locks levels already reached.
+        public int HighestUnlockedLevelIndex { get; private set; }
 
         public int CurrentLevelNumber =>
             CurrentLevelConfiguration.DisplayNumber;
@@ -279,7 +296,7 @@ namespace Cutrium.Unity.Simulation
 
             if (_barrierGesture != null)
             {
-                _barrierGesture.enabled = !SimulationHeld;
+                _barrierGesture.enabled = !BarrierInputBlocked;
             }
         }
 
@@ -331,7 +348,7 @@ namespace Cutrium.Unity.Simulation
             _maximumBarrierSolverIterations = maximumSolverIterations;
             if (_barrierGesture != null)
             {
-                _barrierGesture.enabled = !SimulationHeld;
+                _barrierGesture.enabled = !BarrierInputBlocked;
             }
         }
 
@@ -511,8 +528,12 @@ namespace Cutrium.Unity.Simulation
         {
             InitializeOnce();
             int index = oneBasedLevelNumber - 1;
-            if (index < 0 || index >= _levelCatalog.Count)
+            if (index < 0
+                || index >= _levelCatalog.Count
+                || index > HighestUnlockedLevelIndex)
             {
+                // A level beyond the player's furthest reached progress is
+                // locked; only TryJumpToLevelForDevelopment may bypass this.
                 return false;
             }
 
@@ -535,6 +556,7 @@ namespace Cutrium.Unity.Simulation
             int nextIndex = CurrentLevelIndex + 1;
             Metrics.AdvanceTo(_levelCatalog[nextIndex]);
             SetCurrentLevelIndex(nextIndex);
+            RaiseHighestUnlockedLevelIndex(nextIndex);
             CurrentLevelConfiguration = _levelCatalog[nextIndex];
             LoadCurrentLevel();
             return true;
@@ -586,6 +608,7 @@ namespace Cutrium.Unity.Simulation
 
             Metrics.StartSequence(_levelCatalog[index]);
             SetCurrentLevelIndex(index);
+            RaiseHighestUnlockedLevelIndex(index);
             CurrentLevelConfiguration = _levelCatalog[index];
             LoadCurrentLevel();
             DevelopmentJumpCount++;
@@ -636,6 +659,11 @@ namespace Cutrium.Unity.Simulation
                 && savedLevelIndex < _levelCatalog.Count
                 ? savedLevelIndex
                 : 0;
+            int savedHighestUnlocked =
+                _progressStore.LoadLocalHighestUnlockedLevelIndex();
+            HighestUnlockedLevelIndex = Math.Max(
+                CurrentLevelIndex,
+                Math.Min(savedHighestUnlocked, _levelCatalog.Count - 1));
             CurrentLevelConfiguration = _levelCatalog[CurrentLevelIndex];
             Metrics = new CoreFunMetricsTracker();
             Metrics.StartSequence(CurrentLevelConfiguration);
@@ -648,6 +676,17 @@ namespace Cutrium.Unity.Simulation
         {
             CurrentLevelIndex = index;
             _progressStore.SaveCurrentLevelIndex(index);
+        }
+
+        private void RaiseHighestUnlockedLevelIndex(int index)
+        {
+            if (index <= HighestUnlockedLevelIndex)
+            {
+                return;
+            }
+
+            HighestUnlockedLevelIndex = index;
+            _progressStore.SaveHighestUnlockedLevelIndex(index);
         }
 
         private void TickSession(float elapsedTime)
@@ -786,6 +825,17 @@ namespace Cutrium.Unity.Simulation
         private void LoadCurrentLevel()
         {
             GravityWellTargeting = false;
+            // A guided-training presenter's hold/gesture restrictions are
+            // scoped to whichever level currently has an authored
+            // definition; they must never survive into a different level
+            // even for one stray frame, since that would either silently
+            // ignore all input (leftover required origin/orientation) or
+            // freeze the new level's simulation entirely (leftover hold).
+            SetSimulationHold(SimulationHoldReason.GuidedTraining, false);
+            _barrierGesture?.SetRequiredOrientation(BarrierOrientation.None);
+            _barrierGesture?.SetRequiredOrigin(null);
+            _barrierGesture?.SetPointTargeting(false);
+            _barrierGesture?.SetInputSuppressed(false);
             Session = new ThreatMotionSession(
                 CurrentLevelConfiguration.ThreatMotions,
                 CurrentLevelConfiguration.Barrier,

@@ -543,11 +543,7 @@ namespace Cutrium.Editor.Setup
                     TextAlignmentOptions.Center);
 
                 RectTransform lockRect = CreateUiChild(root, "LockIcon");
-                Anchor(
-                    lockRect,
-                    new Vector2(0.5f, 0.5f),
-                    new Vector2(72f, 72f));
-                lockRect.anchoredPosition = Vector2.zero;
+                Stretch(lockRect);
                 Image lockImage = lockRect.gameObject.AddComponent<Image>();
                 lockImage.sprite = nodeLockSprite;
                 lockImage.preserveAspect = true;

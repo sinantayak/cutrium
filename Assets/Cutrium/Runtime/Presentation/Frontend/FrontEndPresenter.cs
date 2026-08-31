@@ -201,7 +201,8 @@ namespace Cutrium.Presentation.Frontend
         public void SelectLevel(int oneBasedLevelNumber)
         {
             if (oneBasedLevelNumber <= 0
-                || oneBasedLevelNumber > _levelNodes.Length)
+                || oneBasedLevelNumber > _levelNodes.Length
+                || IsLocked(oneBasedLevelNumber))
             {
                 return;
             }
@@ -209,6 +210,10 @@ namespace Cutrium.Presentation.Frontend
             _selectedLevelNumber = oneBasedLevelNumber;
             RefreshLevelMap();
         }
+
+        private bool IsLocked(int oneBasedLevelNumber) =>
+            _controller != null
+            && oneBasedLevelNumber - 1 > _controller.HighestUnlockedLevelIndex;
 
         public void PlayCurrentLevel()
         {
@@ -444,8 +449,8 @@ namespace Cutrium.Presentation.Frontend
 
         private void RefreshLevelMap()
         {
-            int currentIndex = _controller != null
-                ? _controller.CurrentLevelIndex
+            int highestUnlocked = _controller != null
+                ? _controller.HighestUnlockedLevelIndex
                 : 0;
             for (int index = 0; index < _levelNodes.Length; index++)
             {
@@ -456,12 +461,22 @@ namespace Cutrium.Presentation.Frontend
                 }
 
                 FrontEndLevelNodeState state;
-                if (node.LevelNumber == _selectedLevelNumber)
+                if (index > highestUnlocked)
+                {
+                    // Locked: never let a stale/attempted selection show a
+                    // level beyond reached progress as available.
+                    state = FrontEndLevelNodeState.Locked;
+                }
+                else if (node.LevelNumber == _selectedLevelNumber)
                 {
                     state = FrontEndLevelNodeState.Selected;
                 }
-                else if (index < currentIndex)
+                else if (index < highestUnlocked)
                 {
+                    // Fully unlocked past this point, so it has already
+                    // been completed -- independent of where the resume
+                    // position (CurrentLevelIndex) currently sits, which
+                    // moves backward whenever an earlier level is replayed.
                     state = FrontEndLevelNodeState.Traversed;
                 }
                 else
@@ -481,7 +496,7 @@ namespace Cutrium.Presentation.Frontend
             {
                 if (_pathConnectors[index] != null)
                 {
-                    _pathConnectors[index].color = index < currentIndex
+                    _pathConnectors[index].color = index < highestUnlocked
                         ? _traversedPathColor
                         : _upcomingPathColor;
                 }

@@ -1,0 +1,130 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23f34e331496eff43830a452054821cb, type: 3}
+  m_Name: Level1GuidedTraining
+  m_EditorClassIdentifier: Cutrium.Presentation::Cutrium.Presentation.HUD.GuidedTrainingDefinition
+  _stableLevelId: learn-the-cut
+  _steps:
+  - _stepKind: 1
+    _action: 0
+    _handMotion: 0
+    _hasFixedOrigin: 0
+    _fixedOriginX: 0
+    _fixedOriginY: 0
+    _freeze: 1
+    _requiresLevelCompletion: 0
+    _promptEnglish: THIS IS YOUR CUT SPEED
+    _promptTurkish: "BU SEN\u0130N KES\u0130M HIZIN"
+    _resolvingEnglish: 
+    _resolvingTurkish: 
+    _successEnglish: 
+    _successTurkish: 
+    _promptFocus: 5
+    _successFocus: 0
+    _completionGate: 0
+    _successSeconds: 1.25
+    _durationSeconds: 1
+  - _stepKind: 1
+    _action: 0
+    _handMotion: 0
+    _hasFixedOrigin: 0
+    _fixedOriginX: 0
+    _fixedOriginY: 0
+    _freeze: 1
+    _requiresLevelCompletion: 0
+    _promptEnglish: THESE ARE YOUR LIVES
+    _promptTurkish: BUNLAR CANLARIN
+    _resolvingEnglish: 
+    _resolvingTurkish: 
+    _successEnglish: 
+    _successTurkish: 
+    _promptFocus: 6
+    _successFocus: 0
+    _completionGate: 0
+    _successSeconds: 1.25
+    _durationSeconds: 1
+  - _stepKind: 0
+    _action: 0
+    _handMotion: 0
+    _hasFixedOrigin: 0
+    _fixedOriginX: 0
+    _fixedOriginY: 0
+    _freeze: 0
+    _requiresLevelCompletion: 0
+    _promptEnglish: WATCH THE THREAT
+    _promptTurkish: "TEHD\u0130D\u0130 \u0130ZLE"
+    _resolvingEnglish: 
+    _resolvingTurkish: 
+    _successEnglish: 
+    _successTurkish: 
+    _promptFocus: 0
+    _successFocus: 0
+    _completionGate: 0
+    _successSeconds: 1.25
+    _durationSeconds: 1.5
+  - _stepKind: 2
+    _action: 1
+    _handMotion: 1
+    _hasFixedOrigin: 1
+    _fixedOriginX: 5
+    _fixedOriginY: 7.5
+    _freeze: 1
+    _requiresLevelCompletion: 0
+    _promptEnglish: SWIPE LEFT OR RIGHT
+    _promptTurkish: "SA\u011EA VEYA SOLA KAYDIR"
+    _resolvingEnglish: WATCH IT GROW
+    _resolvingTurkish: "B\xDCY\xDCMES\u0130N\u0130 \u0130ZLE"
+    _successEnglish: NICE CUT! WATCH THE TARGET FILL
+    _successTurkish: "G\xDCZEL KES\u0130M! HEDEF\u0130N DOLU\u015EUNU \u0130ZLE"
+    _promptFocus: 0
+    _successFocus: 1
+    _completionGate: 1
+    _successSeconds: 1.5
+    _durationSeconds: 1.5
+  - _stepKind: 2
+    _action: 2
+    _handMotion: 2
+    _hasFixedOrigin: 1
+    _fixedOriginX: 5
+    _fixedOriginY: 11
+    _freeze: 1
+    _requiresLevelCompletion: 0
+    _promptEnglish: SWIPE UP OR DOWN
+    _promptTurkish: "YUKARI VEYA A\u015EA\u011EI KAYDIR"
+    _resolvingEnglish: WATCH IT GROW
+    _resolvingTurkish: "B\xDCY\xDCMES\u0130N\u0130 \u0130ZLE"
+    _successEnglish: GREAT! ALMOST THERE
+    _successTurkish: "HAR\u0130KA! NEREDEYSE B\u0130TT\u0130"
+    _promptFocus: 0
+    _successFocus: 0
+    _completionGate: 0
+    _successSeconds: 1.25
+    _durationSeconds: 1.5
+  - _stepKind: 2
+    _action: 6
+    _handMotion: 0
+    _hasFixedOrigin: 0
+    _fixedOriginX: 0
+    _fixedOriginY: 0
+    _freeze: 0
+    _requiresLevelCompletion: 1
+    _promptEnglish: MAKE THE FINAL CUT
+    _promptTurkish: "SON KES\u0130M\u0130 YAP"
+    _resolvingEnglish: WATCH IT GROW
+    _resolvingTurkish: "B\xDCY\xDCMES\u0130N\u0130 \u0130ZLE"
+    _successEnglish: 
+    _successTurkish: 
+    _promptFocus: 1
+    _successFocus: 1
+    _completionGate: 0
+    _successSeconds: 0
+    _durationSeconds: 1.5

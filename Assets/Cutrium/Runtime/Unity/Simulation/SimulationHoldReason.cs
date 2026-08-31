@@ -10,5 +10,6 @@ namespace Cutrium.Unity.Simulation
         PreLevelIntro = 1 << 1,
         FrontEnd = 1 << 2,
         Settings = 1 << 3,
+        GuidedTraining = 1 << 4,
     }
 }

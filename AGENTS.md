@@ -58,3 +58,20 @@ After changes:
 - Record significant architectural decisions in `Docs/DECISIONS.md`.
 - Keep the active ExecPlan updated as discoveries and decisions occur.
 - Do not claim that something works unless it was validated or clearly label it as requiring manual validation.
+  
+## Unity MCP
+
+This is a Unity project with Unity MCP available.
+
+When working on Unity-related tasks:
+
+- Proactively use Unity MCP whenever live Unity Editor state is relevant.
+- Prefer Unity MCP over inferring Editor state from project files.
+- Inspect the active scene, Hierarchy, GameObjects, components, Inspector values, and Unity Console through MCP when relevant.
+- Do not ask the user to manually describe or screenshot information that can be obtained through Unity MCP.
+- When debugging Unity issues, check the Unity Console and relevant scene objects/components before making assumptions.
+- After modifying Unity scripts, allow Unity to compile and check the Console for compilation errors.
+- After making scene, GameObject, or component changes, verify the result through Unity MCP.
+- Use Unity MCP for scene/GameObject/component operations instead of creating temporary Editor scripts when MCP can perform the operation directly.
+- Do not enter Play Mode unless runtime behavior needs to be tested.
+- Do not save scenes, modify assets, or perform destructive Unity operations unless they are necessary for the requested task.

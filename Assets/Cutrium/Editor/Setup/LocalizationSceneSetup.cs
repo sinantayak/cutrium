@@ -236,6 +236,17 @@ namespace Cutrium.Editor.Setup
                     "Tahta: 10 × 16 eşlemesini incelemek için hareket " +
                     "ettir veya bas"),
 
+                Entry("SWIPE LEFT OR RIGHT", "SAĞA VEYA SOLA KAYDIR"),
+                Entry("SWIPE UP OR DOWN", "YUKARI VEYA AŞAĞI KAYDIR"),
+                Entry("WATCH IT GROW", "BÜYÜMESİNİ İZLE"),
+                Entry(
+                    "NICE CUT! WATCH THE TARGET FILL",
+                    "GÜZEL KESİM! HEDEFİN DOLUŞUNU İZLE"),
+                Entry("GREAT! ALMOST THERE", "HARİKA! NEREDEYSE BİTTİ"),
+                Entry("MAKE THE FINAL CUT", "SON KESİMİ YAP"),
+                Entry("THIS IS YOUR CUT SPEED", "BU SENİN KESİM HIZIN"),
+                Entry("THESE ARE YOUR LIVES", "BUNLAR CANLARIN"),
+
                 Entry("LEARN THE CUT", "KESİMİ ÖĞREN"),
                 Entry("WATCH THE THREAT", "TEHDİDİ İZLE"),
                 Entry("KEEP THEM TOGETHER", "ONLARI BİRLİKTE TUT"),

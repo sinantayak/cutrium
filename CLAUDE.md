@@ -160,12 +160,79 @@ For any non-trivial feature or refactor, follow `.agent/PLANS.md`: create/update
 
 ## Validation Expectations
 
-Per `AGENTS.md`, after any change:
+For Claude Code sessions, this section refines the `AGENTS.md` validation requirement: "relevant"
+means directly relevant to the latest change, not every available Edit Mode or Play Mode test.
 
-- Run the relevant Edit Mode and/or Play Mode suites (see Common Commands above) and report exact
-  discovered/passed/failed/skipped counts — do not claim untested behavior works.
-- Check the Console log output for errors/warnings introduced by the change.
-- For responsive/layout work, verify at minimum a tall phone, a common 9:16 phone, and a 4:3
-  tablet aspect ratio in the Game view.
-- Clearly separate what was automatically validated from what requires manual Unity Editor
-  verification.
+Validation must be proportional to the scope and risk of the latest change. Optimize for fast
+feedback and avoid redundant test runs.
+
+After a change:
+
+- Validate only the behavior directly affected by the latest change.
+- Prefer the smallest targeted test or verification that provides sufficient confidence.
+- Do **not** run the full Edit Mode or Play Mode test suites after every change.
+- Do **not** run unrelated tests merely because they are available.
+- Use `-testFilter` to run specific affected tests whenever possible.
+- Do not run both Edit Mode and Play Mode tests unless both are directly relevant.
+- Run broader suites only when:
+  - explicitly requested by the user,
+  - the change affects shared/core gameplay systems,
+  - the change crosses architectural boundaries,
+  - there is meaningful regression risk,
+  - or targeted validation exposes a broader problem.
+- For C# changes, first allow Unity to compile and check for new relevant Console errors. If
+  compilation succeeds, perform only the smallest relevant functional/test verification.
+- For scene, Inspector, GameObject, component, or simple UI changes, prefer focused Unity MCP
+  verification instead of running automated suites.
+- For purely visual/static changes, do not enter Play Mode unless runtime behavior is relevant.
+- For responsive/layout changes, test only the aspect ratios relevant to the requested change.
+  Test the full device matrix only when the task specifically affects responsive behavior across
+  device classes.
+- Stop validation once sufficient evidence exists that the requested change works.
+- Clearly report what was validated and anything that genuinely remains unverified.
+
+Full Edit Mode + Play Mode regression runs are milestone/release validation, not the default after
+every task.
+
+
+## Unity MCP
+
+This project has Unity MCP available. Use it selectively when live Unity Editor state is relevant.
+
+- Proactively use Unity MCP when the task depends on the current Editor state.
+- Prefer MCP for inspecting or modifying the active scene, Hierarchy, GameObjects, components,
+  Inspector values, and Unity Console.
+- Do not use MCP when source-file inspection alone is sufficient.
+- Do not repeatedly query Editor state that has not changed.
+- Inspect only the scene objects/components relevant to the current task; avoid broad Hierarchy
+  scans unless necessary.
+- Do not ask the user for screenshots or manual Editor information when MCP can retrieve the
+  required information directly.
+- When debugging runtime/scene issues, inspect the relevant objects/components and Console before
+  making assumptions.
+- After modifying C# scripts, allow Unity to compile and check the Console once for new relevant
+  compilation errors.
+- After scene/GameObject/component changes, verify only the changed objects through MCP.
+- Prefer MCP over temporary Editor scripts for scene/GameObject/component operations when MCP can
+  perform the operation directly.
+- Do not enter Play Mode unless runtime behavior must actually be tested.
+- Do not repeatedly enter/exit Play Mode for incremental changes when one focused runtime
+  verification at the end is sufficient.
+- Do not save scenes, modify unrelated assets, or perform destructive operations unless required
+  by the task.
+
+### Efficiency
+
+Minimize MCP calls, test runs, repeated file reads, and unnecessary repository exploration.
+
+Prefer this workflow:
+
+1. Inspect only what is needed.
+2. Make the focused change.
+3. Let Unity compile if code changed.
+4. Check for new relevant Console errors.
+5. Run one targeted test or focused MCP verification if needed.
+6. Stop once the change is sufficiently validated.
+
+Do not perform redundant verification through multiple methods unless the change is high-risk or
+the first verification is inconclusive.

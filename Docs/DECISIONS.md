@@ -1802,3 +1802,307 @@ must ship for dynamic glyph population, and new locale additions will need a
 more scalable content workflow or adoption of Unity Localization. The scene,
 font atlas, popup, and both gear positions still require phone, tall-phone, and
 4:3 tablet visual verification after running the setup command.
+
+## ADR-043 — Level 1 Teaches Live Axis Switching Through Real Input
+
+**Status:** Superseded by ADR-044.
+
+**Context:**
+The first playable level must explain horizontal and vertical barrier selection,
+including the existing ability to change the selected axis without releasing
+the pointer. A passive animation would demonstrate the motion but would not
+confirm that the player performed the same-hold switch. Duplicating dominant-
+axis rules in presentation would also risk drifting from the real input path.
+
+**Decision:**
+Expose interaction-start and orientation-change notifications from
+`BarrierGestureAdapter` without changing its selection, hysteresis, or commit
+rules. Add a Level-1-only presentation state machine keyed by the stable
+`learn-the-cut` level ID. It observes one real horizontal selection, a vertical
+switch during the same hold, and an accepted vertical barrier release. The
+supplied `HandSwipe.png` demonstrates the current requested motion with
+unscaled animation, while a non-raycast board-local overlay provides concise
+English/Turkish instructions. The existing controller, gesture adapter, and
+capture simulation remain authoritative.
+
+The tutorial waits for existing frontend and pre-level-intro holds to release,
+does not pause threats or intercept input, hides after a short confirmation,
+and resets only when a new Level 1 session or retry starts. Later levels never
+show it. Scene objects and serialized references are authored directly through
+Unity MCP; the hand remains a replaceable single-sprite presentation asset.
+
+**Consequences:**
+The player learns the complete gesture with normal board input and can continue
+Level 1 immediately after the first accepted switched-axis cut. A plain vertical
+swipe remains valid gameplay but does not finish this specific lesson. Gameplay
+logic still has no dependency on the tutorial art or text. The serialized UI
+anchors, copy fit, timing, and hand contrast require visual checks at phone,
+tall-phone, and 4:3 tablet Game View sizes.
+
+## ADR-044 — Content-Driven Guided Training Sequences Replace the Single-Lesson Tutorial
+
+**Status:** Accepted for implementation and playtesting.
+
+**Context:**
+ADR-043's same-hold axis-switch lesson only proved that a player could select
+and switch orientation once; it did not connect a capture to the completion
+target, and it had no path to reuse for later sector-start mechanics (Freeze,
+Instant Barrier, Gravity Well) without duplicating a whole tutorial class per
+level. Level 1 needed to become a paced two-cut preparation level instead: a
+horizontal cut that visibly fills toward the target, then a vertical cut that
+finishes the lesson, both taught with real board input and real barrier
+growth/lock feedback rather than a scripted animation.
+
+**Decision:**
+Add `SimulationHoldReason.GuidedTraining` alongside the existing holds.
+`FirstPlayableController` gains `BarrierInputBlocked`, which is true only for
+the input-blocking holds (`Legacy`, `PreLevelIntro`, `FrontEnd`, `Settings`);
+`BarrierGestureAdapter.enabled` now follows `BarrierInputBlocked` instead of
+the broader `SimulationHeld`, so a training-only hold can freeze threat/barrier
+simulation while still accepting the prompted gesture.
+
+Add a presentation-only `GuidedTrainingDefinition` ScriptableObject (stable
+level ID plus ordered `GuidedTrainingStep` values: action kind, hand motion,
+EN/TR prompt/resolving/success copy, optional focus target, completion gate,
+minimum feedback seconds) and a reusable `GuidedTrainingPresenter` runtime
+state machine (`WaitingForIntro` -> `Prompting` -> `ResolvingAction` ->
+`SuccessFeedback` -> `Complete`, looping per step). The presenter acquires the
+training hold while prompting, releases it once a matching accepted intent
+starts a real barrier, and re-acquires it on the barrier's real `BarrierLocked`
+feedback event to hold the success beat — a broken barrier returns to the same
+step instead of advancing. A new `TrainingFocusHighlightPresenter` reparents a
+non-raycast pulsing frame onto any explicitly bound `RectTransform` (Level 1
+binds `progress` to `SandProgressPresenter.ProgressBarRect`) and is hidden the
+rest of the time. This replaces the single-purpose ADR-043 presenter entirely;
+`BarrierGestureAdapter`'s `InteractionStarted`/`OrientationChanged` events and
+`SetRequiredOrientation` gate (added under ADR-043) are unchanged and are now
+used to require the correct orientation per step instead of a same-hold switch.
+
+Level 1's definition (`Assets/Cutrium/Content/Training/Level1GuidedTraining.asset`)
+has two steps: a horizontal barrier that highlights and waits on the progress
+bar settling before advancing, then a vertical barrier that completes the
+sequence. Later sector-start levels can add their own definition asset with no
+runtime or scene-hierarchy changes.
+
+**Consequences:**
+Level 1 now teaches two real, target-connected cuts instead of one same-hold
+switch, and the same presenter/hold/highlight machinery is ready for future
+mechanic-introduction levels as pure content. Threats visibly pause only
+around the prompted action and the post-lock feedback beat; gameplay/capture
+logic remains fully authoritative and untouched. Sand-fill timing, hand
+contrast, copy fit, and highlight visibility still require phone, tall-phone,
+and 4:3 tablet Game View verification.
+
+## ADR-045 — Level 1 Training Becomes a Full Six-Step Onboarding Sequence
+
+**Status:** Superseded by ADR-046 (kept the six-step shape and
+`FeedbackEventKind.LevelCompleted` finishing mechanism; replaced the
+dynamic, threat-tracking origin hints with fixed, verified coordinates and
+fixed the highlight/pacing problems found in review).
+
+**Context:**
+ADR-044's two-step sequence taught orientation selection but not board reading, HUD literacy,
+or how a cut connects to the win condition — a player reaching Level 2 still had to infer the
+barrier-speed/lives readouts and the "one more cut finishes it" relationship on their own. The
+product ask was a complete onboarding pass: watch the threat, learn the two top-right HUD
+readouts, make a safe horizontal cut and a safe vertical cut (each forced to the matching
+orientation only, exactly as before), then make a real, unassisted, either-orientation cut that
+actually finishes the level with the remaining-progress highlighted — so by Level 2 every core
+mechanic (cut, speed, lives, target) has been demonstrated once for real.
+
+**Decision:**
+`GuidedTrainingStep` gains a `StepKind` (`Observe`, `Info`, `Action`) alongside the existing
+action-only shape, exposed through three static factories
+(`GuidedTrainingStep.Observe/.Info/.ActionStep`) instead of one constructor. `Observe` runs
+unfrozen with no gesture requirement (the threat is simply watched); `Info` freezes and shows a
+`PromptFocus` highlight (used for the barrier-speed and lives HUD rows,
+`GameplayIdentityHudPresenter.SpeedIconImage`'s `SpeedHUD` parent and
+`HealthHudPresenter`'s own `HeartRow`); both auto-advance after a authored `DurationSeconds`
+via a new `GuidedTrainingPresenter.AdvancePassive`, sharing an `AdvanceToNextStepOrComplete`
+helper with the existing success-beat advance. `GuidedTrainingActionKind` gains `FreeBarrier`
+(any orientation accepted — this also fixed a latent bug in `IntentMatches`, which previously
+could never accept an action whose required orientation was `None`).
+
+For the two cuts, `GuidedTrainingOriginHint` (`BelowThreat`,
+`OppositeThreatHorizontalMotion`) drives a new `GuidedTrainingPresenter.ResolveHandRestPosition`
+that reads the *live* `ThreatState.Position`/`.Velocity` (not the level's static initial
+config) each frame and points the hand hint at the safe side of the threat's current position —
+below it while it moves up, opposite its current horizontal drift — reusing the
+`LogicalPoint`→UI conversion formula already established independently by `BarrierPresenter`,
+`CaptureBoardPresenter`, and `LandmarkRevealPresenter` (the presenter's own root RectTransform
+is already full-stretch over `BoardFrame`, so no new board-frame reference was needed). This
+hint is cosmetic only — real physics still decides accept/fail, and a broken cut still just
+re-prompts the same step exactly as under ADR-044.
+
+Both guided cuts cap their suggested coordinate at the board's absolute midline
+(`_originHintCaptureCapFraction`, default `0.4`, i.e. never more than 40% of whatever is
+currently active), a bound that holds regardless of how far the threat has drifted by the time
+each prompt begins. This guarantees a real (not sliver) third cut remains: worst case cumulative
+capture after both guided cuts is `0.4 + 0.6*0.4 = 0.64`, comfortably under Level 1's unchanged
+`0.75` target — matching the level's own long-standing `expectedReasonableCutUsage: 3`. The
+sixth step (`FreeBarrier`, unfrozen, `RequiresLevelCompletion = true`, progress bar highlighted)
+accepts either orientation and completes the whole sequence only on the authoritative
+`FeedbackEventKind.LevelCompleted` event (distinct from `BarrierLocked`) — a lock that doesn't
+yet reach the target just returns the presenter to `Prompting` without re-freezing, so the
+player can keep cutting freely. On completion the presenter hides immediately with no success
+beat, so it never competes with the game's own level-complete UI.
+
+**Consequences:**
+Level 1 now demonstrates every Level-2-relevant mechanic once for real: HUD readouts, both cut
+orientations (still hard-gated per step), and the actual win connection via a genuinely free
+final cut. The 40%-cap bound is a worst-case geometric guarantee, not a played-and-felt number —
+an attempted live Play Mode balance check was inconclusive (stray real pointer/mouse state
+during an unfocused automated Play Mode session produced an uncontrolled cut), so the real
+per-playthrough captured fractions after cuts 1 and 2 still need a manual/device playtest pass
+before this is called fully felt-tuned, alongside the phone/tall-phone/4:3-tablet visual checks
+already pending from ADR-044.
+
+## ADR-046 — Level 1 Training Becomes Fully Deterministic; Fixed Origins Replace Live Hints
+
+**Status:** Accepted for implementation and playtesting.
+
+**Context:**
+User review of ADR-045's first pass found four real problems: (1) the dynamic, threat-relative
+cut hints let the player draw a cut from anywhere that happened to be safe, so no two
+playthroughs necessarily looked alike — the ask was an identical first level for every player,
+cut locations fixed, not merely orientation-gated; (2) nothing stopped the player from attempting
+the *other* orientation mid-lesson (only the final commit was rejected, not the attempt itself);
+(3) `TrainingFocusHighlightPresenter`'s frame rendered as a filled sprite (`Image.Type.Sliced`
+with the default `fillCenter = true`) instead of a hollow outline, so a "highlight" on the
+speed/lives HUD visually covered the exact thing it was supposed to explain; (4) the HUD-info
+beats auto-advanced on a fixed timer, so a player who read slower than the timer was carried past
+the explanation before finishing it — the ask was an explicit, player-paced "tap to continue"
+with no timer.
+
+**Decision:**
+Replaced `GuidedTrainingOriginHint` (live, threat-relative, capped) with a simple
+`LogicalPoint? FixedOrigin` per `GuidedTrainingStep`, computed once and hand-verified rather than
+derived at runtime. The two guided cuts' exact coordinates —
+`(5, 7.5)` (horizontal) and `(5, 11)` (vertical) — were not guessed: they were checked against
+the real Level 1 physics (threat at `(5, 8)`, direction `(0.8, 0.6)`, speed `1.6`) by driving
+`FirstPlayableController.SubmitBarrierIntent`/`AdvanceSimulation` directly through Unity MCP's
+`execute_code` in Edit Mode (no scene, no Play Mode, no real input — fully deterministic and
+reproducible), confirming the intended feel exactly: cut 1 locks at 46.875% captured, cut 2 at
+73.4375% cumulative, target 75% — a small, real final cut. Because both HUD-info steps freeze
+the simulation (see below) regardless of how long the player takes on them, and the watch beat
+that follows has a fixed duration, every player sees the identical threat position at the moment
+each cut is taught — there is no player-timing variance to account for.
+
+`BarrierGestureAdapter` gained two new primitives, mirroring the existing
+`RequiredOrientation`/`SetRequiredOrientation` pattern: `RequiredOrigin`/`SetRequiredOrigin`
+(an interaction may only *start* within a tolerance of the required point — a touch elsewhere is
+ignored at `Begin()`, before tracking even begins, rather than started and then cancelled; the
+committed intent's origin is additionally snapped to the exact point, so tolerance never
+introduces variance into the result) and `InputSuppressed`/`SetInputSuppressed` (when true,
+`Begin()` ignores every sample outright). `GuidedTrainingPresenter` now sets these per step:
+`SetRequiredOrigin` for the two guided cuts (the wrong orientation was already rejected at
+release under ADR-044/045; now the wrong *location* cannot even start an interaction), and
+`SetInputSuppressed(true)` for the `Observe` step specifically — a deliberate, literal
+"look, don't touch" beat distinct from the training-hold mechanism, which only ever blocked
+input by making it *fail*, not by making it inert.
+
+`GuidedTrainingStepKind.Info` steps drop their timer entirely and instead put the gesture into
+its existing `IsPointTargeting` mode (already used for Gravity Well placement elsewhere) and
+advance on `BarrierGestureAdapter.PointCommitted` — i.e. a tap anywhere ends the beat, matching
+the existing "one general-purpose tap mode" pattern rather than inventing a second one.
+`GuidedTrainingPresenter.RefreshInstruction` appends a fixed, non-authored "TAP TO
+CONTINUE"/"DEVAM ETMEK İÇİN DOKUN" line to the prompt text while an `Info` step is active,
+so continuing is always visibly explicit.
+
+`TrainingFocusHighlightPresenter`'s frame image now sets `fillCenter = false` — the fix for the
+"covers what it's highlighting" bug — rendering only the sliced sprite's border as a hollow
+outline around the target instead of a filled panel over it.
+
+**Consequences:**
+Every player who reaches Level 2 has seen the identical Level 1: the same two cuts, from the
+same two points, taught with a highlight that outlines rather than hides the thing it explains,
+paced by their own taps rather than a clock. The dynamic-hint machinery and its
+capture-cap/margin/edge-buffer tuning knobs from ADR-045 are gone — there is nothing left to
+mistune, since the two numbers that matter were verified once, directly, against the real
+physics. The `SetRequiredOrigin`/`SetInputSuppressed` primitives on `BarrierGestureAdapter` are
+general enough for future fixed-origin or no-touch beats without new gesture-layer work. The
+worst-case geometric bound from ADR-045 is superseded by a verified fixed result, so ADR-045's
+"needs a manual playtest to confirm the felt balance" caveat about the *first two* cuts is now
+resolved by construction; a manual/device pass is still owed for the three-aspect-ratio visual
+checks (positioning of the fixed-coordinate hand, the now-hollow highlight frame, HUD-focus
+target sizing) that no batch test can cover.
+
+## ADR-047 — Tap-to-Continue Moves Off the Instruction Label; Highlight Pulses the Target; Preview Respects the Required Orientation
+
+**Status:** Accepted for implementation and playtesting.
+
+**Context:**
+Second review pass on ADR-046 found three more problems: (1) appending "TAP TO CONTINUE" onto
+the instruction label pushed it to two lines, which shrank the whole label (TMP auto-sizing) —
+it needed its own element, not a second line of the same one; (2) the hollow-frame highlight from
+ADR-046 was already an improvement, but the ask was to pulse the HUD element itself (scale it up
+and down in place — hearts, speed readout, progress bar) rather than draw any separate shape
+around it; (3) `SetRequiredOrientation` only ever gated the *committed* intent — `BarrierPresenter`
+still rendered a live preview line for whatever orientation the player was currently dragging,
+so a horizontal-only step still visibly drew a vertical preview mid-drag even though it could
+never be released successfully.
+
+**Decision:**
+Added a fourth serialized text (`_tapToContinueText`) to `GuidedTrainingPresenter`, positioned as
+its own bottom-center element (`GuidedTrainingSceneSetup.EnsureTapToContinueText`, styled from
+the existing instruction label's font/color) instead of appending to `_instructionText`.
+`TrainingFocusHighlightPresenter` was rewritten: `Show(target)` no longer reparents a frame —
+it records the target's home `localScale` and pulses `target.localScale` directly every frame,
+restoring the home scale on `Hide()`; this both matches the ask directly and removes the
+frame/border/padding/color tuning surface entirely (nothing left to draw wrong). Since a
+`LayoutGroup` sizes siblings from `sizeDelta`/`rect`, not `localScale`, pulsing a HUD row this
+way doesn't disturb its neighbors' layout. `BarrierPresenter.RenderPreview`'s `gestureCanPreview`
+condition now also requires `_gesture.RequiredOrientation` to be `None` or to match the current
+`SelectedOrientation` — the same rule already governing commit — so the preview simply doesn't
+draw at all while the player is dragging the disallowed axis, instead of drawing then silently
+failing to commit.
+
+**Consequences:**
+The instruction label stays single-line and full-size; the tap prompt is unmissable at the
+bottom of the screen regardless of how long the main label runs. Highlighted HUD elements pulse
+in place with no separate visual language to keep consistent with the rest of the HUD. A
+mid-lesson drag in the forbidden direction now shows nothing at all, matching what actually
+happens on release, closing the gap between what the UI drew and what input was actually
+possible. No new tests were added for the preview-gating fix specifically (`BarrierPresenter` has
+no existing PlayMode test harness, and building one is disproportionate to a one-line boolean
+condition that mirrors an already-tested rule) — verified by code inspection instead; still owed,
+alongside the rest of ADR-046's pending items, a manual/device visual pass.
+
+## ADR-048 — Level-Select Never Enforced Its Own Lock
+
+**Status:** Fixed.
+
+**Context:** The Challenge map showed a lock icon on unreached levels (`FrontEndLevelNodeView`'s
+`Upcoming` state), but nothing actually gated selecting or starting one — the icon was
+decorative. `FirstPlayableController.TryStartLevel` only bounds-checked against the catalog,
+never against `CurrentLevelIndex` (the player's furthest reached level); `FrontEndPresenter
+.SelectLevel` had the same gap; `Button.interactable` was hardcoded `true` regardless of lock
+state; and a stale `_selectedLevelNumber` pointing at a locked node made `RefreshLevelMap` show
+it as `Selected` (hiding the lock) instead of `Upcoming`.
+
+**Decision:** `TryStartLevel` now refuses `index > CurrentLevelIndex` — the real, single
+enforcement point (`TryJumpToLevelForDevelopment` deliberately still bypasses it). `SelectLevel`
+and `RefreshLevelMap` gained the matching check so a locked node can't become "selected" even by
+a stale/attempted UI path, and `FrontEndLevelNodeView.ApplyState` now sets
+`_button.interactable = !locked`.
+
+**Side finding — fixed while validating this:** `PlayerProgressStore`'s test-mode guard
+(`TestModeDetector.IsRunningTests`) only recognizes the documented `-batchmode -runTests` CLI
+invocation. Tests driven live (e.g. through an Editor MCP tool, as this session did) don't set
+that flag, so `SetCurrentLevelIndex` was writing real progress into the developer's actual local
+`PlayerPrefs` — confirmed directly (`PlayerPrefs.GetInt("Cutrium.Progress.CurrentLevelIndex")`
+had leaked to `1` from an earlier test run) and cleaned up. `FrontEndPlayModeTests`'
+`ChallengeNodeSelectsAndStartsMatchingCatalogLevel` (rewritten to jump to an unlocked level 2 via
+`TryJumpToLevelForDevelopment` instead of asserting a locked level 3 could be played) and
+`GuidedTrainingPlayModeTests.UnconfiguredLevel_NeverAcquiresTrainingHold` (needed the same jump,
+since it relied on the old unenforced `TryStartLevel(2)`) both now reset that PlayerPrefs key in
+`Dispose()`. `TestModeDetector` itself is unchanged — a proper fix belongs in test infrastructure,
+not this bug fix, and no runtime assembly should take an NUnit dependency to detect it.
+
+**Also found and fixed in the same pass (both pre-existing, unrelated to the lock):**
+`FrontEndPlayModeTests`' rig never wired `ScrollRect.content`, so opening the Challenge tab threw
+inside Unity's own `ScrollRect.SetNormalizedPosition` — every Challenge-tab test was silently
+broken before this session ever touched the file. And the level-map's `LockIcon` was sized to a
+fixed 72×72 badge inside a 156×156 node (`FrontEndSceneSetup.BuildNodes`) instead of using the
+lock artwork at the node's full size; changed to `Stretch()`, matching how `NodeVisual` already
+fills the node.

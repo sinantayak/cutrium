@@ -248,6 +248,9 @@ namespace Cutrium.Presentation.Barriers
             bool gestureCanPreview = _gesture != null
                 && _gesture.IsTracking
                 && _gesture.SelectedOrientation != BarrierOrientation.None
+                && (_gesture.RequiredOrientation == BarrierOrientation.None
+                    || _gesture.RequiredOrientation
+                        == _gesture.SelectedOrientation)
                 && _controller.Session.LevelStatus
                     == Cutrium.Gameplay.Session.CaptureLevelStatus.Playing
                 && !_controller.Session.ActiveBarrier.HasValue;

@@ -23,6 +23,10 @@ namespace Cutrium.Unity.Input
 
         public event Action<LogicalPoint> PointCommitted;
 
+        public event Action<LogicalPoint> InteractionStarted;
+
+        public event Action<BarrierOrientation> OrientationChanged;
+
         public PointerInputAdapter PointerInput => _pointerInput;
         public float SelectionDeadZone => _selectionDeadZone;
         public float OrientationHysteresis => _orientationHysteresis;
@@ -30,14 +34,70 @@ namespace Cutrium.Unity.Input
         public LogicalPoint Origin { get; private set; }
         public LogicalPoint CurrentPoint { get; private set; }
         public BarrierOrientation SelectedOrientation { get; private set; }
+        public BarrierOrientation RequiredOrientation { get; private set; }
+        public LogicalPoint? RequiredOrigin { get; private set; }
+        public float RequiredOriginTolerance { get; private set; } = 1.5f;
+        public bool InputSuppressed { get; private set; }
         public int CommittedIntentCount { get; private set; }
         public int CancelledInteractionCount { get; private set; }
         public bool IsPointTargeting { get; private set; }
 
         public void SetPointTargeting(bool enabled)
         {
+            if (IsPointTargeting == enabled)
+            {
+                return;
+            }
+
             IsPointTargeting = enabled;
             ResetTracking();
+        }
+
+        public void SetRequiredOrientation(BarrierOrientation orientation)
+        {
+            if (orientation != BarrierOrientation.None
+                && orientation != BarrierOrientation.Horizontal
+                && orientation != BarrierOrientation.Vertical)
+            {
+                throw new ArgumentOutOfRangeException(nameof(orientation));
+            }
+
+            RequiredOrientation = orientation;
+        }
+
+        /// <summary>
+        /// When set, an interaction may only START within
+        /// <paramref name="tolerance"/> logical units of
+        /// <paramref name="origin"/> (a start elsewhere is silently
+        /// ignored), and a committed intent's origin is snapped to exactly
+        /// that point regardless of where inside the tolerance the player
+        /// actually touched. Used to make a taught cut land on the same
+        /// fixed spot for every player.
+        /// </summary>
+        public void SetRequiredOrigin(LogicalPoint? origin, float tolerance = 1.5f)
+        {
+            if (origin.HasValue
+                && (!IsFinite(tolerance) || tolerance < 0f))
+            {
+                throw new ArgumentOutOfRangeException(nameof(tolerance));
+            }
+
+            RequiredOrigin = origin;
+            RequiredOriginTolerance = tolerance;
+        }
+
+        /// <summary>
+        /// When true, every sample is ignored and no interaction can start
+        /// or continue — used for a brief "look, don't touch" beat where
+        /// the board must not react to input at all.
+        /// </summary>
+        public void SetInputSuppressed(bool suppressed)
+        {
+            InputSuppressed = suppressed;
+            if (suppressed)
+            {
+                ResetTracking();
+            }
         }
 
         public void Configure(
@@ -93,6 +153,9 @@ namespace Cutrium.Unity.Input
         public void ResetForRetry()
         {
             IsPointTargeting = false;
+            RequiredOrientation = BarrierOrientation.None;
+            RequiredOrigin = null;
+            InputSuppressed = false;
             ResetTracking();
             CommittedIntentCount = 0;
             CancelledInteractionCount = 0;
@@ -115,14 +178,25 @@ namespace Cutrium.Unity.Input
         private void Begin(PointerSample sample)
         {
             ResetTracking();
-            if (!sample.IsAcceptedBoardStart)
+            if (InputSuppressed || !sample.IsAcceptedBoardStart)
             {
+                return;
+            }
+
+            if (!IsPointTargeting
+                && RequiredOrigin.HasValue
+                && (sample.LogicalPoint - RequiredOrigin.Value).Length
+                    > RequiredOriginTolerance)
+            {
+                // Outside the taught spot: ignore the touch entirely rather
+                // than starting (and then cancelling) an interaction.
                 return;
             }
 
             IsTracking = true;
             Origin = sample.LogicalPoint;
             CurrentPoint = sample.LogicalPoint;
+            InteractionStarted?.Invoke(Origin);
         }
 
         private void UpdateSelection(PointerSample sample)
@@ -147,9 +221,9 @@ namespace Cutrium.Unity.Input
                     return;
                 }
 
-                SelectedOrientation = horizontal >= vertical
+                SetSelectedOrientation(horizontal >= vertical
                     ? BarrierOrientation.Horizontal
-                    : BarrierOrientation.Vertical;
+                    : BarrierOrientation.Vertical);
                 return;
             }
 
@@ -157,14 +231,26 @@ namespace Cutrium.Unity.Input
                 && vertical > horizontal + _orientationHysteresis
                 && vertical >= _selectionDeadZone)
             {
-                SelectedOrientation = BarrierOrientation.Vertical;
+                SetSelectedOrientation(BarrierOrientation.Vertical);
             }
             else if (SelectedOrientation == BarrierOrientation.Vertical
                 && horizontal > vertical + _orientationHysteresis
                 && horizontal >= _selectionDeadZone)
             {
-                SelectedOrientation = BarrierOrientation.Horizontal;
+                SetSelectedOrientation(BarrierOrientation.Horizontal);
             }
+        }
+
+        private void SetSelectedOrientation(
+            BarrierOrientation orientation)
+        {
+            if (SelectedOrientation == orientation)
+            {
+                return;
+            }
+
+            SelectedOrientation = orientation;
+            OrientationChanged?.Invoke(orientation);
         }
 
         private void Release(PointerSample sample)
@@ -197,7 +283,16 @@ namespace Cutrium.Unity.Input
                 return;
             }
 
-            var intent = new BarrierIntent(Origin, SelectedOrientation);
+            if (RequiredOrientation != BarrierOrientation.None
+                && RequiredOrientation != SelectedOrientation)
+            {
+                CancelledInteractionCount++;
+                ResetTracking();
+                return;
+            }
+
+            LogicalPoint intentOrigin = RequiredOrigin ?? Origin;
+            var intent = new BarrierIntent(intentOrigin, SelectedOrientation);
             CommittedIntentCount++;
             ResetTracking();
             IntentCommitted?.Invoke(intent);
