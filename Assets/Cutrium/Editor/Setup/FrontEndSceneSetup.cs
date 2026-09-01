@@ -255,40 +255,10 @@ namespace Cutrium.Editor.Setup
             CanvasGroup page,
             TMP_FontAsset font)
         {
-            RectTransform titleRect = GetOrCreateUiChild(
-                page.transform,
-                "ShopTitle");
-            Anchor(titleRect, new Vector2(0.5f, 0.58f), new Vector2(620f, 100f));
-            ConfigureText(
-                titleRect,
-                "SHOP",
-                font,
-                68f,
-                PrimaryText,
-                TextAlignmentOptions.Center);
-
-            RectTransform subtitleRect = GetOrCreateUiChild(
-                page.transform,
-                "ShopSubtitle");
-            Anchor(
-                subtitleRect,
-                new Vector2(0.5f, 0.51f),
-                new Vector2(760f, 72f));
-            ConfigureText(
-                subtitleRect,
-                "COMING SOON",
-                font,
-                32f,
-                SecondaryText,
-                TextAlignmentOptions.Center);
-
-            RectTransform futureContent = GetOrCreateUiChild(
-                page.transform,
-                "FutureShopContent");
-            Stretch(futureContent);
-            futureContent.offsetMin = new Vector2(44f, 44f);
-            futureContent.offsetMax = new Vector2(-44f, -44f);
-            futureContent.SetAsFirstSibling();
+            DestroyUiChildIfPresent(page.transform, "ShopTitle");
+            DestroyUiChildIfPresent(page.transform, "ShopSubtitle");
+            DestroyUiChildIfPresent(page.transform, "FutureShopContent");
+            ShopContentSceneSetup.Configure((RectTransform)page.transform, font);
         }
 
         private static Button ConfigureHomePage(
@@ -851,7 +821,7 @@ namespace Cutrium.Editor.Setup
             return group;
         }
 
-        private static TMP_Text ConfigureText(
+        internal static TMP_Text ConfigureText(
             RectTransform rect,
             string value,
             TMP_FontAsset font,
@@ -876,7 +846,7 @@ namespace Cutrium.Editor.Setup
             return text;
         }
 
-        private static ColorBlock CreateButtonColors()
+        internal static ColorBlock CreateButtonColors()
         {
             ColorBlock colors = ColorBlock.defaultColorBlock;
             colors.normalColor = Color.white;
@@ -889,7 +859,7 @@ namespace Cutrium.Editor.Setup
             return colors;
         }
 
-        private static Sprite EnsureUiSprite(string path)
+        internal static Sprite EnsureUiSprite(string path)
         {
             AssetDatabase.ImportAsset(
                 path,
@@ -1050,7 +1020,7 @@ namespace Cutrium.Editor.Setup
                     $"'{parent.name}'.");
         }
 
-        private static RectTransform GetOrCreateUiChild(
+        internal static RectTransform GetOrCreateUiChild(
             Transform parent,
             string name)
         {
@@ -1069,7 +1039,7 @@ namespace Cutrium.Editor.Setup
             return CreateUiChild(parent, name);
         }
 
-        private static RectTransform CreateUiChild(
+        internal static RectTransform CreateUiChild(
             Transform parent,
             string name)
         {
@@ -1080,7 +1050,7 @@ namespace Cutrium.Editor.Setup
             return rect;
         }
 
-        private static T GetOrAddComponent<T>(GameObject gameObject)
+        internal static T GetOrAddComponent<T>(GameObject gameObject)
             where T : Component
         {
             T component = gameObject.GetComponent<T>();
@@ -1089,15 +1059,41 @@ namespace Cutrium.Editor.Setup
                 : Undo.AddComponent<T>(gameObject);
         }
 
-        private static void ClearGeneratedChildren(Transform root)
+        internal static void ClearGeneratedChildren(Transform root)
         {
             while (root.childCount > 0)
             {
-                Undo.DestroyObjectImmediate(root.GetChild(0).gameObject);
+                GameObject child = root.GetChild(0).gameObject;
+                // Disabling Graphics before the whole-hierarchy destroy
+                // lets each one unregister from any RectMask2D ancestor
+                // while its CanvasRenderer is still intact. Skipping this
+                // let Undo.DestroyObjectImmediate tear down a Graphic and
+                // its required CanvasRenderer in an order where the
+                // Graphic's OnDisable ran after the CanvasRenderer was
+                // already gone, throwing MissingComponentException.
+                foreach (UnityEngine.UI.Graphic graphic
+                    in child.GetComponentsInChildren<UnityEngine.UI.Graphic>(
+                        true))
+                {
+                    // Earlier interrupted Shop setup passes could leave a
+                    // custom quantity-pill Graphic without its required
+                    // CanvasRenderer. Repair that malformed intermediate
+                    // object before disabling it, otherwise even cleanup
+                    // throws MissingComponentException and the idempotent
+                    // rebuild can never recover.
+                    if (graphic.GetComponent<CanvasRenderer>() == null)
+                    {
+                        Undo.AddComponent<CanvasRenderer>(graphic.gameObject);
+                    }
+
+                    graphic.enabled = false;
+                }
+
+                Undo.DestroyObjectImmediate(child);
             }
         }
 
-        private static void DestroyUiChildIfPresent(
+        internal static void DestroyUiChildIfPresent(
             Transform parent,
             string name)
         {
@@ -1108,7 +1104,7 @@ namespace Cutrium.Editor.Setup
             }
         }
 
-        private static void Stretch(RectTransform rect)
+        internal static void Stretch(RectTransform rect)
         {
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
@@ -1119,7 +1115,7 @@ namespace Cutrium.Editor.Setup
             rect.offsetMax = Vector2.zero;
         }
 
-        private static void Anchor(
+        internal static void Anchor(
             RectTransform rect,
             Vector2 anchor,
             Vector2 size)

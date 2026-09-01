@@ -2106,3 +2106,50 @@ broken before this session ever touched the file. And the level-map's `LockIcon`
 fixed 72×72 badge inside a 156×156 node (`FrontEndSceneSetup.BuildNodes`) instead of using the
 lock artwork at the node's full size; changed to `Stretch()`, matching how `NodeVisual` already
 fills the node.
+
+## ADR-049 — Shop Offers Preserve Source-Art Aspect Through Layout Inputs
+
+**Status:** Accepted for implementation and visual review.
+
+**Context:**
+The first Shop authoring pass forced fixed heights of 160, 204, and 146 logical
+pixels onto source backgrounds authored at `512x102`, `512x178`, and `512x512`.
+This made the Remove Ads and bundle panels too shallow and compressed the square
+gold cards into thin strips. Fixed replacement heights would only match one
+Canvas Scaler result and would distort again between common phones, tall phones,
+and 4:3 tablets.
+
+**Decision:**
+Shop content remains catalog-driven and presentation-only. A focused uGUI layout
+element now reports preferred height from the width assigned by the parent layout,
+the source texture aspect, column count, column gap, and optional two-axis
+visual inset.
+Single-column Remove Ads and bundle cards preserve their texture aspect;
+three-column gold rows derive a square item height after subtracting the
+inter-column gap. Bundle uses the inset because its art reaches the texture edge
+while Gold has authored transparent margins. The idempotent Editor setup owns
+child composition and validates the responsive components and artwork references
+before saving the scene.
+
+**Reasoning:**
+The calculation cooperates with the existing `VerticalLayoutGroup` and
+`HorizontalLayoutGroup` passes without making `AspectRatioFitter` compete for the
+same driven axes. It also keeps bitmap dimensions out of runtime purchase logic and
+lets replacement art change card proportions without changing gameplay.
+
+**Consequences:**
+Shop cards scale proportionally across supported portrait aspects and the staged
+art is no longer deformed. The Shop becomes taller and intentionally relies on its
+existing vertical ScrollRect. Final pixel spacing still requires a three-device
+visual pass after the Editor setup is replayed.
+
+The rewarded-ad Gold offer uses the existing presentation-only
+`FrontEndPulseAnimator` on a card-contained orange overlay. The pulse changes
+alpha only, so it communicates the special offer without changing layout bounds
+or allowing glow geometry to be clipped by the viewport.
+
+Full-bleed backgrounds whose alpha reaches the texture boundary are hosted in
+inset `Visual`/`Artwork` children. Remove Ads contributes both horizontal and
+vertical padding to preferred-height calculation; square Gold art uses an equal
+inset on all sides. This preserves source aspect while preventing the top and
+bottom edge pixels from coinciding with layout-mask boundaries.

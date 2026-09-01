@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 5a2fd0056ba6e494386b683c17845b6e
+guid: ae7997d50b957cb4ea1492531e53ab12
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -3491735384234875830
-    second: CoinStack_0
+      213: 2632164775496568507
+    second: ADS-Remove-Background_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: CoinStack_0
+      name: ADS-Remove-Background_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 50
+        y: 0
         width: 512
-        height: 412
+        height: 102
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: a44a4050b2dda8fc0800000000000000
-      internalID: -3491735384234875830
+      spriteID: bbec4c1eae3578420800000000000000
+      internalID: 2632164775496568507
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      CoinStack_0: -3491735384234875830
+      ADS-Remove-Background_0: 2632164775496568507
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
