@@ -53,6 +53,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 3
     _maximumAcceptedBarrierBreaks: 5
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: vulnerable-barrier-timing
@@ -97,6 +98,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 5
     _maximumAcceptedBarrierBreaks: 5
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: two-normal-threats
@@ -153,6 +155,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 6
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: confident-large-capture
@@ -196,6 +199,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 10
     _expectedReasonableCutUsage: 7
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: 10 CUTS
     _introMessage: MAKE THEM COUNT
   - _stableId: hunter-introduction
@@ -239,6 +243,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 5
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: HUNTER
     _introMessage: REACTS TO YOUR CUTS
   - _stableId: pulse-introduction
@@ -283,6 +288,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 5
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: PULSE
     _introMessage: WATCH ITS SPEED
   - _stableId: freeze-pulse-window
@@ -327,6 +333,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 10
     _expectedReasonableCutUsage: 7
     _maximumAcceptedBarrierBreaks: 3
+    _completionCoinReward: 100
     _introTitle: FREEZE
     _introMessage: CREATE A SAFE WINDOW
   - _stableId: instant-barrier-window
@@ -384,6 +391,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 9
     _expectedReasonableCutUsage: 6
     _maximumAcceptedBarrierBreaks: 3
+    _completionCoinReward: 100
     _introTitle: INSTANT
     _introMessage: SAVE IT FOR A RISKY CUT
   - _stableId: hunter-normal-pair
@@ -441,6 +449,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 7
     _maximumAcceptedBarrierBreaks: 3
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: pulse-multiple-threats
@@ -497,6 +506,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 7
     _maximumAcceptedBarrierBreaks: 3
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: meaningful-power-choice
@@ -554,6 +564,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 8
     _expectedReasonableCutUsage: 6
     _maximumAcceptedBarrierBreaks: 2
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: first-twelve-mastery
@@ -623,6 +634,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 10
     _expectedReasonableCutUsage: 8
     _maximumAcceptedBarrierBreaks: 2
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: motion-reset
@@ -665,6 +677,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 5
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: parallel-pair
@@ -720,6 +733,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 5
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: crossing-pair
@@ -775,6 +789,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: comet-introduction
@@ -817,6 +832,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: COMET
     _introMessage: SMALL AND FAST
   - _stableId: heavy-introduction
@@ -859,6 +875,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: HEAVY
     _introMessage: SLOW BUT LARGE
   - _stableId: comet-normal-pair
@@ -914,6 +931,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: heavy-normal-pair
@@ -969,6 +987,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: gravity-well-introduction
@@ -1026,6 +1045,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: GRAVITY WELL
     _introMessage: TAP A POINT TO PULL
   - _stableId: gravity-heavy-pair
@@ -1081,6 +1101,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: pulse-comet-window
@@ -1137,6 +1158,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 3
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: four-threat-gravity
@@ -1219,6 +1241,7 @@ MonoBehaviour:
     _maximumAcceptedCuts: 0
     _expectedReasonableCutUsage: 0
     _maximumAcceptedBarrierBreaks: 4
+    _completionCoinReward: 100
     _introTitle: 
     _introMessage: 
   - _stableId: motion-and-gravity-mastery
@@ -1289,5 +1312,6 @@ MonoBehaviour:
     _maximumAcceptedCuts: 10
     _expectedReasonableCutUsage: 8
     _maximumAcceptedBarrierBreaks: 3
+    _completionCoinReward: 100
     _introTitle: CHAPTER MASTERY
     _introMessage: SHAPE THEN CUT

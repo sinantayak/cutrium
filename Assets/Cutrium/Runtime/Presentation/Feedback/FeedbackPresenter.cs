@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cutrium.Gameplay.Feedback;
 using Cutrium.Unity.Simulation;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,6 +11,26 @@ namespace Cutrium.Presentation.Feedback
     [DisallowMultipleComponent]
     public sealed class FeedbackPresenter : MonoBehaviour
     {
+        /// One line of the clean-board completion summary: an itemized
+        /// stat (or the header) with its own CanvasGroup so
+        /// ShowCompletionSummary can reveal rows one at a time instead of
+        /// fading the whole block in at once.
+        [Serializable]
+        public sealed class CompletionSummaryRow
+        {
+            [SerializeField] private TMP_Text _text;
+            [SerializeField] private CanvasGroup _group;
+
+            public CompletionSummaryRow(TMP_Text text, CanvasGroup group)
+            {
+                _text = text;
+                _group = group;
+            }
+
+            public TMP_Text Text => _text;
+            public CanvasGroup Group => _group;
+        }
+
         [SerializeField]
         private FirstPlayableController _controller;
 
@@ -28,6 +49,12 @@ namespace Cutrium.Presentation.Feedback
         [SerializeField]
         private Image _completionSummaryBackground;
 
+        [SerializeField]
+        private CanvasGroup _summaryListGroup;
+
+        [SerializeField]
+        private CompletionSummaryRow[] _summaryRows;
+
         private readonly Queue<string> _cueQueue = new Queue<string>();
         private float _cueRemaining;
         private float _activeCueDuration;
@@ -35,22 +62,22 @@ namespace Cutrium.Presentation.Feedback
         private float _emphasis;
         private bool _subscribed;
         private bool _completionSummaryVisible;
-        private bool _cueTextStyleCaptured;
-        private int _baseCueFontSize;
-        private bool _baseCueResizeTextForBestFit;
-        private int _baseCueResizeTextMinSize;
-        private int _baseCueResizeTextMaxSize;
-        private float _baseCueLineSpacing;
-        private bool _baseCueSupportRichText;
+        private float _summaryStartTime;
+        private float _summaryDuration;
 
-        private const int CompletionSummaryFontSize = 54;
-        private const int CompletionSummaryMinimumFontSize = 30;
-        private const float CompletionSummaryLineSpacing = 0.88f;
-        private const float CompletionSummaryFadeInFraction = 0.18f;
-        private const float CompletionSummaryFadeOutFraction = 0.30f;
+        public const int CompletionSummaryRowCount = 5;
+        private const float CompletionSummaryRowStaggerSeconds = 0.35f;
+        private const float CompletionSummaryRowFadeSeconds = 0.28f;
+        private const float CompletionSummaryFadeOutSeconds = 0.4f;
         private const string CompletionHeadingColor = "#F4C15D";
         private const float CompletionBackgroundHorizontalPadding = 28f;
         private const float CompletionBackgroundVerticalPadding = 18f;
+        // Extra room reserved below the stats rows so the completion-reward
+        // row (built separately by LandmarkRevealPresentationSetup's
+        // ConfigureLevelCoinRewardOverlay, positioned into this same space)
+        // reads as the last line of this one card instead of a second,
+        // visually separate box. Keep in sync with that row's own height.
+        private const float CompletionRewardRowReservedHeight = 130f;
         private static readonly Color CompletionBackgroundColor =
             new Color(0.09f, 0.045f, 0.02f, 0.74f);
 
@@ -64,6 +91,10 @@ namespace Cutrium.Presentation.Feedback
 
         public Image CompletionSummaryBackground =>
             _completionSummaryBackground;
+
+        public CanvasGroup SummaryListGroup => _summaryListGroup;
+
+        public IReadOnlyList<CompletionSummaryRow> SummaryRows => _summaryRows;
 
         public int ReceivedEventCount { get; private set; }
 
@@ -90,27 +121,49 @@ namespace Cutrium.Presentation.Feedback
                 return;
             }
 
+            if (_summaryRows == null
+                || _summaryRows.Length != CompletionSummaryRowCount
+                || _summaryListGroup == null
+                || _completionSummaryBackground == null)
+            {
+                return;
+            }
+
             var metrics = _controller.Metrics.Current;
             int capturedPercent = Mathf.FloorToInt(
                 _controller.Session.CapturedFraction * 100f + 0.5f);
             int cuts = metrics.BarrierAttempts;
             string cutLabel = cuts == 1 ? "CUT" : "CUTS";
+
+            // The completion summary shares its on-screen band with the
+            // ephemeral single-line cues (LOCKED, BIG CUT, ...). Clear any
+            // cue still fading out so it never overlaps the stats card.
             _cueQueue.Clear();
-            ApplyCompletionSummaryTextStyle();
-            ShowCompletionSummaryBackground();
-            _completionSummaryVisible = true;
-            ShowCue(
+            _cueRemaining = 0f;
+            HideCue();
+
+            SetRowText(
+                0,
                 $"<color={CompletionHeadingColor}>" +
                 $"LEVEL {_controller.CurrentLevelNumber} COMPLETE" +
-                "</color>\n" +
-                $"CAPTURED {capturedPercent}%  •  {cuts} {cutLabel}\n" +
-                $"TIME {metrics.ElapsedSeconds:0.0}s  •  " +
-                $"BROKEN {metrics.FailedBarriers}",
-                duration);
-            if (_cueCanvasGroup != null)
+                "</color>");
+            SetRowText(1, $"CAPTURED {capturedPercent}%");
+            SetRowText(2, $"{cuts} {cutLabel}");
+            SetRowText(3, $"TIME {metrics.ElapsedSeconds:0.0}s");
+            SetRowText(4, $"BROKEN {metrics.FailedBarriers}");
+
+            for (int index = 0; index < _summaryRows.Length; index++)
             {
-                _cueCanvasGroup.alpha = 0f;
+                _summaryRows[index].Group.alpha = 0f;
+                _summaryRows[index].Group.transform.localScale = Vector3.zero;
             }
+
+            _completionSummaryBackground.gameObject.SetActive(true);
+            _summaryListGroup.gameObject.SetActive(true);
+            _summaryListGroup.alpha = 1f;
+            _summaryStartTime = Time.unscaledTime;
+            _summaryDuration = duration;
+            _completionSummaryVisible = true;
         }
 
         public void DismissCompletionSummary()
@@ -120,9 +173,7 @@ namespace Cutrium.Presentation.Feedback
                 return;
             }
 
-            _cueQueue.Clear();
-            _cueRemaining = 0f;
-            HideCue();
+            HideCompletionSummary();
         }
 
         public void SetBaseFrameColor(Color color)
@@ -142,14 +193,11 @@ namespace Cutrium.Presentation.Feedback
             Graphic boardFrameGraphic)
         {
             Unsubscribe();
-            RestoreCueTextStyle();
             _controller = controller;
             _tuning = tuning;
             _cueLabel = cueLabel;
             _cueCanvasGroup = cueCanvasGroup;
             _boardFrameGraphic = boardFrameGraphic;
-            _cueTextStyleCaptured = false;
-            CaptureCueTextStyle();
             _baseFrameColor = _boardFrameGraphic != null
                 ? _boardFrameGraphic.color
                 : Color.white;
@@ -160,14 +208,45 @@ namespace Cutrium.Presentation.Feedback
             }
         }
 
-        public void ConfigureCompletionSummaryBackgroundForSetup(
-            Image completionSummaryBackground)
+        public void ConfigureCompletionSummaryForSetup(
+            Image completionSummaryBackground,
+            CanvasGroup summaryListGroup,
+            CompletionSummaryRow[] summaryRows)
         {
             _completionSummaryBackground = completionSummaryBackground
                 ?? throw new ArgumentNullException(
                     nameof(completionSummaryBackground));
+            _summaryListGroup = summaryListGroup
+                ?? throw new ArgumentNullException(nameof(summaryListGroup));
+            if (summaryRows == null
+                || summaryRows.Length != CompletionSummaryRowCount)
+            {
+                throw new ArgumentException(
+                    "The completion summary needs exactly " +
+                    $"{CompletionSummaryRowCount} rows.",
+                    nameof(summaryRows));
+            }
+
+            for (int index = 0; index < summaryRows.Length; index++)
+            {
+                CompletionSummaryRow row = summaryRows[index];
+                if (row?.Text == null || row.Group == null)
+                {
+                    throw new ArgumentException(
+                        "Every completion summary row needs both a Text " +
+                        "and a CanvasGroup.",
+                        nameof(summaryRows));
+                }
+            }
+
+            _summaryRows = summaryRows;
             ConfigureCompletionSummaryBackground();
             _completionSummaryBackground.gameObject.SetActive(false);
+            _summaryListGroup.gameObject.SetActive(false);
+            for (int index = 0; index < _summaryRows.Length; index++)
+            {
+                _summaryRows[index].Group.alpha = 0f;
+            }
         }
 
         private void OnEnable()
@@ -199,39 +278,21 @@ namespace Cutrium.Presentation.Feedback
                     _emphasis);
             }
 
+            if (_completionSummaryVisible)
+            {
+                UpdateCompletionSummaryReveal();
+            }
+
             if (_cueRemaining > 0f)
             {
                 _cueRemaining = Mathf.Max(0f, _cueRemaining - delta);
                 if (_cueCanvasGroup != null)
                 {
                     float duration = _activeCueDuration;
-                    if (_completionSummaryVisible && duration > 0f)
-                    {
-                        float elapsedFraction = Mathf.Clamp01(
-                            1f - (_cueRemaining / duration));
-                        float fadeIn = Mathf.SmoothStep(
-                            0f,
-                            1f,
-                            Mathf.InverseLerp(
-                                0f,
-                                CompletionSummaryFadeInFraction,
-                                elapsedFraction));
-                        float fadeOut = Mathf.SmoothStep(
-                            0f,
-                            1f,
-                            Mathf.InverseLerp(
-                                0f,
-                                CompletionSummaryFadeOutFraction,
-                                1f - elapsedFraction));
-                        _cueCanvasGroup.alpha = Mathf.Min(fadeIn, fadeOut);
-                    }
-                    else
-                    {
-                        _cueCanvasGroup.alpha = duration <= 0f
-                            ? 0f
-                            : Mathf.Clamp01(
-                                _cueRemaining / (duration * 0.25f));
-                    }
+                    _cueCanvasGroup.alpha = duration <= 0f
+                        ? 0f
+                        : Mathf.Clamp01(
+                            _cueRemaining / (duration * 0.25f));
                 }
             }
 
@@ -245,6 +306,68 @@ namespace Cutrium.Presentation.Feedback
                 {
                     HideCue();
                 }
+            }
+        }
+
+        private void UpdateCompletionSummaryReveal()
+        {
+            float elapsed = Time.unscaledTime - _summaryStartTime;
+            for (int index = 0; index < _summaryRows.Length; index++)
+            {
+                float start = index * CompletionSummaryRowStaggerSeconds;
+                float t = Mathf.Clamp01(
+                    (elapsed - start) / CompletionSummaryRowFadeSeconds);
+                CanvasGroup group = _summaryRows[index].Group;
+                group.alpha = Mathf.SmoothStep(0f, 1f, t);
+                group.transform.localScale = Vector3.one * EaseOutBack(t);
+            }
+
+            float fadeOutStart = Mathf.Max(
+                0f,
+                _summaryDuration - CompletionSummaryFadeOutSeconds);
+            _summaryListGroup.alpha = elapsed >= fadeOutStart
+                ? 1f - Mathf.Clamp01(
+                    (elapsed - fadeOutStart)
+                        / Mathf.Max(0.01f, CompletionSummaryFadeOutSeconds))
+                : 1f;
+
+            if (elapsed >= _summaryDuration)
+            {
+                HideCompletionSummary();
+            }
+        }
+
+        private void HideCompletionSummary()
+        {
+            _completionSummaryVisible = false;
+            if (_summaryListGroup != null)
+            {
+                _summaryListGroup.gameObject.SetActive(false);
+            }
+
+            if (_completionSummaryBackground != null)
+            {
+                _completionSummaryBackground.gameObject.SetActive(false);
+            }
+        }
+
+        // Standard "ease out back" curve: overshoots past 1 then settles,
+        // giving each row a small pop instead of a flat linear fade.
+        private static float EaseOutBack(float t)
+        {
+            const float overshoot = 1.70158f;
+            float shifted = t - 1f;
+            return 1f
+                + (overshoot + 1f) * shifted * shifted * shifted
+                + overshoot * shifted * shifted;
+        }
+
+        private void SetRowText(int index, string text)
+        {
+            TMP_Text label = _summaryRows[index].Text;
+            if (label != null)
+            {
+                label.text = text;
             }
         }
 
@@ -345,145 +468,44 @@ namespace Cutrium.Presentation.Feedback
 
         private void HideCue()
         {
-            if (_completionSummaryVisible)
-            {
-                RestoreCueTextStyle();
-            }
-
-            if (_completionSummaryBackground != null)
-            {
-                _completionSummaryBackground.gameObject.SetActive(false);
-            }
-
             if (_cueCanvasGroup != null)
             {
                 _cueCanvasGroup.alpha = 0f;
                 _cueCanvasGroup.interactable = false;
                 _cueCanvasGroup.blocksRaycasts = false;
             }
-
-            _completionSummaryVisible = false;
-        }
-
-        private void CaptureCueTextStyle()
-        {
-            if (_cueLabel == null || _cueTextStyleCaptured)
-            {
-                return;
-            }
-
-            _baseCueFontSize = _cueLabel.fontSize;
-            _baseCueResizeTextForBestFit = _cueLabel.resizeTextForBestFit;
-            _baseCueResizeTextMinSize = _cueLabel.resizeTextMinSize;
-            _baseCueResizeTextMaxSize = _cueLabel.resizeTextMaxSize;
-            _baseCueLineSpacing = _cueLabel.lineSpacing;
-            _baseCueSupportRichText = _cueLabel.supportRichText;
-            _cueTextStyleCaptured = true;
-        }
-
-        private void ApplyCompletionSummaryTextStyle()
-        {
-            CaptureCueTextStyle();
-            if (_cueLabel == null)
-            {
-                return;
-            }
-
-            _cueLabel.fontSize = CompletionSummaryFontSize;
-            _cueLabel.resizeTextForBestFit = true;
-            _cueLabel.resizeTextMinSize = CompletionSummaryMinimumFontSize;
-            _cueLabel.resizeTextMaxSize = CompletionSummaryFontSize;
-            _cueLabel.lineSpacing = CompletionSummaryLineSpacing;
-            _cueLabel.supportRichText = true;
-        }
-
-        private void ShowCompletionSummaryBackground()
-        {
-            EnsureCompletionSummaryBackground();
-            if (_completionSummaryBackground == null)
-            {
-                return;
-            }
-
-            ConfigureCompletionSummaryBackground();
-            _completionSummaryBackground.gameObject.SetActive(true);
-            _completionSummaryBackground.rectTransform.SetSiblingIndex(
-                Mathf.Max(0, _cueLabel.transform.GetSiblingIndex() - 1));
-        }
-
-        private void EnsureCompletionSummaryBackground()
-        {
-            if (_completionSummaryBackground != null || _cueLabel == null)
-            {
-                return;
-            }
-
-            Transform parent = _cueLabel.transform.parent;
-            Transform existing = parent.Find("CompletionSummaryBackground");
-            if (existing != null)
-            {
-                _completionSummaryBackground = existing.GetComponent<Image>();
-                if (_completionSummaryBackground == null)
-                {
-                    _completionSummaryBackground =
-                        existing.gameObject.AddComponent<Image>();
-                }
-            }
-
-            if (_completionSummaryBackground == null)
-            {
-                var backgroundObject = new GameObject(
-                    "CompletionSummaryBackground",
-                    typeof(RectTransform),
-                    typeof(CanvasRenderer),
-                    typeof(Image));
-                backgroundObject.transform.SetParent(parent, false);
-                _completionSummaryBackground =
-                    backgroundObject.GetComponent<Image>();
-            }
         }
 
         private void ConfigureCompletionSummaryBackground()
         {
-            if (_completionSummaryBackground == null || _cueLabel == null)
+            if (_completionSummaryBackground == null
+                || _summaryListGroup == null)
             {
                 return;
             }
 
-            RectTransform cueRect = _cueLabel.rectTransform;
+            var listRect = (RectTransform)_summaryListGroup.transform;
             RectTransform backgroundRect =
                 _completionSummaryBackground.rectTransform;
-            backgroundRect.anchorMin = cueRect.anchorMin;
-            backgroundRect.anchorMax = cueRect.anchorMax;
-            backgroundRect.pivot = cueRect.pivot;
-            backgroundRect.anchoredPosition = cueRect.anchoredPosition;
-            backgroundRect.offsetMin = cueRect.offsetMin - new Vector2(
+            backgroundRect.anchorMin = listRect.anchorMin;
+            backgroundRect.anchorMax = listRect.anchorMax;
+            backgroundRect.pivot = listRect.pivot;
+            backgroundRect.anchoredPosition = listRect.anchoredPosition;
+            backgroundRect.offsetMin = listRect.offsetMin - new Vector2(
                 CompletionBackgroundHorizontalPadding,
-                CompletionBackgroundVerticalPadding);
-            backgroundRect.offsetMax = cueRect.offsetMax + new Vector2(
+                CompletionBackgroundVerticalPadding
+                    + CompletionRewardRowReservedHeight);
+            backgroundRect.offsetMax = listRect.offsetMax + new Vector2(
                 CompletionBackgroundHorizontalPadding,
                 CompletionBackgroundVerticalPadding);
             backgroundRect.localScale = Vector3.one;
             backgroundRect.localRotation = Quaternion.identity;
+            backgroundRect.SetSiblingIndex(
+                Mathf.Max(0, listRect.GetSiblingIndex()));
             _completionSummaryBackground.sprite = null;
             _completionSummaryBackground.type = Image.Type.Simple;
             _completionSummaryBackground.color = CompletionBackgroundColor;
             _completionSummaryBackground.raycastTarget = false;
-        }
-
-        private void RestoreCueTextStyle()
-        {
-            if (_cueLabel == null || !_cueTextStyleCaptured)
-            {
-                return;
-            }
-
-            _cueLabel.fontSize = _baseCueFontSize;
-            _cueLabel.resizeTextForBestFit = _baseCueResizeTextForBestFit;
-            _cueLabel.resizeTextMinSize = _baseCueResizeTextMinSize;
-            _cueLabel.resizeTextMaxSize = _baseCueResizeTextMaxSize;
-            _cueLabel.lineSpacing = _baseCueLineSpacing;
-            _cueLabel.supportRichText = _baseCueSupportRichText;
         }
 
         private float CueDuration => _tuning != null

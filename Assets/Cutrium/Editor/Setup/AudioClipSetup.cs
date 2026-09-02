@@ -89,6 +89,8 @@ namespace Cutrium.Editor.Setup
                 // intentionally shares Out Of Cuts per product direction.
                 OutOfCutsClip = outOfCutsClip,
                 OutOfLivesClip = outOfCutsClip,
+                CoinEarnClip = RequireClip("SFX_CoinEarn.wav"),
+                CoinSpendClip = RequireClip("SFX_CoinSpend.wav"),
             };
             feedbackAudio.ConfigureClips(clips);
 
@@ -170,8 +172,9 @@ namespace Cutrium.Editor.Setup
 
             AssetDatabase.SaveAssets();
             Debug.Log(
-                "Audio clips wired: 17 gameplay/UI SFX clips (Out Of Lives " +
-                "shares Out Of Cuts), background music, the sustained " +
+                "Audio clips wired: 19 gameplay/UI SFX clips (Out Of Lives " +
+                "shares Out Of Cuts), including explicit generic Coin earn/" +
+                "spend cues, background music, the sustained " +
                 "barrier-grow/gravity-well loop sources, and the (optional, " +
                 "may still be silent) pre-level intro and landmark-reveal " +
                 "cues.");
@@ -275,6 +278,8 @@ namespace Cutrium.Editor.Setup
                 || feedbackAudio.OutOfCutsClip != clips.OutOfCutsClip
                 || feedbackAudio.OutOfLivesClip != clips.OutOfLivesClip
                 || feedbackAudio.OutOfLivesClip != feedbackAudio.OutOfCutsClip
+                || feedbackAudio.CoinEarnClip != clips.CoinEarnClip
+                || feedbackAudio.CoinSpendClip != clips.CoinSpendClip
                 || musicSource.clip != musicClip)
             {
                 throw new InvalidOperationException(

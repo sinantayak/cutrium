@@ -1380,18 +1380,24 @@ namespace Cutrium.PlayModeTests
                     Is.False);
                 Assert.That(rig.FeedbackPresenter.CompletionSummaryVisible,
                     Is.True);
-                Assert.That(rig.FeedbackPresenter.CueLabel.text,
+                Assert.That(
+                    rig.FeedbackPresenter.SummaryRows[0].Text.text,
                     Does.Contain("<color=#F4C15D>LEVEL 1 COMPLETE</color>"));
-                Assert.That(rig.FeedbackPresenter.CueLabel.text,
+                Assert.That(
+                    rig.FeedbackPresenter.SummaryRows[1].Text.text,
                     Does.Contain("CAPTURED"));
-                Assert.That(rig.FeedbackPresenter.CueLabel.text,
+                Assert.That(
+                    rig.FeedbackPresenter.SummaryRows[2].Text.text,
                     Does.Contain("CUT"));
-                Assert.That(rig.FeedbackPresenter.CueLabel.text,
+                Assert.That(
+                    rig.FeedbackPresenter.SummaryRows[3].Text.text,
                     Does.Contain("TIME"));
-                Assert.That(rig.FeedbackPresenter.CueLabel.fontSize,
-                    Is.EqualTo(54));
-                Assert.That(rig.FeedbackPresenter.CueLabel.resizeTextMaxSize,
-                    Is.EqualTo(54));
+                Assert.That(
+                    rig.FeedbackPresenter.SummaryRows[4].Text.text,
+                    Does.Contain("BROKEN"));
+                // The ephemeral single-line cue system (LOCKED, BIG CUT,
+                // ...) is never touched by the completion summary -- it
+                // stays idle throughout.
                 Assert.That(rig.FeedbackPresenter.CueCanvasGroup.alpha,
                     Is.Zero.Within(0.001f));
                 Assert.That(
@@ -1405,18 +1411,16 @@ namespace Cutrium.PlayModeTests
                     rig.FeedbackPresenter.CompletionSummaryBackground
                         .raycastTarget,
                     Is.False);
+                var summaryListRect = (RectTransform)
+                    rig.FeedbackPresenter.SummaryListGroup.transform;
                 Assert.That(
                     rig.FeedbackPresenter.CompletionSummaryBackground
                         .rectTransform.rect.width,
-                    Is.GreaterThan(
-                        rig.FeedbackPresenter.CueLabel.rectTransform
-                            .rect.width));
+                    Is.GreaterThan(summaryListRect.rect.width));
                 Assert.That(
                     rig.FeedbackPresenter.CompletionSummaryBackground
                         .rectTransform.rect.height,
-                    Is.GreaterThan(
-                        rig.FeedbackPresenter.CueLabel.rectTransform
-                            .rect.height));
+                    Is.GreaterThan(summaryListRect.rect.height));
                 Assert.That(rig.Presenter.StatsCanvasGroup.alpha, Is.Zero);
                 Assert.That(
                     rig.Root.Find("CompletionArtworkTransition"),
@@ -1425,8 +1429,10 @@ namespace Cutrium.PlayModeTests
 
                 yield return null;
                 rig.Presenter.RefreshNow();
-                Assert.That(rig.FeedbackPresenter.CueCanvasGroup.alpha,
-                    Is.GreaterThan(0f));
+                Assert.That(
+                    rig.FeedbackPresenter.SummaryRows[0].Group.alpha,
+                    Is.GreaterThan(0f),
+                    "The header row should already be popping in.");
 
                 waited = 0f;
                 while (!rig.Presenter.CompletionPresentationReady
@@ -1706,6 +1712,46 @@ namespace Cutrium.PlayModeTests
                     feedbackCueObject.GetComponent<Text>(),
                     feedbackCueObject.GetComponent<CanvasGroup>(),
                     null);
+
+                var summaryBackgroundObject = new GameObject(
+                    "CompletionSummaryBackground",
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(Image));
+                summaryBackgroundObject.transform.SetParent(
+                    _simulationObject.transform,
+                    false);
+                var summaryListObject = new GameObject(
+                    "CompletionSummaryList",
+                    typeof(RectTransform),
+                    typeof(CanvasGroup));
+                summaryListObject.transform.SetParent(
+                    _simulationObject.transform,
+                    false);
+                var summaryRows =
+                    new FeedbackPresenter.CompletionSummaryRow[
+                        FeedbackPresenter.CompletionSummaryRowCount];
+                for (int index = 0; index < summaryRows.Length; index++)
+                {
+                    var rowObject = new GameObject(
+                        "SummaryRow" + index,
+                        typeof(RectTransform),
+                        typeof(CanvasRenderer),
+                        typeof(TextMeshProUGUI),
+                        typeof(CanvasGroup));
+                    rowObject.transform.SetParent(
+                        summaryListObject.transform,
+                        false);
+                    summaryRows[index] = new FeedbackPresenter
+                        .CompletionSummaryRow(
+                            rowObject.GetComponent<TextMeshProUGUI>(),
+                            rowObject.GetComponent<CanvasGroup>());
+                }
+
+                FeedbackPresenter.ConfigureCompletionSummaryForSetup(
+                    summaryBackgroundObject.GetComponent<Image>(),
+                    summaryListObject.GetComponent<CanvasGroup>(),
+                    summaryRows);
 
                 Presenter.ConfigureCompletionRewardFlowForSetup(
                     ThreatPresenter,

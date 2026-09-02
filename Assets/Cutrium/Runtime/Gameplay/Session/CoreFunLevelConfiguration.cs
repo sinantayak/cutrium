@@ -14,6 +14,8 @@ namespace Cutrium.Gameplay.Session
         public static readonly LogicalRect FixedBoardBounds =
             new LogicalRect(0f, 0f, 10f, 16f);
 
+        public const int DefaultCompletionCoinReward = 100;
+
         public CoreFunLevelConfiguration(
             string stableId,
             int displayNumber,
@@ -25,7 +27,8 @@ namespace Cutrium.Gameplay.Session
             float maximumExpectedCompletionSeconds,
             string purposeLine = "",
             string intendedDecision = "",
-            int difficultyRating = 1)
+            int difficultyRating = 1,
+            int completionCoinReward = DefaultCompletionCoinReward)
             : this(
                 stableId,
                 displayNumber,
@@ -38,7 +41,8 @@ namespace Cutrium.Gameplay.Session
                 purposeLine,
                 PowerConfiguration.None,
                 intendedDecision,
-                difficultyRating)
+                difficultyRating,
+                completionCoinReward: completionCoinReward)
         {
         }
 
@@ -53,7 +57,8 @@ namespace Cutrium.Gameplay.Session
             float maximumExpectedCompletionSeconds,
             string purposeLine = "",
             string intendedDecision = "",
-            int difficultyRating = 1)
+            int difficultyRating = 1,
+            int completionCoinReward = DefaultCompletionCoinReward)
             : this(
                 stableId,
                 displayNumber,
@@ -66,7 +71,8 @@ namespace Cutrium.Gameplay.Session
                 purposeLine,
                 PowerConfiguration.None,
                 intendedDecision,
-                difficultyRating)
+                difficultyRating,
+                completionCoinReward: completionCoinReward)
         {
         }
 
@@ -83,7 +89,8 @@ namespace Cutrium.Gameplay.Session
             PowerConfiguration power,
             string intendedDecision = "",
             int difficultyRating = 1,
-            int expectedReasonableCutUsage = 0)
+            int expectedReasonableCutUsage = 0,
+            int completionCoinReward = DefaultCompletionCoinReward)
         {
             if (string.IsNullOrWhiteSpace(stableId))
             {
@@ -150,6 +157,13 @@ namespace Cutrium.Gameplay.Session
                     nameof(expectedReasonableCutUsage));
             }
 
+            if (completionCoinReward < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(completionCoinReward),
+                    "A level completion Coin reward cannot be negative.");
+            }
+
             if (capture.HasCutLimit
                 && expectedReasonableCutUsage > capture.MaximumAcceptedCuts)
             {
@@ -172,6 +186,7 @@ namespace Cutrium.Gameplay.Session
             IntendedDecision = intendedDecision ?? string.Empty;
             DifficultyRating = difficultyRating;
             ExpectedReasonableCutUsage = expectedReasonableCutUsage;
+            CompletionCoinReward = completionCoinReward;
         }
 
         public string StableId { get; }
@@ -205,6 +220,8 @@ namespace Cutrium.Gameplay.Session
         public int DifficultyRating { get; }
 
         public int ExpectedReasonableCutUsage { get; }
+
+        public int CompletionCoinReward { get; }
 
         private static void ValidateThreat(
             ThreatMotionConfiguration threatMotion,

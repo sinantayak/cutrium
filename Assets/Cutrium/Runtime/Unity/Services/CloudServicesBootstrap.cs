@@ -16,9 +16,20 @@ namespace Cutrium.Unity.Services
     {
         private bool _started;
         private Task _signInTask;
+        private CoinWalletService _coins;
+        private LevelCoinRewardService _levelRewards;
 
         public event Action SignedIn;
         public event Action<Exception> SignInFailed;
+
+        /// Single application-level Coin service for the current game
+        /// session. Future UI/gameplay composition should receive this
+        /// reference rather than creating another wallet or searching the
+        /// scene at runtime.
+        public CoinWalletService Coins => EnsureCoinService();
+
+        public LevelCoinRewardService LevelRewards =>
+            _levelRewards ??= new LevelCoinRewardService(EnsureCoinService());
 
         public bool IsSignedIn
         {
@@ -51,8 +62,14 @@ namespace Cutrium.Unity.Services
             }
         }
 
+        private void Awake()
+        {
+            EnsureCoinService();
+        }
+
         private void OnEnable()
         {
+            EnsureCoinService();
             if (_started
                 || !Application.isPlaying
                 || TestModeDetector.IsRunningTests)
@@ -62,6 +79,13 @@ namespace Cutrium.Unity.Services
 
             _started = true;
             _signInTask = InitializeAndSignInAsync();
+        }
+
+        private void OnDestroy()
+        {
+            _coins?.Dispose();
+            _coins = null;
+            _levelRewards = null;
         }
 
         /// Idempotent: safe to call again (e.g. after linking a social
@@ -94,6 +118,7 @@ namespace Cutrium.Unity.Services
                         .SignInAnonymouslyAsync();
                 }
 
+                await Coins.SynchronizeWithCloudAsync();
                 SignedIn?.Invoke();
             }
             catch (Exception exception)
@@ -106,6 +131,18 @@ namespace Cutrium.Unity.Services
                     this);
                 SignInFailed?.Invoke(exception);
             }
+        }
+
+        private CoinWalletService EnsureCoinService()
+        {
+            if (_coins == null)
+            {
+                _coins = new CoinWalletService(
+                    new PlayerProgressStore(),
+                    CoinWalletService.DefaultStartingBalance);
+            }
+
+            return _coins;
         }
     }
 }

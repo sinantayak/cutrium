@@ -2153,3 +2153,79 @@ inset `Visual`/`Artwork` children. Remove Ads contributes both horizontal and
 vertical padding to preferred-height calculation; square Gold art uses an equal
 inset on all sides. This preserves source aspect while preventing the top and
 bottom edge pixels from coinciding with layout-mask boundaries.
+
+## ADR-050 — One Local-First Coin Wallet with Explicit Cloud Reconciliation
+
+**Status:** Accepted for implementation.
+
+**Context:**
+Monetization roadmap Task 01 needs one persistent soft currency before any
+reward, purchase, ad, or recovery feature exists. `PlayerProgressStore` already
+uses synchronous `PlayerPrefs` as the boot-time source of truth and mirrors data
+to Unity Cloud Save on a best-effort basis. A spendable balance cannot use the
+level-progress convention of taking `max(local, cloud)`, because doing so would
+resurrect Coins that were legitimately spent on another session/device.
+
+**Decision:**
+`CoinWallet` lives in the engine-free Gameplay assembly and exclusively owns
+balance arithmetic, validation, typed transaction results, mutation
+reason/source metadata, and balance-change events. The existing
+`CloudServicesBootstrap` owns one `CoinWalletService`, which persists successful
+mutations through `PlayerProgressStore`; no static singleton, runtime object
+search, or second save file is introduced. The starting and legacy-save default
+is zero, matching the Turkish roadmap's configured value.
+
+Cloud reconciliation is deliberately local-first. If a local Coin key exists,
+that balance wins and is pushed after sign-in. Only a fresh device without a
+local key imports an existing cloud value. A local mutation made while a cloud
+read is in flight also wins. Coin cloud writes are serialized in mutation order
+so several same-frame changes cannot finish out of order and leave an older
+remote balance behind.
+
+Generic Coin earn/spend clips are exposed through the existing feedback audio
+presenter, but the wallet never plays them. A later user-visible flow decides
+whether to play the generic cue or a more specific reward/purchase sound after
+its transaction succeeds.
+
+**Consequences:**
+Future sources and sinks receive one central API with deterministic failure
+behavior and UI observability, while gameplay rules stay independent of Unity,
+UGS, icons, and sound. Restart persistence remains immediate offline and legacy
+saves remain compatible. Fully authoritative reconciliation of independent
+offline transactions across several devices would require a server-side ledger;
+that is intentionally outside Task 01 and is not approximated with a harmful
+maximum-balance merge.
+
+## ADR-051 — Per-Level Coin Rewards Use Run-Scoped Idempotency
+
+**Status:** Accepted for implementation.
+
+**Context:**
+Monetization roadmap Task 02 awards a configurable base Coin amount after a
+successful level. The existing logical completion precedes its clean-board
+summary, and UI refresh/reopen paths must not turn one completion into several
+wallet credits or several reward sounds. Keying a permanent claim only by level
+ID would also be incorrect because replaying a level is a legitimate new run.
+
+**Decision:**
+Each `CoreFunLevelConfiguration` owns a `CompletionCoinReward`, defaulting to
+100. `FirstPlayableController` creates a unique run ID every time a level is
+loaded. A bootstrap-owned `LevelCoinRewardService` reserves that run ID before
+calling the observable Task 01 wallet, so even event re-entry cannot pay it
+twice; failed wallet mutations release the reservation for a valid retry.
+
+The reward is credited and locally persisted when the visible clean-board
+reward sequence begins. `CoinBalanceHudPresenter` temporarily holds only the
+old displayed number while `LevelCoinRewardPresenter` shows the earned amount
+and flies pooled Coin art to the upper-left HUD target. The existing landmark
+completion popup waits for this flight to finish. The earn SFX is requested
+only after a new claim succeeds, never for duplicate/reopened presentation.
+
+**Consequences:**
+One completed run produces one durable wallet mutation and one audiovisual
+confirmation, while retrying or replaying creates a new eligible run. Gameplay
+capture remains independent of icons, audio, animation, and persistence. The
+run ID and in-memory claim ledger intentionally do not survive an application
+restart because the project does not restore an already-completed transient
+overlay; if that product behavior changes, completion-claim IDs must become
+part of persisted session state rather than being inferred from level ID.

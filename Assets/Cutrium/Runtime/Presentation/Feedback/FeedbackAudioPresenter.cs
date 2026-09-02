@@ -26,6 +26,8 @@ namespace Cutrium.Presentation.Feedback
         public AudioClip HunterReactClip { get; set; }
         public AudioClip OutOfCutsClip { get; set; }
         public AudioClip OutOfLivesClip { get; set; }
+        public AudioClip CoinEarnClip { get; set; }
+        public AudioClip CoinSpendClip { get; set; }
     }
 
     [DisallowMultipleComponent]
@@ -54,6 +56,8 @@ namespace Cutrium.Presentation.Feedback
         [SerializeField] private AudioClip _hunterReactClip;
         [SerializeField] private AudioClip _outOfCutsClip;
         [SerializeField] private AudioClip _outOfLivesClip;
+        [SerializeField] private AudioClip _coinEarnClip;
+        [SerializeField] private AudioClip _coinSpendClip;
 
         [SerializeField] private float _comboPitchStep = 0.15f;
         [SerializeField] private float _comboPitchMax = 2.5f;
@@ -98,6 +102,8 @@ namespace Cutrium.Presentation.Feedback
         public AudioClip HunterReactClip => _hunterReactClip;
         public AudioClip OutOfCutsClip => _outOfCutsClip;
         public AudioClip OutOfLivesClip => _outOfLivesClip;
+        public AudioClip CoinEarnClip => _coinEarnClip;
+        public AudioClip CoinSpendClip => _coinSpendClip;
 
         public void Configure(
             FirstPlayableController controller,
@@ -143,11 +149,28 @@ namespace Cutrium.Presentation.Feedback
             _hunterReactClip = clips.HunterReactClip;
             _outOfCutsClip = clips.OutOfCutsClip;
             _outOfLivesClip = clips.OutOfLivesClip;
+            _coinEarnClip = clips.CoinEarnClip;
+            _coinSpendClip = clips.CoinSpendClip;
         }
 
         public void PlayUi()
         {
             Play(_uiClip);
+        }
+
+        /// Called only by a user-visible Coin reward flow. The wallet does
+        /// not call this method, preventing silent/background mutations from
+        /// producing misleading feedback.
+        public void PlayCoinEarn()
+        {
+            Play(_coinEarnClip);
+        }
+
+        /// Called only after a user-visible Coin spend succeeds. Failed or
+        /// cancelled transactions intentionally stay silent.
+        public void PlayCoinSpend()
+        {
+            Play(_coinSpendClip);
         }
 
         public void SetEffectsEnabled(bool enabled)

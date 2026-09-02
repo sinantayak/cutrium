@@ -16,6 +16,8 @@
 8. Do not redesign unrelated screens or systems while implementing a task.
 9. Keep implementation production-ready: persistence, failure states, duplicate rewards, repeated button taps, ad failures, purchase failures, scene reloads, and similar edge cases must be considered when relevant.
 10. After completing a task, report: files changed, systems added/modified, configuration values introduced, asset paths used, persistence changes, and any manual editor/store-console setup still required.
+11. Audio asset entries may include an `ElevenLabs SFX Prompt`. This prompt is only a generation note for the developer and is **not** an asset path. When the developer has generated the sound, they will replace `[ASSET PATH]` with the real project path and may delete the prompt. Claude must never attempt to generate audio, treat prompt text as a runtime asset, or block implementation because a prompt remains in the document when a valid asset path is present.
+12. SFX playback should normally be triggered by the user-visible gameplay/UI event, not blindly by low-level economy/save mutations. Avoid duplicate or stacked playback when one action causes multiple internal events.
 
 ---
 
@@ -67,7 +69,7 @@ Create the foundational soft-currency system used by all later economy and monet
 ### Initial Configuration
 ```text
 Currency: Coins
-StartingBalance: [SET / CONFIRM BEFORE IMPLEMENTATION]
+StartingBalance: [0]
 ```
 
 ### Assets
@@ -75,17 +77,28 @@ Fill these before requesting implementation.
 
 ```text
 Coin Icon:
-[ASSET PATH]
+[CoinStackL1.png]
 
 Coin Small/HUD Icon:
-[ASSET PATH]
+[CoinStackL1.png]
 
 Coin Earn SFX:
-[ASSET PATH]
+[SFX_CoinEarn]
+Usage: Reusable positive coin-feedback sound. Play when a user-visible UI flow actually presents/credits a coin gain (for example a reward claim or visible balance increase). Do not automatically play on every low-level `AddCoins`/save mutation because later reward flows may trigger multiple mutations or their own richer reward SFX.
+ElevenLabs SFX Prompt: `Short polished mobile-game coin reward sound, soft bright metallic coin ping with a tiny warm sparkle tail, satisfying and premium, friendly casual puzzle game tone, no casino feeling, no melody, no voice, clean transient, around 0.35–0.5 seconds.`
 
 Coin Spend SFX:
-[ASSET PATH]
+[SFX_CoinSpend]
+Usage: Reusable successful-spend feedback. Play only after a coin transaction succeeds and the spend is visible/meaningful to the player. Do not play for insufficient balance, cancelled actions, validation failures, or silent background corrections.
+ElevenLabs SFX Prompt: `Short polished mobile-game currency spend sound, two soft metallic coin ticks with a subtle downward tonal motion and a gentle confirmation pop, clean and satisfying, premium casual puzzle game style, not negative or harsh, no casino feeling, no voice, around 0.3–0.45 seconds.`
 ```
+
+### Audio Integration Note
+- Task 01 should make these shared Coin SFX available through the project's normal audio/UI architecture if appropriate, but **must not** blindly play them inside every low-level currency mutation.
+- `Coin Earn SFX` is intended for later user-visible earning flows (Task 02 level reward, Task 03 bonuses, other explicit Coin grants) when no more specific reward sound replaces it.
+- `Coin Spend SFX` is intended for later user-visible successful spending flows (Task 04+ purchases/recovery) when no more specific purchase/revive sound replaces it.
+- If a later task has its own dedicated SFX (for example `Reward Claim SFX`, `Power-Up Purchase SFX`, or `Revive SFX`), prefer that dedicated sound and do not stack the generic Coin SFX on top unless the existing audio design explicitly calls for layered feedback.
+
 
 ### Persistence
 - Coin balance must survive app restart.
@@ -137,13 +150,16 @@ Award Coins when a level is successfully completed.
 ### Assets
 ```text
 Reward Coin Icon:
-[ASSET PATH]
+[CoinStackL1.png]
 
 Reward Container / Background:
-[ASSET PATH]
+Level complete overlayinde gösterebiliriz. (son başarılı kesim yapılınca complete captured cuts sayısı yazan overlay burayı toparlayıp burada gösterebiliriz. Şu kadar coin kazandık diye.)
+game ekranında çarkın tam tersine yani çark en sağda en sola bir coin ikonu koyup onun yanına da bakiyemizi yazalım. complete overlayde de coinler buraya uçsun sonra level complete ekranına geçsin uçma tamamlanınca.
 
 Reward Claim SFX:
-[ASSET PATH]
+[SFX_CoinEarn.wav]
+Usage: Play once when the level-complete Coin reward is successfully claimed/credited and visually confirmed. Avoid replaying it if the completion UI is reopened or restored after an already-completed claim.
+ElevenLabs SFX Prompt: `Compact celebratory mobile-game reward claim sound, a small cascade of bright soft coins followed by a warm sparkling confirmation chime, satisfying but restrained, premium casual puzzle tone, no casino jackpot feel, no voice, no music bed, around 0.6–0.8 seconds.`
 ```
 
 ### Acceptance Criteria
@@ -192,6 +208,8 @@ No Power-Up Icon:
 
 Bonus SFX:
 [ASSET PATH]
+Usage: Play when a performance bonus row/badge is revealed or confirmed on the result screen. If several bonuses appear together, sequence/throttle the sound instead of stacking multiple identical instances at once.
+ElevenLabs SFX Prompt: `Short skill-bonus sparkle for a premium mobile puzzle game, crisp glassy shimmer with a soft upward twinkle and tiny rewarding pop, light and clever rather than explosive, no coins, no voice, no melody, around 0.4–0.55 seconds.`
 ```
 
 ---
@@ -234,6 +252,8 @@ Gravity Well Icon:
 
 Power-Up Purchase SFX:
 [ASSET PATH]
+Usage: Play after a power-up purchase succeeds and both Coin balance and inventory quantity have been updated. Never play on insufficient Coins or failed transactions.
+ElevenLabs SFX Prompt: `Short premium mobile-game purchase confirmation sound, soft coin clink into a warm magical pop with a subtle energy sparkle, positive and tactile, suitable for buying a power-up in a casual puzzle game, no casino feel, no voice, around 0.45–0.65 seconds.`
 
 Power-Up Empty State:
 [ASSET PATH]
@@ -275,6 +295,8 @@ Revive Button:
 
 Revive SFX:
 [ASSET PATH]
+Usage: Play after the extra-life purchase succeeds and the player is actually restored/continued. Do not play when the revive offer opens or when payment fails.
+ElevenLabs SFX Prompt: `Gentle mobile-game revive sound, soft heartbeat-like pulse followed by a warm rising magical shimmer and subtle life-restored glow, hopeful and satisfying, family-friendly casual puzzle aesthetic, not dramatic, no voice, no music, around 0.65–0.9 seconds.`
 ```
 
 ---
@@ -306,6 +328,8 @@ Extra Cut Button:
 
 Extra Cut SFX:
 [ASSET PATH]
+Usage: Play after the extra-cut purchase succeeds and the additional cut has actually been granted. Do not play when the offer is merely displayed.
+ElevenLabs SFX Prompt: `Short mobile puzzle extra-cut reward sound, a clean precise snip-like energy slice followed by a bright soft confirmation tick, polished and satisfying, abstract rather than realistic scissors, no harsh blade sound, no voice, around 0.4–0.6 seconds.`
 ```
 
 ---
@@ -410,6 +434,8 @@ Coin Reward Animation:
 
 Reward SFX:
 [ASSET PATH]
+Usage: Play when the rewarded-ad completion is confirmed and the additional 2x Coin portion is successfully credited. It should feel richer than the normal base reward claim but remain short.
+ElevenLabs SFX Prompt: `Premium 2x reward sound for a casual mobile puzzle game, quick bright coin flourish with two-step ascending sparkle and a warm success chime, richer than a normal coin reward but restrained, no jackpot or casino style, no voice, around 0.75–1.0 seconds.`
 ```
 
 ---
@@ -514,6 +540,8 @@ Star Unlock Animation:
 
 Star SFX:
 [ASSET PATH]
+Usage: Play when a newly earned star visibly fills/unlocks. If multiple stars unlock in sequence, allow the same SFX to step naturally with the animation instead of overlapping all instances simultaneously.
+ElevenLabs SFX Prompt: `Short star-earned sparkle for a polished mobile puzzle game, bright crystalline twinkle with a gentle upward shimmer and soft success ping, magical but minimal, warm premium feel, no voice, no long melody, around 0.5–0.7 seconds.`
 ```
 
 ---
@@ -587,6 +615,8 @@ Calendar Icon:
 
 Claim SFX:
 [ASSET PATH]
+Usage: Play once when the daily reward claim has been successfully validated and granted. Do not play for already-claimed days or failed/duplicate claim attempts.
+ElevenLabs SFX Prompt: `Warm daily reward claim sound for a casual mobile game, soft gift-box pop opening into a small sparkling chime with a subtle rewarding glow, friendly and inviting, premium but not flashy, no casino sound, no voice, around 0.6–0.85 seconds.`
 ```
 
 ---
@@ -758,6 +788,8 @@ Huge Coin Pack:
 
 Purchase SFX:
 [ASSET PATH]
+Usage: Play only after the store confirms a successful IAP and Coin fulfillment has completed. Never play on pending, cancelled, failed, or duplicate transactions.
+ElevenLabs SFX Prompt: `Clean premium in-app purchase success sound for a mobile puzzle game, soft confirmation pulse followed by a refined bright chime and tiny sparkle tail, trustworthy and satisfying, restrained and non-casino, no cash-register sound, no voice, around 0.65–0.9 seconds.`
 ```
 
 ---

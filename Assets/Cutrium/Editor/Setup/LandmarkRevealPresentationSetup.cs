@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Cutrium.Presentation.Barriers;
 using Cutrium.Presentation.Capture;
+using Cutrium.Presentation.Economy;
 using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
@@ -11,6 +12,7 @@ using Cutrium.Presentation.Powers;
 using Cutrium.Presentation.Theme;
 using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Layout;
+using Cutrium.Unity.Services;
 using Cutrium.Unity.Simulation;
 using TMPro;
 using UnityEditor;
@@ -33,8 +35,19 @@ namespace Cutrium.Editor.Setup
     /// See ADR-026 and ADR-027.
     public static class LandmarkRevealPresentationSetup
     {
-        private const float CompletionSummarySeconds = 2.2f;
+        // Long enough to cover the itemized stats reveal, then the reward's
+        // own reveal-count-up-then-flight-then-hold sequence (reveal delay
+        // + count-up + flight-delay + staggered flight + post-arrival hold
+        // + settle -- see CompletionRewardRevealDelaySeconds and
+        // LevelCoinRewardPresenter's own tuning) so nothing auto-hides
+        // early.
+        private const float CompletionSummarySeconds = 4.8f;
         private const float CompletionOverlayFadeSeconds = 0.45f;
+        // The reward row stays hidden until every stats row above it has
+        // finished popping in (5 rows * FeedbackPresenter's own stagger,
+        // plus a short buffer) so it reads as the last item revealed in
+        // that same sequence, not something popping in alongside them.
+        private const float CompletionRewardRevealDelaySeconds = 1.8f;
         public const string GeneratedFolder =
             "Assets/Cutrium/Art/Generated/Landmark";
         public const string LandmarkContentFolder =
@@ -75,6 +88,8 @@ namespace Cutrium.Editor.Setup
             "Assets/Cutrium/Content/Gui/SpeedIconL4.png";
         public const string SettingsButtonPath =
             "Assets/Cutrium/Content/Gui/Settings_Button.png";
+        public const string CoinStackL1Path =
+            "Assets/Cutrium/Content/Gui/CoinStackL1.png";
         public const string FreezeSkillPath =
             "Assets/Cutrium/Content/Gui/FreezeSkill.png";
         public const string InstantBarrierSkillPath =
@@ -123,6 +138,12 @@ namespace Cutrium.Editor.Setup
             new Color(1f, 0.87f, 0.35f, 0.95f);
         private static readonly Color CompletionBackgroundBrown =
             new Color(0.12156863f, 0.07f, 0.043137256f, 1f);
+        // Outline for a brown-filled Coin balance label (frontend/shop,
+        // over lighter backgrounds) -- the default white-fill/brown-outline
+        // pairing used in gameplay's dark TopHUD would disappear if simply
+        // inverted, so a brown fill gets a light cream outline instead.
+        private static readonly Color CoinBalanceBrownOutline =
+            new Color(1f, 0.9f, 0.78f, 1f);
 
         [MenuItem("Cutrium/Setup/Landmark Reveal Presentation Pass")]
         public static void Apply()
@@ -517,8 +538,9 @@ namespace Cutrium.Editor.Setup
 
             AssetDatabase.SaveAssets();
             Debug.Log(
-                "Completion reward flow wired: clean-board performance " +
-                "summary followed by the enlarged landmark popup.");
+                "Completion reward flow wired: the configured Coin reward " +
+                "is shown on the clean board, flies to the upper-left " +
+                "balance HUD, then releases the landmark popup.");
         }
 
         [MenuItem("Cutrium/Setup/Apply Lapsus-Pro Bold Fonts Only")]
@@ -1275,12 +1297,14 @@ namespace Cutrium.Editor.Setup
             EnsureUiSpriteImportSettings(SpeedIconL2Path);
             EnsureUiSpriteImportSettings(SpeedIconL3Path);
             EnsureUiSpriteImportSettings(SpeedIconL4Path);
+            EnsureUiSpriteImportSettings(CoinStackL1Path);
 
             return new TopHudAssets(
                 LoadSingleSprite(BigHudBackgroundPath),
                 LoadSingleSprite(HealthIconPath),
                 LoadSingleSprite(SpeedIconPath),
                 LoadSingleSprite(SettingsButtonPath),
+                LoadSingleSprite(CoinStackL1Path),
                 font);
         }
 
@@ -1808,28 +1832,64 @@ namespace Cutrium.Editor.Setup
                 .GetComponentInChildren<FeedbackPresenter>(true);
             CaptureHudPresenter captureHudPresenter = root
                 .GetComponentInChildren<CaptureHudPresenter>(true);
+            FirstPlayableController controller = root
+                .GetComponentInChildren<FirstPlayableController>(true);
+            FeedbackAudioPresenter feedbackAudioPresenter = root
+                .GetComponentInChildren<FeedbackAudioPresenter>(true);
+            GameObject cloudServicesObject = GetOrCreateChild(
+                root.transform,
+                "CloudServices");
+            CloudServicesBootstrap cloudServices = GetOrAddComponent<
+                CloudServicesBootstrap>(cloudServicesObject);
             if (threatPresenter == null
                 || captureBoardPresenter == null
                 || feedbackPresenter == null
-                || captureHudPresenter == null)
+                || captureHudPresenter == null
+                || controller == null
+                || feedbackAudioPresenter == null)
             {
                 throw new InvalidOperationException(
                     "Completion reward flow requires ThreatPresenter, " +
-                    "CaptureBoardPresenter, FeedbackPresenter, and " +
-                    "CaptureHudPresenter.");
+                    "CaptureBoardPresenter, FeedbackPresenter, " +
+                    "CaptureHudPresenter, FirstPlayableController, and " +
+                    "FeedbackAudioPresenter.");
             }
+
+            Transform safeArea = RequireChild(
+                root.transform,
+                "Canvas/SafeAreaRoot");
+            Transform hudRow = RequireChild(
+                safeArea,
+                "TopHUD/GameplayHudRow");
+            TopHudAssets topHudAssets = LoadTopHudAssets();
+            CoinBalanceHudPresenter balanceHud = ConfigureCoinBalanceSlot(
+                (RectTransform)hudRow,
+                topHudAssets.Coin,
+                topHudAssets.Font,
+                cloudServices);
+            LevelCoinRewardPresenter coinRewardPresenter =
+                ConfigureLevelCoinRewardOverlay(
+                    safeArea,
+                    controller,
+                    cloudServices,
+                    feedbackAudioPresenter,
+                    balanceHud,
+                    topHudAssets.Coin,
+                    topHudAssets.Font);
 
             Undo.RecordObject(presenter, "Wire Completion Reward Flow");
             presenter.ConfigureCompletionRewardFlowForSetup(
                 threatPresenter,
                 captureBoardPresenter,
                 feedbackPresenter,
-                CompletionSummarySeconds);
+                CompletionSummarySeconds,
+                coinRewardPresenter);
             Undo.RecordObject(captureHudPresenter, "Tune Completion Fade");
             captureHudPresenter.ConfigureCompletionOverlayFadeForSetup(
                 CompletionOverlayFadeSeconds);
             EditorUtility.SetDirty(presenter);
             EditorUtility.SetDirty(captureHudPresenter);
+            EditorUtility.SetDirty(cloudServices);
         }
 
         private static void ValidateCompletionRewardFlow(
@@ -1844,6 +1904,12 @@ namespace Cutrium.Editor.Setup
                 .GetComponentInChildren<FeedbackPresenter>(true);
             CaptureHudPresenter captureHudPresenter = root
                 .GetComponentInChildren<CaptureHudPresenter>(true);
+            LevelCoinRewardPresenter rewardPresenter = root
+                .GetComponentInChildren<LevelCoinRewardPresenter>(true);
+            CoinBalanceHudPresenter balanceHud = root
+                .GetComponentInChildren<CoinBalanceHudPresenter>(true);
+            CloudServicesBootstrap cloudServices = root
+                .GetComponentInChildren<CloudServicesBootstrap>(true);
             if (presenter.ThreatPresenter != threatPresenter
                 || presenter.CaptureBoardPresenter != captureBoardPresenter
                 || presenter.CompletionFeedbackPresenter != feedbackPresenter
@@ -1853,6 +1919,17 @@ namespace Cutrium.Editor.Setup
                     CompletionOverlayFadeSeconds)
                 || feedbackPresenter == null
                 || feedbackPresenter.CompletionSummaryBackground == null
+                || rewardPresenter == null
+                || presenter.LevelCoinRewardPresenter != rewardPresenter
+                || rewardPresenter.BalanceHud != balanceHud
+                || rewardPresenter.CloudServices != cloudServices
+                || rewardPresenter.RewardIcon == null
+                || rewardPresenter.RewardText == null
+                || rewardPresenter.FlightCoinTemplate == null
+                || balanceHud == null
+                || balanceHud.CloudServices != cloudServices
+                || balanceHud.CoinIcon == null
+                || balanceHud.BalanceText == null
                 || presenter.CompletionArtworkImage == null
                 || presenter.ScrimCanvasGroup == null)
             {
@@ -2089,7 +2166,12 @@ namespace Cutrium.Editor.Setup
             RectTransform settingsSlot = ConfigureSettingsSlot(
                 hudRow,
                 assets.Settings);
-            settingsSlot.SetSiblingIndex(1);
+            RectTransform coinSlot = ConfigureCoinBalanceSlotVisuals(
+                hudRow,
+                assets.Coin,
+                assets.Font);
+            coinSlot.SetSiblingIndex(1);
+            settingsSlot.SetSiblingIndex(2);
             bar.SetSiblingIndex(0);
 
             EditorUtility.SetDirty(rowLayout);
@@ -2311,6 +2393,267 @@ namespace Cutrium.Editor.Setup
             EditorUtility.SetDirty(image);
             EditorUtility.SetDirty(button);
             return slot;
+        }
+
+        internal static RectTransform ConfigureCoinBalanceSlotVisuals(
+            RectTransform hudRow,
+            Sprite coinSprite,
+            TMP_FontAsset font,
+            Vector2? anchoredPosition = null,
+            Color? textColor = null)
+        {
+            RectTransform slot = GetOrCreateUiChild(
+                hudRow,
+                "CoinBalanceSlot");
+            slot.gameObject.SetActive(true);
+            slot.anchorMin = new Vector2(0f, 1f);
+            slot.anchorMax = new Vector2(0f, 1f);
+            slot.pivot = new Vector2(0f, 1f);
+            slot.anchoredPosition = anchoredPosition ?? new Vector2(8f, 0f);
+            slot.sizeDelta = new Vector2(220f, 56f);
+            LayoutElement slotLayout = GetOrAddComponent<LayoutElement>(
+                slot.gameObject);
+            slotLayout.ignoreLayout = true;
+
+            RectTransform iconRect = GetOrCreateUiChild(slot, "CoinIcon");
+            iconRect.anchorMin = new Vector2(0f, 0.5f);
+            iconRect.anchorMax = new Vector2(0f, 0.5f);
+            iconRect.pivot = new Vector2(0f, 0.5f);
+            iconRect.anchoredPosition = Vector2.zero;
+            iconRect.sizeDelta = new Vector2(56f, 56f);
+            Image icon = GetOrAddComponent<Image>(iconRect.gameObject);
+            icon.sprite = coinSprite;
+            icon.type = Image.Type.Simple;
+            icon.color = Color.white;
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+
+            RectTransform textRect = GetOrCreateUiChild(
+                slot,
+                "BalanceText");
+            textRect.anchorMin = new Vector2(0f, 0f);
+            textRect.anchorMax = new Vector2(1f, 1f);
+            textRect.pivot = new Vector2(0.5f, 0.5f);
+            textRect.offsetMin = new Vector2(64f, 0f);
+            textRect.offsetMax = Vector2.zero;
+            TextMeshProUGUI text = GetOrAddComponent<TextMeshProUGUI>(
+                textRect.gameObject);
+            text.font = font;
+            text.text = "0";
+            text.fontSize = 38f;
+            text.fontStyle = FontStyles.Bold;
+            text.alignment = TextAlignmentOptions.MidlineLeft;
+            text.color = textColor ?? Color.white;
+            text.outlineColor = textColor.HasValue
+                ? CoinBalanceBrownOutline
+                : TopHudTextBrown;
+            text.outlineWidth = 0.18f;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 22f;
+            text.fontSizeMax = 38f;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.overflowMode = TextOverflowModes.Overflow;
+            text.raycastTarget = false;
+
+            EditorUtility.SetDirty(slotLayout);
+            EditorUtility.SetDirty(icon);
+            EditorUtility.SetDirty(text);
+            return slot;
+        }
+
+        internal static CoinBalanceHudPresenter ConfigureCoinBalanceSlot(
+            RectTransform hudRow,
+            Sprite coinSprite,
+            TMP_FontAsset font,
+            CloudServicesBootstrap cloudServices,
+            Vector2? anchoredPosition = null,
+            Color? textColor = null)
+        {
+            RectTransform slot = ConfigureCoinBalanceSlotVisuals(
+                hudRow,
+                coinSprite,
+                font,
+                anchoredPosition,
+                textColor);
+            Image icon = RequireChild(slot, "CoinIcon").GetComponent<Image>();
+            TextMeshProUGUI text = RequireChild(slot, "BalanceText")
+                .GetComponent<TextMeshProUGUI>();
+            CoinBalanceHudPresenter presenter = GetOrAddComponent<
+                CoinBalanceHudPresenter>(slot.gameObject);
+            Undo.RecordObject(presenter, "Wire Coin Balance HUD");
+            presenter.ConfigureForSetup(cloudServices, icon, text);
+            EditorUtility.SetDirty(presenter);
+            return presenter;
+        }
+
+        private static LevelCoinRewardPresenter ConfigureLevelCoinRewardOverlay(
+            Transform safeArea,
+            FirstPlayableController controller,
+            CloudServicesBootstrap cloudServices,
+            FeedbackAudioPresenter feedbackAudio,
+            CoinBalanceHudPresenter balanceHud,
+            Sprite coinSprite,
+            TMP_FontAsset font)
+        {
+            RectTransform overlay = GetOrCreateUiChild(
+                safeArea,
+                "LevelCoinRewardOverlay");
+            overlay.gameObject.SetActive(true);
+            StretchToParent(overlay);
+            LayoutElement overlayLayout = GetOrAddComponent<LayoutElement>(
+                overlay.gameObject);
+            overlayLayout.ignoreLayout = true;
+
+            // Anchored inside the same card as the clean-board stats block,
+            // hanging directly off the stats list's own content-fit bottom
+            // edge (see ConfigureFeedbackReadabilityForSetup ->
+            // ConfigureCompletionSummaryListForSetup's CompletionSummary-
+            // ContentHeight/CompletionRewardRowGapFromStats) so the reward
+            // reads as that same summary's last item with no leftover gap,
+            // rather than a fixed band edge unrelated to the rows' actual
+            // height. No background image of its own -- the shared card
+            // behind the stats text shows through.
+            RectTransform container = GetOrCreateUiChild(
+                overlay,
+                "RewardContainer");
+            container.anchorMin = new Vector2(0.04f, 0.63f);
+            container.anchorMax = new Vector2(0.96f, 0.63f);
+            container.pivot = new Vector2(0.5f, 1f);
+            container.anchoredPosition = new Vector2(
+                0f,
+                -(CompletionSummaryContentHeight
+                    + CompletionRewardRowGapFromStats));
+            container.sizeDelta = new Vector2(0f, 108f);
+            Image background = GetOrAddComponent<Image>(container.gameObject);
+            background.sprite = null;
+            background.type = Image.Type.Simple;
+            background.color = Color.clear;
+            background.raycastTarget = false;
+            CanvasGroup rewardGroup = GetOrAddComponent<CanvasGroup>(
+                container.gameObject);
+            rewardGroup.alpha = 0f;
+            rewardGroup.interactable = false;
+            rewardGroup.blocksRaycasts = false;
+
+            // One-time migration: earlier setup runs parented the icon and
+            // text directly under RewardContainer. Remove them there so
+            // they don't linger as a second, stale coin/amount duplicate
+            // once rebuilt inside RewardContent below.
+            RemoveStaleChild(container, "RewardCoinIcon");
+            RemoveStaleChild(container, "RewardAmountText");
+
+            // Icon and text sit together as one tight, centered group (a
+            // HorizontalLayoutGroup content-fit to its children) rather than
+            // the icon pinned to the row's left edge with the text centered
+            // across the whole (wide) row -- that read as two unrelated
+            // pieces instead of "[coin] +100 COINS".
+            RectTransform contentRect = GetOrCreateUiChild(
+                container,
+                "RewardContent");
+            contentRect.anchorMin = new Vector2(0.5f, 0.5f);
+            contentRect.anchorMax = new Vector2(0.5f, 0.5f);
+            contentRect.pivot = new Vector2(0.5f, 0.5f);
+            contentRect.anchoredPosition = Vector2.zero;
+            contentRect.localScale = Vector3.one;
+            HorizontalLayoutGroup contentLayout = GetOrAddComponent<
+                HorizontalLayoutGroup>(contentRect.gameObject);
+            contentLayout.spacing = 14f;
+            contentLayout.childAlignment = TextAnchor.MiddleLeft;
+            contentLayout.childControlWidth = true;
+            contentLayout.childControlHeight = true;
+            contentLayout.childForceExpandWidth = false;
+            contentLayout.childForceExpandHeight = false;
+            ContentSizeFitter contentFitter = GetOrAddComponent<
+                ContentSizeFitter>(contentRect.gameObject);
+            contentFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            RectTransform iconRect = GetOrCreateUiChild(
+                contentRect,
+                "RewardCoinIcon");
+            iconRect.localScale = Vector3.one;
+            LayoutElement iconLayout = GetOrAddComponent<LayoutElement>(
+                iconRect.gameObject);
+            iconLayout.preferredWidth = 80f;
+            iconLayout.preferredHeight = 80f;
+            Image rewardIcon = GetOrAddComponent<Image>(iconRect.gameObject);
+            rewardIcon.sprite = coinSprite;
+            rewardIcon.type = Image.Type.Simple;
+            rewardIcon.color = Color.white;
+            rewardIcon.preserveAspect = true;
+            rewardIcon.raycastTarget = false;
+
+            RectTransform amountRect = GetOrCreateUiChild(
+                contentRect,
+                "RewardAmountText");
+            amountRect.localScale = Vector3.one;
+            TextMeshProUGUI amountText = GetOrAddComponent<TextMeshProUGUI>(
+                amountRect.gameObject);
+            amountText.font = font;
+            amountText.text = "+100 COINS";
+            amountText.fontSize = 48f;
+            amountText.enableAutoSizing = false;
+            amountText.fontStyle = FontStyles.Bold;
+            amountText.alignment = TextAlignmentOptions.MidlineLeft;
+            amountText.color = Color.white;
+            amountText.outlineColor = TopHudTextBrown;
+            amountText.outlineWidth = 0.16f;
+            amountText.textWrappingMode = TextWrappingModes.NoWrap;
+            amountText.raycastTarget = false;
+
+            RectTransform flightRoot = GetOrCreateUiChild(
+                overlay,
+                "CoinFlightRoot");
+            StretchToParent(flightRoot);
+            flightRoot.SetAsLastSibling();
+            RectTransform templateRect = GetOrCreateUiChild(
+                flightRoot,
+                "RewardFlightCoinTemplate");
+            templateRect.anchorMin = new Vector2(0.5f, 0.5f);
+            templateRect.anchorMax = new Vector2(0.5f, 0.5f);
+            templateRect.pivot = new Vector2(0.5f, 0.5f);
+            templateRect.anchoredPosition = Vector2.zero;
+            templateRect.sizeDelta = new Vector2(54f, 54f);
+            Image template = GetOrAddComponent<Image>(templateRect.gameObject);
+            template.sprite = coinSprite;
+            template.type = Image.Type.Simple;
+            template.color = Color.white;
+            template.preserveAspect = true;
+            template.raycastTarget = false;
+            template.gameObject.SetActive(false);
+
+            LevelCoinRewardPresenter presenter = GetOrAddComponent<
+                LevelCoinRewardPresenter>(overlay.gameObject);
+            Undo.RecordObject(presenter, "Wire Level Coin Reward");
+            presenter.ConfigureForSetup(
+                controller,
+                cloudServices,
+                feedbackAudio,
+                balanceHud,
+                rewardGroup,
+                rewardIcon,
+                amountText,
+                flightRoot,
+                template,
+                flightCoinCount: 7,
+                revealDelaySeconds: CompletionRewardRevealDelaySeconds);
+
+            Transform completion = RequireChild(
+                safeArea,
+                "LevelCompleteOverlay");
+            overlay.SetSiblingIndex(Mathf.Max(
+                0,
+                completion.GetSiblingIndex()));
+            completion.SetAsLastSibling();
+
+            EditorUtility.SetDirty(overlayLayout);
+            EditorUtility.SetDirty(background);
+            EditorUtility.SetDirty(rewardGroup);
+            EditorUtility.SetDirty(rewardIcon);
+            EditorUtility.SetDirty(amountText);
+            EditorUtility.SetDirty(template);
+            EditorUtility.SetDirty(presenter);
+            return presenter;
         }
 
         private static void ConfigureResponsiveGameplayBands(
@@ -2972,29 +3315,198 @@ namespace Cutrium.Editor.Setup
                     EditorUtility.SetDirty(cueText);
                 }
 
-                RectTransform backgroundRect = GetOrCreateUiChild(
-                    feedbackOverlay,
-                    "CompletionSummaryBackground");
-                Image backgroundImage = GetOrAddComponent<Image>(
-                    backgroundRect.gameObject);
                 FeedbackPresenter feedbackPresenter = feedbackOverlay
                     .GetComponent<FeedbackPresenter>();
                 if (feedbackPresenter != null)
                 {
-                    Undo.RecordObject(
-                        feedbackPresenter,
-                        "Wire Completion Summary Background");
-                    feedbackPresenter
-                        .ConfigureCompletionSummaryBackgroundForSetup(
-                            backgroundImage);
-                    backgroundRect.SetSiblingIndex(Mathf.Max(
-                        0,
-                        cueTransform.GetSiblingIndex() - 1));
-                    EditorUtility.SetDirty(backgroundImage);
-                    EditorUtility.SetDirty(feedbackPresenter);
+                    ConfigureCompletionSummaryListForSetup(
+                        safeArea,
+                        feedbackOverlay,
+                        feedbackPresenter);
                 }
             }
 
+            ConfigureCompletionFailureText(safeArea);
+        }
+
+        // Builds the itemized, one-row-at-a-time completion summary (Level
+        // N Complete header + Captured/Cuts/Time/Broken) that
+        // FeedbackPresenter.ShowCompletionSummary reveals in sequence.
+        // Deliberately a SIBLING of FeedbackOverlay (not a child of it):
+        // FeedbackOverlay's own CanvasGroup is _cueCanvasGroup, driven to
+        // alpha 0 whenever no ephemeral single-line cue (LOCKED, BIG CUT,
+        // ...) is showing -- which is always true during completion, since
+        // ShowCompletionSummary explicitly clears any stale cue. Nesting
+        // this summary inside that overlay made the whole card invisible
+        // even though every row reported alpha 1.
+        private static readonly Color CompletionSummaryStatRowColor =
+            new Color(0.96f, 0.95f, 0.92f, 1f);
+        private static readonly string[] CompletionSummaryRowNames =
+        {
+            "HeaderRow", "CapturedRow", "CutsRow", "TimeRow", "BrokenRow",
+        };
+        private const float CompletionSummaryRowHeight = 66f;
+        private const float CompletionSummaryRowSpacing = 2f;
+        // How far below the stats list's own (content-fit) bottom edge the
+        // reward row hangs -- deliberately a bit more than the 2px between
+        // stat rows so it still reads as the list's final item, not glued
+        // on, without the large leftover gap a band sized for the old
+        // taller rows used to leave beneath a shorter list.
+        private const float CompletionRewardRowGapFromStats = 16f;
+        // Total height of the 5 stat rows once laid out -- both the list
+        // itself and the reward row below it are sized/positioned from
+        // this so shrinking row height/spacing never reopens that gap.
+        private static float CompletionSummaryContentHeight =>
+            FeedbackPresenter.CompletionSummaryRowCount
+                * CompletionSummaryRowHeight
+            + (FeedbackPresenter.CompletionSummaryRowCount - 1)
+                * CompletionSummaryRowSpacing;
+
+        private static void ConfigureCompletionSummaryListForSetup(
+            Transform safeArea,
+            Transform feedbackOverlay,
+            FeedbackPresenter feedbackPresenter)
+        {
+            // One-time migration: earlier setup runs parented these two
+            // directly under FeedbackOverlay. Remove them there so they
+            // don't linger as invisible, inert duplicates once rebuilt at
+            // the correct location below.
+            RemoveStaleChild(feedbackOverlay, "CompletionSummaryBackground");
+            RemoveStaleChild(feedbackOverlay, "CompletionSummaryList");
+
+            RectTransform summaryOverlay = GetOrCreateUiChild(
+                safeArea,
+                "CompletionSummaryOverlay");
+            StretchToParent(summaryOverlay);
+            LayoutElement summaryOverlayLayout = GetOrAddComponent<
+                LayoutElement>(summaryOverlay.gameObject);
+            summaryOverlayLayout.ignoreLayout = true;
+
+            TMP_FontAsset font = LoadTopHudAssets().Font;
+
+            RectTransform backgroundRect = GetOrCreateUiChild(
+                summaryOverlay,
+                "CompletionSummaryBackground");
+            Image backgroundImage = GetOrAddComponent<Image>(
+                backgroundRect.gameObject);
+
+            // Anchored to a single point at the top of the old 0.37-0.63
+            // band and sized to exactly fit its 5 rows (not stretched to
+            // fill the whole band) so the reward row below can hang
+            // directly off its real bottom edge instead of a fixed band
+            // edge that left a growing gap once rows got shorter.
+            RectTransform listRect = GetOrCreateUiChild(
+                summaryOverlay,
+                "CompletionSummaryList");
+            listRect.anchorMin = new Vector2(0.04f, 0.63f);
+            listRect.anchorMax = new Vector2(0.96f, 0.63f);
+            listRect.pivot = new Vector2(0.5f, 1f);
+            listRect.anchoredPosition = Vector2.zero;
+            listRect.sizeDelta = new Vector2(0f, CompletionSummaryContentHeight);
+            listRect.localScale = Vector3.one;
+            CanvasGroup listGroup = GetOrAddComponent<CanvasGroup>(
+                listRect.gameObject);
+            listGroup.interactable = false;
+            listGroup.blocksRaycasts = false;
+            LayoutElement listIgnore = GetOrAddComponent<LayoutElement>(
+                listRect.gameObject);
+            listIgnore.ignoreLayout = true;
+            VerticalLayoutGroup listLayout =
+                GetOrAddComponent<VerticalLayoutGroup>(listRect.gameObject);
+            listLayout.spacing = CompletionSummaryRowSpacing;
+            listLayout.childAlignment = TextAnchor.UpperCenter;
+            listLayout.childControlWidth = true;
+            listLayout.childControlHeight = true;
+            listLayout.childForceExpandWidth = true;
+            listLayout.childForceExpandHeight = false;
+
+            var rows = new FeedbackPresenter.CompletionSummaryRow[
+                CompletionSummaryRowNames.Length];
+            for (int index = 0; index < CompletionSummaryRowNames.Length;
+                index++)
+            {
+                RectTransform rowRect = GetOrCreateUiChild(
+                    listRect,
+                    CompletionSummaryRowNames[index]);
+                rowRect.localScale = Vector3.one;
+                LayoutElement rowLayout = GetOrAddComponent<LayoutElement>(
+                    rowRect.gameObject);
+                rowLayout.preferredHeight = CompletionSummaryRowHeight;
+                rowLayout.flexibleHeight = 0f;
+                CanvasGroup rowGroup = GetOrAddComponent<CanvasGroup>(
+                    rowRect.gameObject);
+                TextMeshProUGUI rowText = GetOrAddComponent<TextMeshProUGUI>(
+                    rowRect.gameObject);
+                rowText.font = font;
+                rowText.alignment = TextAlignmentOptions.Center;
+                rowText.raycastTarget = false;
+                rowText.richText = true;
+                rowText.textWrappingMode = TextWrappingModes.NoWrap;
+                bool isHeader = index == 0;
+                rowText.fontStyle = FontStyles.Bold;
+                rowText.color = isHeader
+                    ? Color.white
+                    : CompletionSummaryStatRowColor;
+                rowText.enableAutoSizing = true;
+                rowText.fontSizeMin = isHeader ? 34f : 26f;
+                rowText.fontSizeMax = isHeader ? 58f : 46f;
+                ConfigureButtonTextShadow(rowText);
+                EditorUtility.SetDirty(rowText);
+                EditorUtility.SetDirty(rowLayout);
+                rows[index] = new FeedbackPresenter.CompletionSummaryRow(
+                    rowText,
+                    rowGroup);
+            }
+
+            Undo.RecordObject(
+                feedbackPresenter,
+                "Wire Completion Summary List");
+            feedbackPresenter.ConfigureCompletionSummaryForSetup(
+                backgroundImage,
+                listGroup,
+                rows);
+            backgroundRect.SetSiblingIndex(
+                Mathf.Max(0, listRect.GetSiblingIndex()));
+            listRect.SetAsLastSibling();
+
+            // Render just above FeedbackOverlay's board-frame effects, but
+            // beneath the reward overlay and the final landmark popup
+            // (matches ConfigureLevelCoinRewardOverlay's own ordering).
+            summaryOverlay.SetSiblingIndex(feedbackOverlay.GetSiblingIndex() + 1);
+            Transform coinOverlay = safeArea.Find("LevelCoinRewardOverlay");
+            if (coinOverlay != null)
+            {
+                coinOverlay.SetSiblingIndex(summaryOverlay.GetSiblingIndex() + 1);
+            }
+
+            Transform completionOverlay = safeArea.Find("LevelCompleteOverlay");
+            if (completionOverlay != null)
+            {
+                completionOverlay.SetAsLastSibling();
+            }
+
+            EditorUtility.SetDirty(summaryOverlayLayout);
+            EditorUtility.SetDirty(backgroundImage);
+            EditorUtility.SetDirty(listGroup);
+            EditorUtility.SetDirty(feedbackPresenter);
+        }
+
+        // Destroys a direct child that an earlier setup pass left behind at
+        // a location this pass no longer uses -- prevents a permanently
+        // invisible (and, for reward icon/text, visually duplicated) stale
+        // copy from lingering in the scene once the real one is rebuilt
+        // elsewhere.
+        private static void RemoveStaleChild(Transform parent, string name)
+        {
+            Transform stale = parent.Find(name);
+            if (stale != null)
+            {
+                Undo.DestroyObjectImmediate(stale.gameObject);
+            }
+        }
+
+        private static void ConfigureCompletionFailureText(Transform safeArea)
+        {
             Transform failureTransform = safeArea.Find(
                 "CutLimitFailureOverlay/GameOverPanelBounds/" +
                 "GameOverPanel/FailureText");
@@ -3949,6 +4461,27 @@ namespace Cutrium.Editor.Setup
                     "The settings artwork must remain a visible, inactive " +
                     "future-control placeholder above the HUD bar.");
             }
+
+            Transform coinSlot = RequireChild(hudRow, "CoinBalanceSlot");
+            Image coinIcon = RequireChild(coinSlot, "CoinIcon")
+                .GetComponent<Image>();
+            TextMeshProUGUI coinText = RequireChild(
+                coinSlot,
+                "BalanceText").GetComponent<TextMeshProUGUI>();
+            LayoutElement coinLayout = coinSlot.GetComponent<LayoutElement>();
+            if (!coinSlot.gameObject.activeSelf
+                || coinIcon == null
+                || AssetDatabase.GetAssetPath(coinIcon.sprite)
+                    != CoinStackL1Path
+                || coinText == null
+                || coinText.color != Color.white
+                || coinLayout == null
+                || !coinLayout.ignoreLayout)
+            {
+                throw new InvalidOperationException(
+                    "Coin balance must remain visible at the TopHUD's " +
+                    "upper-left without affecting the gameplay bar layout.");
+            }
         }
 
         // Health no longer has a fixed placeholder to compare against --
@@ -4660,12 +5193,14 @@ namespace Cutrium.Editor.Setup
                 Sprite healthIcon,
                 Sprite speedIcon,
                 Sprite settings,
+                Sprite coin,
                 TMP_FontAsset font)
             {
                 Background = background;
                 HealthIcon = healthIcon;
                 SpeedIcon = speedIcon;
                 Settings = settings;
+                Coin = coin;
                 Font = font;
             }
 
@@ -4673,6 +5208,7 @@ namespace Cutrium.Editor.Setup
             public Sprite HealthIcon { get; }
             public Sprite SpeedIcon { get; }
             public Sprite Settings { get; }
+            public Sprite Coin { get; }
             public TMP_FontAsset Font { get; }
         }
 

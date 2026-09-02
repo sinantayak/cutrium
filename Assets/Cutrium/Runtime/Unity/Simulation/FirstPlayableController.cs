@@ -91,6 +91,7 @@ namespace Cutrium.Unity.Simulation
         private CoreFunLevelCatalog _levelCatalog;
         private IReadOnlyList<CoreFunLevelDefinition> _activeLevelDefinitions;
         private bool _completionReported;
+        private string _currentLevelRunId = string.Empty;
         private SimulationHoldReason _simulationHoldReasons;
         private readonly PlayerProgressStore _progressStore =
             new PlayerProgressStore();
@@ -203,6 +204,11 @@ namespace Cutrium.Unity.Simulation
             CurrentLevelConfiguration.DisplayNumber;
 
         public string CurrentLevelId => CurrentLevelConfiguration.StableId;
+
+        /// Unique for one loaded level attempt. Retry, replay, advance, and
+        /// development jumps all create a new value, allowing reward APIs to
+        /// reject duplicate callbacks without suppressing legitimate replays.
+        public string CurrentLevelRunId => _currentLevelRunId;
 
         public int LevelCount => _levelCatalog?.Count ?? 0;
 
@@ -824,6 +830,7 @@ namespace Cutrium.Unity.Simulation
 
         private void LoadCurrentLevel()
         {
+            _currentLevelRunId = Guid.NewGuid().ToString("N");
             GravityWellTargeting = false;
             // A guided-training presenter's hold/gesture restrictions are
             // scoped to whichever level currently has an authored

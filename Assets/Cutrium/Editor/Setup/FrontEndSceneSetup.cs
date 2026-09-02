@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using Cutrium.Presentation.Economy;
 using Cutrium.Presentation.Frontend;
 using Cutrium.Presentation.HUD;
 using Cutrium.Unity.Layout;
+using Cutrium.Unity.Services;
 using Cutrium.Unity.Simulation;
 using TMPro;
 using UnityEditor;
@@ -35,6 +37,14 @@ namespace Cutrium.Editor.Setup
             "Assets/Cutrium/Content/Gui/CutriumAmblem.png";
 
         private const float NavigationHeight = 176f;
+        // Insets ShopPage/HomePage from the top by the same real mask
+        // boundary the bottom nav already gets from NavigationHeight --
+        // covers the shared Coin/Settings HUD's own footprint (deepest is
+        // the coin slot: 16 top offset + 56 height) plus a margin, so
+        // scrolled content is actually clipped there instead of merely
+        // being drawn underneath the HUD icons and peeking through the
+        // gaps around them while scrolling.
+        private const float HudZoneHeight = 96f;
         private const float NodeSpacing = 226f;
         private const float NodeBottomPadding = 118f;
         private const float NodeTopPadding = 360f;
@@ -51,6 +61,16 @@ namespace Cutrium.Editor.Setup
             new Color32(255, 230, 191, 255);
         private static readonly Color SecondaryText =
             new Color32(188, 126, 83, 255);
+        internal static readonly Color BrownLabelText =
+            new Color32(97, 48, 24, 255);
+        // Matches gameplay's TopHUD CoinBalanceSlot exactly (measured from
+        // the live scene: SafeAreaRoot > TopHUD > GameplayHudRow's own
+        // padding nets out to this offset from the safe area's own top
+        // corners) so the HUD sits in the identical spot on every screen.
+        internal static readonly Vector2 SharedHudCoinAnchoredPosition =
+            new Vector2(30f, -16f);
+        internal static readonly Vector2 SharedHudSettingsAnchoredPosition =
+            new Vector2(-30f, -16f);
 
         [MenuItem("Cutrium/Setup/Apply Frontend Home and Level Map")]
         public static void Apply()
@@ -156,6 +176,30 @@ namespace Cutrium.Editor.Setup
                 homeIcon,
                 challengeIcon);
 
+            // A direct child of the shared safe area (a sibling of
+            // ShopPage/HomePage, not nested inside either one) so the
+            // balance reads identically no matter which tab is active --
+            // same reasoning as the Settings gear added in
+            // SettingsPanelSceneSetup.ConfigureSettingsEntryPoints.
+            CloudServicesBootstrap cloudServices = root
+                .GetComponentInChildren<CloudServicesBootstrap>(true);
+            if (cloudServices == null)
+            {
+                throw new InvalidOperationException(
+                    "Frontend setup requires CloudServicesBootstrap for " +
+                    "the Coin balance display.");
+            }
+
+            CoinBalanceHudPresenter coinBalance =
+                LandmarkRevealPresentationSetup.ConfigureCoinBalanceSlot(
+                    frontEndSafeArea,
+                    EnsureUiSprite(LandmarkRevealPresentationSetup
+                        .CoinStackL1Path),
+                    font,
+                    cloudServices,
+                    SharedHudCoinAnchoredPosition,
+                    BrownLabelText);
+
             FrontEndPresenter presenter = GetOrAddComponent<FrontEndPresenter>(
                 frontEndRoot.gameObject);
             presenter.ConfigureForSetup(
@@ -191,7 +235,14 @@ namespace Cutrium.Editor.Setup
                 nodeLockSprite,
                 homeBackground,
                 homeLogo);
+            if (coinBalance.CloudServices != cloudServices
+                || coinBalance.transform.parent != frontEndSafeArea)
+            {
+                throw new InvalidOperationException(
+                    "The shared Coin balance display is not wired correctly.");
+            }
 
+            EditorUtility.SetDirty(coinBalance);
             EditorUtility.SetDirty(presenter);
             EditorUtility.SetDirty(rootGroup);
             EditorSceneManager.MarkSceneDirty(scene);
@@ -769,7 +820,12 @@ namespace Cutrium.Editor.Setup
             page.anchorMin = Vector2.zero;
             page.anchorMax = Vector2.one;
             page.offsetMin = new Vector2(0f, NavigationHeight);
-            page.offsetMax = Vector2.zero;
+            // Real mask boundary below the shared HUD (mirrors the bottom
+            // nav inset above) -- without this, ShopPage's own RectMask2D
+            // extended all the way to the safe area's top edge, so
+            // scrolled cards stayed visible in the gaps around the HUD
+            // icons instead of being clipped before reaching them.
+            page.offsetMax = new Vector2(0f, -HudZoneHeight);
             CanvasGroup group = GetOrAddComponent<CanvasGroup>(page.gameObject);
             group.alpha = name == "HomePage" ? 1f : 0f;
             group.interactable = name == "HomePage";

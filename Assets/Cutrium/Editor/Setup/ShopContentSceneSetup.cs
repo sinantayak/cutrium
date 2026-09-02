@@ -55,7 +55,12 @@ namespace Cutrium.Editor.Setup
         private const float SectionLabelHeight = 68f;
         private const float ContentSpacing = 24f;
         private const float ContentSidePadding = 28f;
-        private const float ContentTopPadding = 28f;
+        // Clearing the shared HUD is now the ScrollRect's own mask
+        // boundary (ShopPage is inset from the top by
+        // FrontEndSceneSetup.HudZoneHeight) so scrolled cards are actually
+        // clipped there, not just drawn underneath the HUD icons. This is
+        // just breathing room inside that already-safe viewport.
+        private const float ContentTopPadding = 24f;
         private const float ContentBottomPadding = 52f;
 
         private static readonly Color PrimaryText =
@@ -132,8 +137,6 @@ namespace Cutrium.Editor.Setup
                 RemoveAdsIconPath);
             Sprite bundleBackground = FrontEndSceneSetup.EnsureUiSprite(
                 BundleBackgroundPath);
-            Sprite bundleCoin = FrontEndSceneSetup.EnsureUiSprite(
-                string.Format(CoinStackPathFormat, 2));
             Sprite saleBadge = FrontEndSceneSetup.EnsureUiSprite(SaleBadgePath);
             Sprite goldBackground = FrontEndSceneSetup.EnsureUiSprite(
                 GoldBackgroundPath);
@@ -206,6 +209,11 @@ namespace Cutrium.Editor.Setup
             BuildSectionLabel(content, "BundlesLabel", "BUNDLES", font);
             for (int index = 0; index < catalog.Bundles.Count; index++)
             {
+                ShopBundleOffer offer = catalog.Bundles[index];
+                Sprite bundleCoin = FrontEndSceneSetup.EnsureUiSprite(
+                    string.Format(
+                        CoinStackPathFormat,
+                        GetBundleCoinStackLevel(offer.CoinAmount)));
                 BuildBundleCard(
                     content,
                     $"BundleCard_{index + 1:00}",
@@ -214,7 +222,7 @@ namespace Cutrium.Editor.Setup
                     bundleCoin,
                     saleBadge,
                     buttonBackground,
-                    catalog.Bundles[index]);
+                    offer);
             }
 
             BuildSectionLabel(content, "GoldLabel", "GOLD", font);
@@ -380,7 +388,7 @@ namespace Cutrium.Editor.Setup
             backgroundImage.type = Image.Type.Simple;
             backgroundImage.preserveAspect = false;
             backgroundImage.color = Color.white;
-            backgroundImage.raycastTarget = false;
+            MakeCardClickable(visual);
 
             RectTransform iconRect = FrontEndSceneSetup.GetOrCreateUiChild(
                 visual,
@@ -440,7 +448,7 @@ namespace Cutrium.Editor.Setup
                 new Vector2(1f, 0.5f),
                 new Vector2(-28f, 0f),
                 new Vector2(210f, 88f),
-                34f);
+                38f);
         }
 
         private static void BuildBundleCard(
@@ -477,10 +485,12 @@ namespace Cutrium.Editor.Setup
             backgroundImage.type = Image.Type.Simple;
             backgroundImage.preserveAspect = false;
             backgroundImage.color = Color.white;
-            backgroundImage.raycastTarget = false;
+            MakeCardClickable(visual);
 
-            // The L2 stack owns the left half of the offer. The amount is a
-            // true overlay so the coin and value read as one visual unit.
+            // The coin stack (sized to the offer's amount, see
+            // GetBundleCoinStackLevel) owns the left half of the offer. The
+            // amount is a true overlay so the coin and value read as one
+            // visual unit.
             RectTransform coinIconRect = FrontEndSceneSetup.GetOrCreateUiChild(
                 visual,
                 "CoinIcon");
@@ -524,7 +534,7 @@ namespace Cutrium.Editor.Setup
                 FrontEndSceneSetup.GetOrAddComponent<HorizontalLayoutGroup>(
                     skillRow.gameObject);
             skillLayout.childAlignment = TextAnchor.MiddleCenter;
-            skillLayout.spacing = 12f;
+            skillLayout.spacing = 20f;
             skillLayout.childControlWidth = true;
             skillLayout.childControlHeight = true;
             skillLayout.childForceExpandWidth = true;
@@ -534,7 +544,12 @@ namespace Cutrium.Editor.Setup
             for (int index = 0; index < offer.Skills.Count; index++)
             {
                 ShopBundleSkillEntry skill = offer.Skills[index];
-                BuildSkillEntry(skillRow, $"Skill_{index + 1}", font, skill);
+                BuildSkillEntry(
+                    skillRow,
+                    $"Skill_{index + 1}",
+                    font,
+                    skill,
+                    index);
             }
 
             if (offer.HasDiscount)
@@ -574,18 +589,20 @@ namespace Cutrium.Editor.Setup
                 new Vector2(1f, 0f),
                 new Vector2(-28f, 28f),
                 new Vector2(220f, 88f),
-                34f);
+                38f);
 
-            // Keep the sale badge inside the visual bounds so the viewport
-            // mask cannot crop it during normal scrolling.
+            // Bigger and nudged up-left so it reads as a corner badge
+            // pinned to the card rather than an icon sitting flush inside
+            // it -- a small overflow past the card's own top-left edge is
+            // fine here since ContentSpacing (24px) leaves room above it.
             RectTransform badgeRect = FrontEndSceneSetup.GetOrCreateUiChild(
                 visual,
                 "SaleBadge");
             badgeRect.anchorMin = new Vector2(0f, 1f);
             badgeRect.anchorMax = new Vector2(0f, 1f);
             badgeRect.pivot = new Vector2(0f, 1f);
-            badgeRect.anchoredPosition = Vector2.zero;
-            badgeRect.sizeDelta = new Vector2(108f, 108f);
+            badgeRect.anchoredPosition = new Vector2(-14f, 14f);
+            badgeRect.sizeDelta = new Vector2(136f, 136f);
             badgeRect.SetAsLastSibling();
             Image badgeImage = FrontEndSceneSetup.GetOrAddComponent<Image>(
                 badgeRect.gameObject);
@@ -599,12 +616,12 @@ namespace Cutrium.Editor.Setup
             FrontEndSceneSetup.Anchor(
                 badgeLabelRect,
                 new Vector2(0.5f, 0.42f),
-                new Vector2(92f, 76f));
+                new Vector2(116f, 96f));
             TMP_Text badgeLabel = FrontEndSceneSetup.ConfigureText(
                 badgeLabelRect,
                 $"-{offer.DiscountPercent}%\nOFF",
                 font,
-                24f,
+                30f,
                 SaleBadgeTextColor,
                 TextAlignmentOptions.Center);
             badgeLabel.textWrappingMode = TextWrappingModes.Normal;
@@ -615,7 +632,8 @@ namespace Cutrium.Editor.Setup
             Transform parent,
             string name,
             TMP_FontAsset font,
-            ShopBundleSkillEntry skill)
+            ShopBundleSkillEntry skill,
+            int index)
         {
             RectTransform root = FrontEndSceneSetup.CreateUiChild(parent, name);
             root.anchorMin = Vector2.zero;
@@ -646,40 +664,39 @@ namespace Cutrium.Editor.Setup
             icon.preserveAspect = true;
             icon.raycastTarget = false;
 
-            // Small color-coded quantity pill overlaid on the icon's
-            // bottom-right corner, per spec ("sağ altlarında x1 x2 gibi
-            // miktarları").
-            RectTransform pillRect = FrontEndSceneSetup.GetOrCreateUiChild(
-                root,
-                "QuantityPill");
-            pillRect.anchorMin = new Vector2(1f, 0f);
-            pillRect.anchorMax = new Vector2(1f, 0f);
-            pillRect.pivot = new Vector2(1f, 0f);
-            pillRect.anchoredPosition = new Vector2(-2f, 2f);
-            pillRect.sizeDelta = new Vector2(50f, 34f);
-            // Explicit CanvasRenderer before the Graphic: relying on
-            // MaskableGraphic's [RequireComponent] to add it automatically
-            // left the object without one when built from this batch/editor
-            // setup path, throwing MissingComponentException on every
-            // canvas rebuild.
-            FrontEndSceneSetup.GetOrAddComponent<CanvasRenderer>(
-                pillRect.gameObject);
-            FrontEndRoundedRectangleGraphic pill =
-                FrontEndSceneSetup.GetOrAddComponent<
-                    FrontEndRoundedRectangleGraphic>(pillRect.gameObject);
-            pill.ConfigureForSetup(skill.AccentColor, 11f, true);
-
+            // The skill artwork already paints its own folded-corner badge
+            // shape at bottom-right (a flat brown plate meant to hold a
+            // label) -- no separate colored pill is needed on top of it,
+            // just a plain white label sized and centered onto that shape.
             RectTransform quantityRect = FrontEndSceneSetup.GetOrCreateUiChild(
-                pillRect,
-                "Label");
-            FrontEndSceneSetup.Stretch(quantityRect);
-            FrontEndSceneSetup.ConfigureText(
+                root,
+                "QuantityLabel");
+            FrontEndSceneSetup.Anchor(
+                quantityRect,
+                new Vector2(0.76f, 0.21f),
+                new Vector2(58f, 54f));
+            TMP_Text quantityLabel = FrontEndSceneSetup.ConfigureText(
                 quantityRect,
                 $"x{skill.Quantity}",
                 font,
-                20f,
+                30f,
                 Color.white,
                 TextAlignmentOptions.Center);
+            quantityLabel.fontSizeMin = 20f;
+
+            FrontEndPulseAnimator pulse = FrontEndSceneSetup
+                .GetOrAddComponent<FrontEndPulseAnimator>(root.gameObject);
+            // Slow and subtle -- a gentle multi-second drift, not something
+            // that draws the eye.
+            pulse.ConfigureForSetup(
+                iconRect,
+                null,
+                0.12f,
+                0.025f,
+                1f,
+                1f,
+                index * 0.31f);
+            pulse.enabled = true;
         }
 
         private static void BuildGoldGrid(
@@ -787,7 +804,7 @@ namespace Cutrium.Editor.Setup
             backgroundImage.color = offer.IsRewardedAd
                 ? RewardedGoldTint
                 : Color.white;
-            backgroundImage.raycastTarget = false;
+            MakeCardClickable(artwork);
 
             if (offer.IsRewardedAd)
             {
@@ -840,7 +857,7 @@ namespace Cutrium.Editor.Setup
                     new Vector2(0.5f, 0f),
                     new Vector2(0f, 12f),
                     new Vector2(190f, 82f),
-                    30f);
+                    34f);
 
                 RectTransform cameraRect =
                     FrontEndSceneSetup.GetOrCreateUiChild(
@@ -879,7 +896,7 @@ namespace Cutrium.Editor.Setup
                     new Vector2(0.5f, 0f),
                     new Vector2(0f, 12f),
                     new Vector2(190f, 82f),
-                    30f);
+                    34f);
             }
         }
 
@@ -963,19 +980,17 @@ namespace Cutrium.Editor.Setup
             rect.anchoredPosition = anchoredPosition;
             rect.sizeDelta = size;
 
+            // Purely visual now -- the whole card is the actual button (see
+            // MakeCardClickable), so this stays out of the raycast path
+            // entirely rather than being a second, overlapping Selectable
+            // that could fight the card's own press/click handling.
             Image image = FrontEndSceneSetup.GetOrAddComponent<Image>(
                 rect.gameObject);
             image.sprite = sprite;
             image.preserveAspect = false;
             image.color = Color.white;
-            image.raycastTarget = true;
-
-            Button button = FrontEndSceneSetup.GetOrAddComponent<Button>(
-                rect.gameObject);
-            button.targetGraphic = image;
-            button.transition = Selectable.Transition.ColorTint;
-            button.colors = FrontEndSceneSetup.CreateButtonColors();
-            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            image.raycastTarget = false;
+            RemoveComponentIfPresent<Button>(rect.gameObject);
 
             RectTransform labelRect = FrontEndSceneSetup.GetOrCreateUiChild(
                 rect,
@@ -1036,6 +1051,41 @@ namespace Cutrium.Editor.Setup
                 horizontalPadding,
                 verticalPadding);
             EditorUtility.SetDirty(responsive);
+        }
+
+        // Mirrors the Gold grid's own amount-to-stack-size convention
+        // (100->L1 ... 5000->L6) so a bundle's leading icon reads as the
+        // same size of coin pile a la carte purchase would show.
+        private static int GetBundleCoinStackLevel(int coinAmount)
+        {
+            if (coinAmount < 2000)
+            {
+                return 4;
+            }
+
+            return coinAmount < 5000 ? 5 : 6;
+        }
+
+        // Makes an entire card/tile tappable (any part of it triggers the
+        // purchase), with the press feedback (a slight color tint) reading
+        // across the whole card rather than just its price label -- this is
+        // the ONLY interactive Selectable per card. PriceButton and the
+        // other visuals stay raycastTarget=false so nothing overlaps it.
+        private static Button MakeCardClickable(RectTransform visual)
+        {
+            Image background = FrontEndSceneSetup.GetOrAddComponent<Image>(
+                visual.gameObject);
+            background.raycastTarget = true;
+            Button button = FrontEndSceneSetup.GetOrAddComponent<Button>(
+                visual.gameObject);
+            button.targetGraphic = background;
+            button.transition = Selectable.Transition.ColorTint;
+            ColorBlock colors = FrontEndSceneSetup.CreateButtonColors();
+            colors.pressedColor = new Color32(214, 176, 150, 255);
+            colors.highlightedColor = Color.white;
+            button.colors = colors;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            return button;
         }
 
         private static float GetTextureAspect(Sprite sprite)

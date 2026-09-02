@@ -346,6 +346,12 @@ namespace Cutrium.Unity.Simulation
         [Min(0)]
         private int _maximumAcceptedBarrierBreaks;
 
+        [Header("Completion Economy")]
+        [SerializeField]
+        [Min(0)]
+        private int _completionCoinReward =
+            CoreFunLevelConfiguration.DefaultCompletionCoinReward;
+
         [Header("Brief Introduction")]
         [SerializeField]
         private string _introTitle = string.Empty;
@@ -443,7 +449,9 @@ namespace Cutrium.Unity.Simulation
             int expectedReasonableCutUsage = 0,
             string introTitle = "",
             string introMessage = "",
-            int maximumAcceptedBarrierBreaks = 0)
+            int maximumAcceptedBarrierBreaks = 0,
+            int completionCoinReward =
+                CoreFunLevelConfiguration.DefaultCompletionCoinReward)
         {
             _stableId = stableId;
             _displayNumber = displayNumber;
@@ -467,6 +475,7 @@ namespace Cutrium.Unity.Simulation
             _introTitle = introTitle ?? string.Empty;
             _introMessage = introMessage ?? string.Empty;
             _maximumAcceptedBarrierBreaks = maximumAcceptedBarrierBreaks;
+            _completionCoinReward = completionCoinReward;
         }
 
         public string StableId => _stableId;
@@ -501,6 +510,7 @@ namespace Cutrium.Unity.Simulation
         public string IntroMessage => _introMessage;
         public int MaximumAcceptedBarrierBreaks =>
             _maximumAcceptedBarrierBreaks;
+        public int CompletionCoinReward => _completionCoinReward;
 
         public CoreFunLevelConfiguration ToRuntimeConfiguration()
         {
@@ -539,7 +549,8 @@ namespace Cutrium.Unity.Simulation
                     : PowerConfiguration.None,
                 _intendedDecision,
                 _difficultyRating,
-                _expectedReasonableCutUsage);
+                _expectedReasonableCutUsage,
+                _completionCoinReward);
         }
 
         public static CoreFunLevelDefinition[] CreateMilestone3Defaults() =>

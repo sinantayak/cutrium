@@ -21,7 +21,7 @@ namespace Cutrium.Unity.Services
     /// (`SettingsPanelPresenter`, `LocalizationService`) exactly as
     /// before -- this store only mirrors their already-decided value to
     /// Cloud Save, it is not the source of truth for them.
-    public sealed class PlayerProgressStore
+    public sealed class PlayerProgressStore : ICoinBalanceStore
     {
         private const string CurrentLevelIndexCloudKey = "CurrentLevelIndex";
         private const string CurrentLevelIndexPrefsKey =
@@ -34,6 +34,15 @@ namespace Cutrium.Unity.Services
         private const string MusicEnabledCloudKey = "MusicEnabled";
         private const string HapticEnabledCloudKey = "HapticEnabled";
         private const string LanguageCloudKey = "Language";
+        private const string CoinBalanceCloudKey = "CoinBalance";
+        private const string CoinBalancePrefsKey =
+            "Cutrium.Economy.CoinBalance";
+
+        // Coin mutations may happen several times in one frame. Serializing
+        // their Cloud Save writes prevents an older request from completing
+        // after a newer one and leaving the remote mirror stale.
+        private readonly object _coinCloudWriteLock = new object();
+        private Task _coinCloudWriteTail = Task.CompletedTask;
 
         /// Synchronous, offline-safe. Call at boot before the level catalog
         /// needs an index to load. Deliberately a no-op (always 0) while
@@ -102,6 +111,104 @@ namespace Cutrium.Unity.Services
             PlayerPrefs.SetInt(HighestUnlockedLevelIndexPrefsKey, levelIndex);
             PlayerPrefs.Save();
             PushToCloud(HighestUnlockedLevelIndexCloudKey, levelIndex);
+        }
+
+        /// Reads the local Coin mirror without creating a key for a legacy
+        /// or fresh install. Returning `false` is important for cloud
+        /// reconciliation: only a device that has never stored a Coin value
+        /// may import a pre-existing cloud balance. Corrupt negative values
+        /// are repaired to the safe legacy default of zero.
+        public bool TryLoadLocalCoinBalance(out int balance)
+        {
+            balance = 0;
+            if (TestModeDetector.IsRunningTests
+                || !PlayerPrefs.HasKey(CoinBalancePrefsKey))
+            {
+                return false;
+            }
+
+            int storedBalance = PlayerPrefs.GetInt(CoinBalancePrefsKey, 0);
+            if (storedBalance >= 0)
+            {
+                balance = storedBalance;
+                return true;
+            }
+
+            Debug.LogWarning(
+                "Stored Coin balance was negative and has been repaired "
+                + "to zero.");
+            PlayerPrefs.SetInt(CoinBalancePrefsKey, 0);
+            PlayerPrefs.Save();
+            return true;
+        }
+
+        /// Saves the local mirror synchronously, then mirrors the same value
+        /// to Cloud Save in the background. CoinWalletService is the only
+        /// normal caller and has already enforced all transaction rules.
+        public void SaveCoinBalance(int balance)
+        {
+            ValidateCoinBalance(balance);
+            if (TestModeDetector.IsRunningTests)
+            {
+                return;
+            }
+
+            PlayerPrefs.SetInt(CoinBalancePrefsKey, balance);
+            PlayerPrefs.Save();
+            _ = QueueCoinBalanceCloudPush(balance);
+        }
+
+        /// Used after sign-in when the device already has authoritative
+        /// local Coin data. This covers mutations made while offline or
+        /// before Unity Authentication completed during this boot.
+        public Task PushCoinBalanceToCloudAsync(int balance)
+        {
+            ValidateCoinBalance(balance);
+            return TestModeDetector.IsRunningTests
+                ? Task.CompletedTask
+                : QueueCoinBalanceCloudPush(balance);
+        }
+
+        /// Attempts to read a Coin balance for a device that has no local
+        /// Coin key. Missing data and network/service failures return null,
+        /// following this store's existing best-effort convention. A corrupt
+        /// negative cloud value is repaired to the safe default in memory;
+        /// the service's subsequent local save mirrors that repair back.
+        public async Task<int?> TryLoadCloudCoinBalanceAsync()
+        {
+            try
+            {
+                if (TestModeDetector.IsRunningTests || !IsSignedIn())
+                {
+                    return null;
+                }
+
+                var keys = new HashSet<string> { CoinBalanceCloudKey };
+                Dictionary<string, Item> results = await CloudSaveService
+                    .Instance.Data.Player.LoadAsync(keys);
+                if (!results.TryGetValue(CoinBalanceCloudKey, out Item item))
+                {
+                    return null;
+                }
+
+                int cloudBalance = item.Value.GetAs<int>();
+                if (cloudBalance >= 0)
+                {
+                    return cloudBalance;
+                }
+
+                Debug.LogWarning(
+                    "Cloud Coin balance was negative and has been repaired "
+                    + "to zero.");
+                return 0;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    "Cloud Coin balance pull failed; local balance "
+                    + "unchanged. " + exception);
+                return null;
+            }
         }
 
         /// Mirrors an already-locally-saved sound preference to Cloud
@@ -251,6 +358,47 @@ namespace Cutrium.Unity.Services
             catch (Exception)
             {
                 return false;
+            }
+        }
+
+        private Task QueueCoinBalanceCloudPush(int balance)
+        {
+            lock (_coinCloudWriteLock)
+            {
+                _coinCloudWriteTail = PushCoinBalanceAfterAsync(
+                    _coinCloudWriteTail,
+                    balance);
+                return _coinCloudWriteTail;
+            }
+        }
+
+        private static async Task PushCoinBalanceAfterAsync(
+            Task previousPush,
+            int balance)
+        {
+            try
+            {
+                await previousPush;
+            }
+            catch (Exception exception)
+            {
+                // PushToCloudAsync already catches service errors, but keep
+                // the queue moving if an unexpected task failure occurs.
+                Debug.LogWarning(
+                    "Previous Coin cloud-save task failed; continuing with "
+                    + "the latest balance. " + exception);
+            }
+
+            await PushToCloudAsync(CoinBalanceCloudKey, balance);
+        }
+
+        private static void ValidateCoinBalance(int balance)
+        {
+            if (balance < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(balance),
+                    "A Coin balance cannot be negative.");
             }
         }
     }

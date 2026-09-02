@@ -4,6 +4,7 @@ using Cutrium.Gameplay.Board;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
 using Cutrium.Presentation.Capture;
+using Cutrium.Presentation.Economy;
 using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Localization;
@@ -119,6 +120,8 @@ namespace Cutrium.Presentation.Landmark
         [SerializeField] private CaptureBoardPresenter _captureBoardPresenter;
         [SerializeField] private FeedbackPresenter
             _completionFeedbackPresenter;
+        [SerializeField] private LevelCoinRewardPresenter
+            _levelCoinRewardPresenter;
         [SerializeField] [Min(0f)] private float _completionSummarySeconds =
             2.2f;
         [SerializeField] private LandmarkCatalog _landmarkCatalog;
@@ -186,6 +189,8 @@ namespace Cutrium.Presentation.Landmark
             _captureBoardPresenter;
         public FeedbackPresenter CompletionFeedbackPresenter =>
             _completionFeedbackPresenter;
+        public LevelCoinRewardPresenter LevelCoinRewardPresenter =>
+            _levelCoinRewardPresenter;
         public float CompletionSummarySeconds =>
             _completionSummarySeconds;
         public LandmarkCatalog Catalog => _landmarkCatalog;
@@ -320,7 +325,8 @@ namespace Cutrium.Presentation.Landmark
             ThreatPresenter threatPresenter,
             CaptureBoardPresenter captureBoardPresenter,
             FeedbackPresenter completionFeedbackPresenter,
-            float completionSummarySeconds)
+            float completionSummarySeconds,
+            LevelCoinRewardPresenter levelCoinRewardPresenter = null)
         {
             if (!IsFinite(completionSummarySeconds)
                 || completionSummarySeconds < 0f)
@@ -337,6 +343,7 @@ namespace Cutrium.Presentation.Landmark
             _completionFeedbackPresenter = completionFeedbackPresenter
                 ?? throw new ArgumentNullException(
                     nameof(completionFeedbackPresenter));
+            _levelCoinRewardPresenter = levelCoinRewardPresenter;
             _completionSummarySeconds = completionSummarySeconds;
         }
 
@@ -559,6 +566,7 @@ namespace Cutrium.Presentation.Landmark
             UpdateCompletionSequence(false);
             _completionFeedbackPresenter?.ShowCompletionSummary(
                 _completionSummarySeconds);
+            _levelCoinRewardPresenter?.BeginCompletionPresentation();
         }
 
         private void UpdateCompletionPresentation(bool completed)
@@ -592,7 +600,9 @@ namespace Cutrium.Presentation.Landmark
             SetGroup(_retryCanvasGroup, 0f, false);
             SetGroup(_nextCanvasGroup, 0f, false);
             if (CompletionSummaryElapsedSeconds
-                >= _completionSummarySeconds)
+                    >= _completionSummarySeconds
+                && (_levelCoinRewardPresenter == null
+                    || _levelCoinRewardPresenter.IsPresentationComplete))
             {
                 FinishCompletionSummary();
             }
@@ -601,6 +611,7 @@ namespace Cutrium.Presentation.Landmark
         private void FinishCompletionSummary()
         {
             _completionFeedbackPresenter?.DismissCompletionSummary();
+            _levelCoinRewardPresenter?.CancelPresentation();
             _completionSummaryFinished = true;
             _completionSequenceStarted = true;
             _completionRevealStartTime = Time.unscaledTime;
@@ -621,6 +632,7 @@ namespace Cutrium.Presentation.Landmark
             }
 
             _completionFeedbackPresenter?.DismissCompletionSummary();
+            _levelCoinRewardPresenter?.CancelPresentation();
             RestoreCompletionDecorations();
             _completionSummaryStarted = false;
             _completionSummaryFinished = false;
@@ -651,6 +663,12 @@ namespace Cutrium.Presentation.Landmark
             {
                 _completionFeedbackPresenter = root
                     .GetComponentInChildren<FeedbackPresenter>(true);
+            }
+
+            if (_levelCoinRewardPresenter == null)
+            {
+                _levelCoinRewardPresenter = root
+                    .GetComponentInChildren<LevelCoinRewardPresenter>(true);
             }
         }
 

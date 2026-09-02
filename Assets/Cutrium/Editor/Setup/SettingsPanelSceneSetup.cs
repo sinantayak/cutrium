@@ -301,47 +301,63 @@ namespace Cutrium.Editor.Setup
                     "The gameplay Settings button needs its gear Sprite.");
             }
 
-            RectTransform homeSlot = GetOrCreateUiChild(
-                frontEnd.HomePage.transform,
+            // A sibling of HomePage/ShopPage (the shared safe-area content),
+            // not a child of HomePage -- so this one gear is visible and
+            // opens the same panel from every frontend tab, not just Home.
+            // An earlier setup parented it under HomePage directly; migrate
+            // that copy away so it doesn't linger as a Home-only duplicate.
+            Transform frontEndSafeArea = frontEnd.HomePage.transform.parent;
+            Transform staleHomeOnlySlot =
+                frontEnd.HomePage.transform.Find("SettingsSlot");
+            if (staleHomeOnlySlot != null)
+            {
+                Undo.DestroyObjectImmediate(staleHomeOnlySlot.gameObject);
+            }
+
+            RectTransform sharedSlot = GetOrCreateUiChild(
+                frontEndSafeArea,
                 "SettingsSlot");
-            homeSlot.gameObject.SetActive(true);
-            homeSlot.anchorMin = Vector2.one;
-            homeSlot.anchorMax = Vector2.one;
-            homeSlot.pivot = Vector2.one;
-            homeSlot.anchoredPosition = new Vector2(-20f, -20f);
-            homeSlot.sizeDelta = new Vector2(
+            sharedSlot.gameObject.SetActive(true);
+            sharedSlot.anchorMin = Vector2.one;
+            sharedSlot.anchorMax = Vector2.one;
+            sharedSlot.pivot = Vector2.one;
+            // Matches gameplay's TopHUD SettingsSlot exactly -- see
+            // FrontEndSceneSetup.SharedHudSettingsAnchoredPosition.
+            sharedSlot.anchoredPosition =
+                FrontEndSceneSetup.SharedHudSettingsAnchoredPosition;
+            sharedSlot.sizeDelta = new Vector2(
                 SettingsEntrySize,
                 SettingsEntrySize);
-            homeSlot.SetAsLastSibling();
+            sharedSlot.SetAsLastSibling();
 
-            RectTransform homeButtonRect = GetOrCreateUiChild(
-                homeSlot,
+            RectTransform sharedButtonRect = GetOrCreateUiChild(
+                sharedSlot,
                 "SettingsButton");
-            Stretch(homeButtonRect);
-            Image homeImage = GetOrAddComponent<Image>(
-                homeButtonRect.gameObject);
-            homeImage.sprite = gameplayImage.sprite;
-            homeImage.type = gameplayImage.type;
-            homeImage.color = gameplayImage.color;
-            homeImage.preserveAspect = gameplayImage.preserveAspect;
-            homeImage.raycastTarget = true;
+            Stretch(sharedButtonRect);
+            Image sharedImage = GetOrAddComponent<Image>(
+                sharedButtonRect.gameObject);
+            sharedImage.sprite = gameplayImage.sprite;
+            sharedImage.type = gameplayImage.type;
+            sharedImage.color = gameplayImage.color;
+            sharedImage.preserveAspect = gameplayImage.preserveAspect;
+            sharedImage.raycastTarget = true;
 
-            Button homeButton = GetOrAddComponent<Button>(
-                homeButtonRect.gameObject);
-            homeButton.targetGraphic = homeImage;
-            homeButton.transition = gameplayOpenButton.transition;
-            homeButton.colors = gameplayOpenButton.colors;
-            homeButton.spriteState = gameplayOpenButton.spriteState;
-            homeButton.interactable = true;
-            Navigation navigation = homeButton.navigation;
+            Button sharedButton = GetOrAddComponent<Button>(
+                sharedButtonRect.gameObject);
+            sharedButton.targetGraphic = sharedImage;
+            sharedButton.transition = gameplayOpenButton.transition;
+            sharedButton.colors = gameplayOpenButton.colors;
+            sharedButton.spriteState = gameplayOpenButton.spriteState;
+            sharedButton.interactable = true;
+            Navigation navigation = sharedButton.navigation;
             navigation.mode = Navigation.Mode.None;
-            homeButton.navigation = navigation;
+            sharedButton.navigation = navigation;
 
             EditorUtility.SetDirty(gameplaySlot);
             EditorUtility.SetDirty(gameplayOpenButton);
-            EditorUtility.SetDirty(homeImage);
-            EditorUtility.SetDirty(homeButton);
-            return homeButton;
+            EditorUtility.SetDirty(sharedImage);
+            EditorUtility.SetDirty(sharedButton);
+            return sharedButton;
         }
 
         private static ToggleSetupResult ConfigureToggle(
