@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Cutrium.Gameplay.Economy;
 using Cutrium.Gameplay.Feedback;
+using Cutrium.Gameplay.Session;
 using Cutrium.Unity.Simulation;
 using TMPro;
 using UnityEngine;
@@ -20,15 +23,35 @@ namespace Cutrium.Presentation.Feedback
         {
             [SerializeField] private TMP_Text _text;
             [SerializeField] private CanvasGroup _group;
+            [SerializeField] private Image _icon;
+            [SerializeField] private TMP_Text _amountText;
 
+            /// Header-row constructor: a single centered label, no coin
+            /// icon/amount.
             public CompletionSummaryRow(TMP_Text text, CanvasGroup group)
+                : this(text, group, null, null)
+            {
+            }
+
+            /// Bonus-row constructor: a left-aligned label plus a trailing
+            /// coin icon and "+N" amount, e.g. "PERFECT CUT x2   [coin] +40".
+            public CompletionSummaryRow(
+                TMP_Text text,
+                CanvasGroup group,
+                Image icon,
+                TMP_Text amountText)
             {
                 _text = text;
                 _group = group;
+                _icon = icon;
+                _amountText = amountText;
             }
 
             public TMP_Text Text => _text;
             public CanvasGroup Group => _group;
+            public Image Icon => _icon;
+            public TMP_Text AmountText => _amountText;
+            public bool HasAmount => _icon != null && _amountText != null;
         }
 
         [SerializeField]
@@ -55,6 +78,15 @@ namespace Cutrium.Presentation.Feedback
         [SerializeField]
         private CompletionSummaryRow[] _summaryRows;
 
+        [SerializeField]
+        private Image[] _completionStars;
+
+        [SerializeField]
+        private Sprite _filledStarSprite;
+
+        [SerializeField]
+        private Sprite _emptyStarSprite;
+
         private readonly Queue<string> _cueQueue = new Queue<string>();
         private float _cueRemaining;
         private float _activeCueDuration;
@@ -65,21 +97,18 @@ namespace Cutrium.Presentation.Feedback
         private float _summaryStartTime;
         private float _summaryDuration;
 
-        public const int CompletionSummaryRowCount = 5;
-        private const float CompletionSummaryRowStaggerSeconds = 0.35f;
-        private const float CompletionSummaryRowFadeSeconds = 0.28f;
+        // Header + fixed base-reward row + up to 4 optional bonus rows.
+        public const int CompletionSummaryRowCount = 6;
+        // Public: LevelCoinRewardPresenter reuses these to time its own
+        // reward-total count-up so each increment lands in sync with the
+        // bonus row it corresponds to, without duplicating the stagger
+        // schedule in a second place.
+        public const float CompletionSummaryRowStaggerSeconds = 0.35f;
+        public const float CompletionSummaryRowFadeSeconds = 0.28f;
         private const float CompletionSummaryFadeOutSeconds = 0.4f;
-        private const string CompletionHeadingColor = "#F4C15D";
-        private const float CompletionBackgroundHorizontalPadding = 28f;
-        private const float CompletionBackgroundVerticalPadding = 18f;
-        // Extra room reserved below the stats rows so the completion-reward
-        // row (built separately by LandmarkRevealPresentationSetup's
-        // ConfigureLevelCoinRewardOverlay, positioned into this same space)
-        // reads as the last line of this one card instead of a second,
-        // visually separate box. Keep in sync with that row's own height.
-        private const float CompletionRewardRowReservedHeight = 130f;
-        private static readonly Color CompletionBackgroundColor =
-            new Color(0.09f, 0.045f, 0.02f, 0.74f);
+        private const float StarRevealStartSeconds = 0.05f;
+        private const float StarRevealStaggerSeconds = 0.13f;
+        private const float StarRevealSeconds = 0.3f;
 
         public FirstPlayableController Controller => _controller;
 
@@ -96,6 +125,12 @@ namespace Cutrium.Presentation.Feedback
 
         public IReadOnlyList<CompletionSummaryRow> SummaryRows => _summaryRows;
 
+        public IReadOnlyList<Image> CompletionStars => _completionStars;
+
+        public Sprite FilledStarSprite => _filledStarSprite;
+
+        public Sprite EmptyStarSprite => _emptyStarSprite;
+
         public int ReceivedEventCount { get; private set; }
 
         public FeedbackEventKind LastEventKind { get; private set; }
@@ -107,7 +142,11 @@ namespace Cutrium.Presentation.Feedback
         public bool CompletionSummaryVisible =>
             _completionSummaryVisible;
 
-        public void ShowCompletionSummary(float duration)
+        public void ShowCompletionSummary(
+            float duration,
+            int baseAmount,
+            IReadOnlyList<PerformanceCoinRewardLine> bonusLines,
+            int starRating = 0)
         {
             if (float.IsNaN(duration)
                 || float.IsInfinity(duration)
@@ -129,12 +168,6 @@ namespace Cutrium.Presentation.Feedback
                 return;
             }
 
-            var metrics = _controller.Metrics.Current;
-            int capturedPercent = Mathf.FloorToInt(
-                _controller.Session.CapturedFraction * 100f + 0.5f);
-            int cuts = metrics.BarrierAttempts;
-            string cutLabel = cuts == 1 ? "CUT" : "CUTS";
-
             // The completion summary shares its on-screen band with the
             // ephemeral single-line cues (LOCKED, BIG CUT, ...). Clear any
             // cue still fading out so it never overlaps the stats card.
@@ -144,13 +177,42 @@ namespace Cutrium.Presentation.Feedback
 
             SetRowText(
                 0,
-                $"<color={CompletionHeadingColor}>" +
-                $"LEVEL {_controller.CurrentLevelNumber} COMPLETE" +
-                "</color>");
-            SetRowText(1, $"CAPTURED {capturedPercent}%");
-            SetRowText(2, $"{cuts} {cutLabel}");
-            SetRowText(3, $"TIME {metrics.ElapsedSeconds:0.0}s");
-            SetRowText(4, $"BROKEN {metrics.FailedBarriers}");
+                $"LEVEL {_controller.CurrentLevelNumber}\nCOMPLETE");
+            _summaryRows[0].Group.gameObject.SetActive(true);
+            ConfigureStars(starRating);
+
+            // Row 1 is the fixed base completion reward (every completion
+            // earns it, unlike the conditional bonus slots below).
+            bool hasBaseReward = baseAmount > 0;
+            if (hasBaseReward)
+            {
+                SetRowText(1, "LEVEL COMPLETE");
+                SetRowAmount(1, baseAmount);
+            }
+
+            _summaryRows[1].Group.gameObject.SetActive(hasBaseReward);
+
+            // Rows 2..(count-1) are a fixed number of optional bonus slots,
+            // one per performance-bonus line actually earned this run (see
+            // PerformanceCoinRewardCalculator) -- packed contiguously in
+            // the order they were computed, any unused trailing slot
+            // deactivated so the layout group collapses its gap instead of
+            // leaving a blank row.
+            int bonusSlotCount = _summaryRows.Length - 2;
+            int lineCount = bonusLines?.Count ?? 0;
+            for (int slot = 0; slot < bonusSlotCount; slot++)
+            {
+                int rowIndex = slot + 2;
+                bool hasLine = slot < lineCount;
+                if (hasLine)
+                {
+                    PerformanceCoinRewardLine line = bonusLines[slot];
+                    SetRowText(rowIndex, FormatBonusLabel(line));
+                    SetRowAmount(rowIndex, line.CoinAmount);
+                }
+
+                _summaryRows[rowIndex].Group.gameObject.SetActive(hasLine);
+            }
 
             for (int index = 0; index < _summaryRows.Length; index++)
             {
@@ -211,7 +273,10 @@ namespace Cutrium.Presentation.Feedback
         public void ConfigureCompletionSummaryForSetup(
             Image completionSummaryBackground,
             CanvasGroup summaryListGroup,
-            CompletionSummaryRow[] summaryRows)
+            CompletionSummaryRow[] summaryRows,
+            Image[] completionStars = null,
+            Sprite filledStarSprite = null,
+            Sprite emptyStarSprite = null)
         {
             _completionSummaryBackground = completionSummaryBackground
                 ?? throw new ArgumentNullException(
@@ -237,9 +302,40 @@ namespace Cutrium.Presentation.Feedback
                         "and a CanvasGroup.",
                         nameof(summaryRows));
                 }
+
+                // Row 0 is the plain "LEVEL N COMPLETE" header; every other
+                // slot is an itemized bonus row and needs its own coin icon
+                // and amount label.
+                if (index > 0 && !row.HasAmount)
+                {
+                    throw new ArgumentException(
+                        "Every completion summary bonus row needs an Icon " +
+                        "and an AmountText.",
+                        nameof(summaryRows));
+                }
             }
 
             _summaryRows = summaryRows;
+            bool hasAnyStarConfiguration = completionStars != null
+                || filledStarSprite != null
+                || emptyStarSprite != null;
+            if (hasAnyStarConfiguration
+                && (completionStars == null
+                    || completionStars.Length
+                        != LevelStarRatingCalculator.MaximumStars
+                    || completionStars.Any(star => star == null)
+                    || filledStarSprite == null
+                    || emptyStarSprite == null))
+            {
+                throw new ArgumentException(
+                    "The completion summary needs exactly three star " +
+                    "Images plus filled and empty star sprites.",
+                    nameof(completionStars));
+            }
+
+            _completionStars = completionStars;
+            _filledStarSprite = filledStarSprite;
+            _emptyStarSprite = emptyStarSprite;
             ConfigureCompletionSummaryBackground();
             _completionSummaryBackground.gameObject.SetActive(false);
             _summaryListGroup.gameObject.SetActive(false);
@@ -312,6 +408,7 @@ namespace Cutrium.Presentation.Feedback
         private void UpdateCompletionSummaryReveal()
         {
             float elapsed = Time.unscaledTime - _summaryStartTime;
+            UpdateStarReveal(elapsed);
             for (int index = 0; index < _summaryRows.Length; index++)
             {
                 float start = index * CompletionSummaryRowStaggerSeconds;
@@ -369,6 +466,48 @@ namespace Cutrium.Presentation.Feedback
             {
                 label.text = text;
             }
+        }
+
+        private void SetRowAmount(int index, int amount)
+        {
+            TMP_Text amountLabel = _summaryRows[index].AmountText;
+            if (amountLabel != null)
+            {
+                amountLabel.text = $"+{amount:N0}";
+            }
+
+            if (_summaryRows[index].Icon != null)
+            {
+                _summaryRows[index].Icon.gameObject.SetActive(true);
+            }
+        }
+
+        private static string FormatBonusLabel(PerformanceCoinRewardLine line)
+        {
+            string label;
+            switch (line.Kind)
+            {
+                case PerformanceCoinRewardKind.NearMiss:
+                    label = "NEAR MISS";
+                    break;
+                case PerformanceCoinRewardKind.PerfectCut:
+                    label = "PERFECT CUT";
+                    break;
+                case PerformanceCoinRewardKind.NoLifeLost:
+                    label = "NO LIFE LOST";
+                    break;
+                case PerformanceCoinRewardKind.NoPowerUpUsed:
+                    label = "NO POWER-UP USED";
+                    break;
+                default:
+                    label = string.Empty;
+                    break;
+            }
+
+            string countSuffix = line.OccurrenceCount > 1
+                ? $" x{line.OccurrenceCount}"
+                : string.Empty;
+            return $"{label}{countSuffix}";
         }
 
         private void Subscribe()
@@ -478,34 +617,63 @@ namespace Cutrium.Presentation.Feedback
 
         private void ConfigureCompletionSummaryBackground()
         {
-            if (_completionSummaryBackground == null
-                || _summaryListGroup == null)
+            if (_completionSummaryBackground == null)
             {
                 return;
             }
 
-            var listRect = (RectTransform)_summaryListGroup.transform;
-            RectTransform backgroundRect =
-                _completionSummaryBackground.rectTransform;
-            backgroundRect.anchorMin = listRect.anchorMin;
-            backgroundRect.anchorMax = listRect.anchorMax;
-            backgroundRect.pivot = listRect.pivot;
-            backgroundRect.anchoredPosition = listRect.anchoredPosition;
-            backgroundRect.offsetMin = listRect.offsetMin - new Vector2(
-                CompletionBackgroundHorizontalPadding,
-                CompletionBackgroundVerticalPadding
-                    + CompletionRewardRowReservedHeight);
-            backgroundRect.offsetMax = listRect.offsetMax + new Vector2(
-                CompletionBackgroundHorizontalPadding,
-                CompletionBackgroundVerticalPadding);
-            backgroundRect.localScale = Vector3.one;
-            backgroundRect.localRotation = Quaternion.identity;
-            backgroundRect.SetSiblingIndex(
-                Mathf.Max(0, listRect.GetSiblingIndex()));
-            _completionSummaryBackground.sprite = null;
-            _completionSummaryBackground.type = Image.Type.Simple;
-            _completionSummaryBackground.color = CompletionBackgroundColor;
             _completionSummaryBackground.raycastTarget = false;
+        }
+
+        private void ConfigureStars(int starRating)
+        {
+            if (_completionStars == null
+                || _completionStars.Length
+                    != LevelStarRatingCalculator.MaximumStars
+                || _filledStarSprite == null
+                || _emptyStarSprite == null)
+            {
+                return;
+            }
+
+            int clamped = Mathf.Clamp(
+                starRating,
+                0,
+                LevelStarRatingCalculator.MaximumStars);
+            for (int index = 0; index < _completionStars.Length; index++)
+            {
+                Image star = _completionStars[index];
+                star.sprite = index < clamped
+                    ? _filledStarSprite
+                    : _emptyStarSprite;
+                star.color = Color.white;
+                star.rectTransform.localScale = Vector3.zero;
+                star.gameObject.SetActive(true);
+            }
+        }
+
+        private void UpdateStarReveal(float elapsed)
+        {
+            if (_completionStars == null)
+            {
+                return;
+            }
+
+            for (int index = 0; index < _completionStars.Length; index++)
+            {
+                Image star = _completionStars[index];
+                if (star == null || !star.gameObject.activeSelf)
+                {
+                    continue;
+                }
+
+                float start = StarRevealStartSeconds
+                    + index * StarRevealStaggerSeconds;
+                float t = Mathf.Clamp01(
+                    (elapsed - start) / StarRevealSeconds);
+                star.rectTransform.localScale =
+                    Vector3.one * EaseOutBack(t);
+            }
         }
 
         private float CueDuration => _tuning != null

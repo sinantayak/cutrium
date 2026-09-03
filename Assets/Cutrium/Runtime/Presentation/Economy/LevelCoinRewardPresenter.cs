@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Cutrium.Gameplay.Economy;
 using Cutrium.Gameplay.Session;
 using Cutrium.Presentation.Feedback;
 using Cutrium.Unity.Services;
@@ -22,16 +23,20 @@ namespace Cutrium.Presentation.Economy
         [SerializeField] private CloudServicesBootstrap _cloudServices;
         [SerializeField] private FeedbackAudioPresenter _feedbackAudio;
         [SerializeField] private CoinBalanceHudPresenter _balanceHud;
+        [SerializeField] private PerformanceCoinRewardTuning
+            _performanceTuning;
         [SerializeField] private CanvasGroup _rewardCanvasGroup;
         [SerializeField] private Image _rewardIcon;
         [SerializeField] private TMP_Text _rewardText;
         [SerializeField] private RectTransform _flightRoot;
         [SerializeField] private Image _flightCoinTemplate;
         [SerializeField] [Min(1)] private int _flightCoinCount = 7;
-        [SerializeField] [Min(0f)] private float _revealDelaySeconds = 1.8f;
-        // Also doubles as the 0-to-amount count-up duration for the reward
-        // text (see Update()) -- long enough to read as a real count, not a
-        // flicker.
+        // How long each bonus's own increment takes to count up once its
+        // row appears (see BuildRevealSteps/Update()) -- the *first* step's
+        // reveal time (base amount, timed to the header settling) and every
+        // later step's (timed to each bonus row's own reveal) come from
+        // FeedbackPresenter's row-stagger schedule, not this field.
+        [SerializeField] [Min(0f)] private float _stepCountSeconds = 0.32f;
         [SerializeField] [Min(0f)] private float _rewardFadeSeconds = 0.7f;
         [SerializeField] [Min(0f)] private float _flightDelaySeconds = 0.9f;
         [SerializeField] [Min(0.01f)] private float _flightSeconds = 0.72f;
@@ -40,17 +45,28 @@ namespace Cutrium.Presentation.Economy
         [SerializeField] [Min(0f)] private float _settleSeconds = 0.18f;
 
         private readonly List<Image> _flightCoins = new List<Image>();
-        private readonly List<bool> _flightCoinArrivalSoundPlayed =
+        private readonly List<bool> _flightCoinLaunchSoundPlayed =
             new List<bool>();
         private float _presentationStartTime;
         private bool _balanceReleased;
         private Vector3 _targetBaseScale = Vector3.one;
         private bool _targetScaleCaptured;
+        // Reveal schedule for the running total: index 0 is the base
+        // amount (always earned by completing the level); index k>0 is the
+        // cumulative total through bonus line k-1. Times are absolute,
+        // relative to _presentationStartTime -- see BuildRevealSteps.
+        private int[] _cumulativeStepAmounts = Array.Empty<int>();
+        private float[] _stepRevealTimes = Array.Empty<float>();
+        private int _lastRevealedStepIndex;
+        private float _lastStepPulseTime = float.NegativeInfinity;
+        private float _countCompleteTime;
 
         public FirstPlayableController Controller => _controller;
         public CloudServicesBootstrap CloudServices => _cloudServices;
         public FeedbackAudioPresenter FeedbackAudio => _feedbackAudio;
         public CoinBalanceHudPresenter BalanceHud => _balanceHud;
+        public PerformanceCoinRewardTuning PerformanceTuning =>
+            _performanceTuning;
         public CanvasGroup RewardCanvasGroup => _rewardCanvasGroup;
         public Image RewardIcon => _rewardIcon;
         public TMP_Text RewardText => _rewardText;
@@ -60,7 +76,10 @@ namespace Cutrium.Presentation.Economy
         public bool IsPresenting { get; private set; }
         public bool IsPresentationComplete { get; private set; } = true;
         public int LastAwardedAmount { get; private set; }
+        public int LastBaseAmount { get; private set; }
         public LevelCoinRewardClaimStatus LastClaimStatus { get; private set; }
+        public PerformanceCoinRewardBreakdown LastBreakdown { get; private set; }
+            = PerformanceCoinRewardBreakdown.Empty;
 
         public void ConfigureForSetup(
             FirstPlayableController controller,
@@ -73,20 +92,14 @@ namespace Cutrium.Presentation.Economy
             RectTransform flightRoot,
             Image flightCoinTemplate,
             int flightCoinCount = 7,
-            float revealDelaySeconds = 1.8f)
+            PerformanceCoinRewardTuning performanceTuning = null)
         {
             if (flightCoinCount <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(flightCoinCount));
             }
 
-            if (revealDelaySeconds < 0f)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(revealDelaySeconds));
-            }
-
-            _revealDelaySeconds = revealDelaySeconds;
+            _performanceTuning = performanceTuning;
             _controller = controller
                 ?? throw new ArgumentNullException(nameof(controller));
             _cloudServices = cloudServices
@@ -121,14 +134,16 @@ namespace Cutrium.Presentation.Economy
                 || _controller.Session == null
                 || _controller.Session.LevelStatus
                     != CaptureLevelStatus.Completed
-                || _cloudServices == null
-                || _balanceHud == null)
+                || _cloudServices == null)
             {
                 return;
             }
 
-            int amount = _controller.CurrentLevelConfiguration
+            int baseAmount = _controller.CurrentLevelConfiguration
                 .CompletionCoinReward;
+            PerformanceCoinRewardBreakdown breakdown =
+                CalculatePerformanceBreakdown();
+            int amount = baseAmount + breakdown.TotalCoinAmount;
             if (amount <= 0)
             {
                 LastClaimStatus = LevelCoinRewardClaimStatus.InvalidReward;
@@ -136,7 +151,7 @@ namespace Cutrium.Presentation.Economy
             }
 
             int previousBalance = _cloudServices.Coins.Balance;
-            _balanceHud.HoldDisplayedBalance(previousBalance);
+            _balanceHud?.HoldDisplayedBalance(previousBalance);
             LevelCoinRewardClaimResult claim = _cloudServices.LevelRewards
                 .Claim(
                     _controller.CurrentLevelRunId,
@@ -145,14 +160,24 @@ namespace Cutrium.Presentation.Economy
             LastClaimStatus = claim.Status;
             if (!claim.Awarded)
             {
-                _balanceHud.ReleaseDisplayedBalance();
+                _balanceHud?.ReleaseDisplayedBalance();
                 return;
             }
 
             LastAwardedAmount = amount;
+            LastBaseAmount = baseAmount;
+            LastBreakdown = breakdown;
+            BuildRevealSteps(baseAmount, breakdown);
             if (_rewardText != null)
             {
-                _rewardText.text = $"+{amount:N0} COINS";
+                SetTotalText(amount);
+            }
+
+            if (_rewardCanvasGroup == null)
+            {
+                _feedbackAudio?.PlayCoinEarn();
+                CompletePresentation();
+                return;
             }
 
             EnsureFlightCoinPool();
@@ -163,16 +188,18 @@ namespace Cutrium.Presentation.Economy
             _flightCoinTemplate.gameObject.SetActive(false);
             _presentationStartTime = Time.unscaledTime;
             _balanceReleased = false;
-            for (int index = 0; index < _flightCoinArrivalSoundPlayed.Count;
+            for (int index = 0; index < _flightCoinLaunchSoundPlayed.Count;
                 index++)
             {
-                _flightCoinArrivalSoundPlayed[index] = false;
+                _flightCoinLaunchSoundPlayed[index] = false;
             }
 
             IsPresenting = true;
             IsPresentationComplete = false;
 
-            RectTransform target = _balanceHud.FlightTarget;
+            RectTransform target = _balanceHud != null
+                ? _balanceHud.FlightTarget
+                : null;
             if (target != null)
             {
                 _targetBaseScale = target.localScale;
@@ -190,6 +217,13 @@ namespace Cutrium.Presentation.Economy
         {
             IsPresenting = false;
             IsPresentationComplete = true;
+            // Cleared unconditionally (not only reset on success) so a
+            // completion that doesn't end up crediting anything this call
+            // -- an early return below, a rejected/duplicate claim -- never
+            // leaves FeedbackPresenter displaying a stale breakdown from
+            // whatever the last successful claim happened to be.
+            LastBaseAmount = 0;
+            LastBreakdown = PerformanceCoinRewardBreakdown.Empty;
             ReleaseBalanceAndTargetScale();
             HidePresentationVisuals();
         }
@@ -204,7 +238,8 @@ namespace Cutrium.Presentation.Economy
             float rawElapsed = Mathf.Max(
                 0f,
                 Time.unscaledTime - _presentationStartTime);
-            if (rawElapsed < _revealDelaySeconds)
+            if (_stepRevealTimes.Length == 0
+                || rawElapsed < _stepRevealTimes[0])
             {
                 // Held invisible until the clean-board stats above have had
                 // time to read -- the reward is the last line in that same
@@ -213,23 +248,23 @@ namespace Cutrium.Presentation.Economy
                 return;
             }
 
-            float elapsed = rawElapsed - _revealDelaySeconds;
+            float popElapsed = rawElapsed - _stepRevealTimes[0];
             float fadeDuration = Mathf.Max(MinimumDuration, _rewardFadeSeconds);
-            float fadeIn = Mathf.Clamp01(elapsed / fadeDuration);
+            float fadeIn = Mathf.Clamp01(popElapsed / fadeDuration);
+            float pulseScale = UpdateAccumulatingRewardText(rawElapsed);
             _rewardCanvasGroup.alpha = Mathf.SmoothStep(0f, 1f, fadeIn);
             _rewardCanvasGroup.transform.localScale =
-                Vector3.one * EaseOutBack(fadeIn);
-            if (_rewardText != null)
+                Vector3.one * EaseOutBack(fadeIn) * pulseScale;
+
+            if (rawElapsed < _countCompleteTime)
             {
-                // Ease-out cubic: monotonic (never overshoots past the
-                // final amount, unlike the icon's bouncy pop) so the
-                // counted number always lands cleanly on the true total.
-                float countEased = 1f - Mathf.Pow(1f - fadeIn, 3f);
-                int displayedAmount = Mathf.RoundToInt(
-                    Mathf.Lerp(0, LastAwardedAmount, countEased));
-                _rewardText.text = $"+{displayedAmount:N0} COINS";
+                // Still counting bonuses up into the running total -- the
+                // fly-to-HUD sequence below only starts once every earned
+                // line has landed in that total.
+                return;
             }
 
+            float elapsed = rawElapsed - _countCompleteTime;
             float lastArrival = _flightDelaySeconds
                 + Mathf.Max(0, _flightCoinCount - 1)
                     * _flightStaggerSeconds
@@ -241,14 +276,6 @@ namespace Cutrium.Presentation.Economy
             // land before the scene moves on.
             float holdEnd = lastArrival
                 + Mathf.Max(0f, _postArrivalHoldSeconds);
-            if (elapsed >= holdEnd)
-            {
-                float fadeOut = Mathf.InverseLerp(
-                    holdEnd + Mathf.Max(MinimumDuration, _settleSeconds),
-                    holdEnd,
-                    elapsed);
-                _rewardCanvasGroup.alpha *= fadeOut;
-            }
             for (int index = 0; index < _flightCoins.Count; index++)
             {
                 UpdateFlightCoin(index, elapsed);
@@ -282,7 +309,7 @@ namespace Cutrium.Presentation.Economy
                 coin.raycastTarget = false;
                 coin.gameObject.SetActive(false);
                 _flightCoins.Add(coin);
-                _flightCoinArrivalSoundPlayed.Add(false);
+                _flightCoinLaunchSoundPlayed.Add(false);
             }
 
             for (int index = 0; index < _flightCoins.Count; index++)
@@ -298,12 +325,13 @@ namespace Cutrium.Presentation.Economy
                 + index * _flightStaggerSeconds;
             float arrivalTime = startTime
                 + Mathf.Max(MinimumDuration, _flightSeconds);
-            // One "cha-ching" per coin as it lands in the HUD, staggered
-            // just like the flight itself -- reads as coins being counted
-            // into the balance rather than one cue for the whole batch.
-            if (!_flightCoinArrivalSoundPlayed[index] && elapsed >= arrivalTime)
+            // One "cha-ching" per coin the instant it launches (not when it
+            // lands) -- staggered just like the flight itself, so the
+            // counting sound stays in sync with each coin visibly taking
+            // off instead of trailing behind its whole flight.
+            if (!_flightCoinLaunchSoundPlayed[index] && elapsed >= startTime)
             {
-                _flightCoinArrivalSoundPlayed[index] = true;
+                _flightCoinLaunchSoundPlayed[index] = true;
                 _feedbackAudio?.PlayCoinEarn();
             }
 
@@ -360,6 +388,122 @@ namespace Cutrium.Presentation.Economy
             target.localScale = _targetBaseScale * scale;
         }
 
+        // Reads this run's already-tracked performance signals straight off
+        // the authoritative Metrics snapshot -- see
+        // PerformanceCoinRewardCalculator for why each signal is real
+        // rather than fabricated for display.
+        private PerformanceCoinRewardBreakdown CalculatePerformanceBreakdown()
+        {
+            CoreFunLevelMetrics metrics = _controller.Metrics.Current;
+            PowerConfiguration power =
+                _controller.CurrentLevelConfiguration.Power;
+            bool powerUpEligible = power.FreezePulseCharges > 0
+                || power.InstantBarrierCharges > 0
+                || power.GravityWellCharges > 0;
+            PerformanceCoinRewardConfiguration configuration =
+                _performanceTuning != null
+                    ? _performanceTuning.ToRuntimeConfiguration()
+                    : PerformanceCoinRewardConfiguration.Default;
+            return PerformanceCoinRewardCalculator.Calculate(
+                metrics.NearMissCount,
+                metrics.PerfectCutCount,
+                metrics.FailedBarriers == 0,
+                powerUpEligible,
+                metrics.AnyPowerUpUsed,
+                configuration);
+        }
+
+        // Builds the running-total reveal schedule: step 0 is the base
+        // amount, timed to when FeedbackPresenter's fixed "LEVEL COMPLETE"
+        // row (row 1) starts popping in; each later step k is the
+        // cumulative total through bonus line k-1, timed to when that
+        // line's own bonus row (row k+1) starts popping in -- so the
+        // number climbing at the bottom, and its "cha-ching" tick, land
+        // right as the matching row above it begins appearing, not after
+        // it has already finished fading in.
+        private void BuildRevealSteps(
+            int baseAmount,
+            PerformanceCoinRewardBreakdown breakdown)
+        {
+            IReadOnlyList<PerformanceCoinRewardLine> lines = breakdown.Lines;
+            _cumulativeStepAmounts = new int[lines.Count + 1];
+            _stepRevealTimes = new float[lines.Count + 1];
+            _cumulativeStepAmounts[0] = baseAmount;
+            _stepRevealTimes[0] = RowRevealStartTime(1);
+
+            int running = baseAmount;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                running += lines[i].CoinAmount;
+                _cumulativeStepAmounts[i + 1] = running;
+                _stepRevealTimes[i + 1] = RowRevealStartTime(i + 2);
+            }
+
+            _countCompleteTime = _stepRevealTimes[_stepRevealTimes.Length - 1]
+                + Mathf.Max(MinimumDuration, _stepCountSeconds);
+            _lastRevealedStepIndex = -1;
+            _lastStepPulseTime = float.NegativeInfinity;
+        }
+
+        private static float RowRevealStartTime(int rowIndex) =>
+            rowIndex * FeedbackPresenter.CompletionSummaryRowStaggerSeconds;
+
+        // Advances the reward text through BuildRevealSteps's schedule and
+        // returns a short punchy scale multiplier (layered on top of the
+        // icon's own pop-in scale) for the moment each new step lands.
+        private float UpdateAccumulatingRewardText(float rawElapsed)
+        {
+            if (_rewardText == null || _stepRevealTimes.Length == 0)
+            {
+                return 1f;
+            }
+
+            int displayedAmount = 0;
+            int targetStepIndex = -1;
+            for (int step = 0; step < _stepRevealTimes.Length; step++)
+            {
+                if (rawElapsed < _stepRevealTimes[step])
+                {
+                    break;
+                }
+
+                targetStepIndex = step;
+                float stepElapsed = rawElapsed - _stepRevealTimes[step];
+                float stepT = Mathf.Clamp01(
+                    stepElapsed / Mathf.Max(MinimumDuration, _stepCountSeconds));
+                // Ease-out cubic: monotonic (never overshoots past this
+                // step's own end value) so each increment lands cleanly.
+                float eased = 1f - Mathf.Pow(1f - stepT, 3f);
+                int stepStart = step == 0 ? 0 : _cumulativeStepAmounts[step - 1];
+                int stepEnd = _cumulativeStepAmounts[step];
+                displayedAmount = Mathf.RoundToInt(
+                    Mathf.Lerp(stepStart, stepEnd, eased));
+            }
+
+            if (targetStepIndex < 0)
+            {
+                return 1f;
+            }
+
+            SetTotalText(displayedAmount);
+            if (targetStepIndex > _lastRevealedStepIndex)
+            {
+                _lastRevealedStepIndex = targetStepIndex;
+                _lastStepPulseTime = rawElapsed;
+                _feedbackAudio?.PlayCoinEarn();
+            }
+
+            const float pulseDuration = 0.22f;
+            float pulseElapsed = rawElapsed - _lastStepPulseTime;
+            if (pulseElapsed < 0f || pulseElapsed >= pulseDuration)
+            {
+                return 1f;
+            }
+
+            float pulseT = pulseElapsed / pulseDuration;
+            return 1f + Mathf.Sin(pulseT * Mathf.PI) * 0.15f;
+        }
+
         // Standard "ease out back" curve: overshoots past 1 then settles,
         // giving the reward row a small pop instead of a flat linear fade.
         private static float EaseOutBack(float t)
@@ -380,12 +524,26 @@ namespace Cutrium.Presentation.Economy
             && _balanceHud.FlightTarget != null
             && _flightCoins.Count >= _flightCoinCount;
 
+        private void SetTotalText(int amount)
+        {
+            if (_rewardText == null)
+            {
+                return;
+            }
+
+            _rewardText.text =
+                "<color=#551A07>TOTAL:</color>\n" +
+                $"<color=#FFFFFF>{amount:N0} COINS</color>";
+        }
+
         private void CompletePresentation()
         {
             IsPresenting = false;
             IsPresentationComplete = true;
             ReleaseBalanceAndTargetScale();
-            HidePresentationVisuals();
+            // Keep the completed total visible until the summary owner
+            // dismisses the whole result card. LandmarkRevealPresenter
+            // calls CancelPresentation at that exact transition.
         }
 
         private void ReleaseBalanceAndTargetScale()

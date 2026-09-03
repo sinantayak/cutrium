@@ -3,6 +3,75 @@ using System.Collections.Generic;
 
 namespace Cutrium.Gameplay.Session
 {
+    /// Calculates the 0-3 star result for one completed level run from
+    /// deterministic metrics and level-authored content. Stars are
+    /// cumulative: earning the third star also requires the second-star
+    /// no-life-loss condition.
+    public static class LevelStarRatingCalculator
+    {
+        public const int MaximumStars = 3;
+
+        public static int Calculate(
+            bool levelCompleted,
+            int failedBarrierCount,
+            int acceptedCutCount,
+            int expectedReasonableCutUsage)
+        {
+            if (failedBarrierCount < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(failedBarrierCount));
+            }
+
+            if (acceptedCutCount < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(acceptedCutCount));
+            }
+
+            if (expectedReasonableCutUsage < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(expectedReasonableCutUsage));
+            }
+
+            if (!levelCompleted)
+            {
+                return 0;
+            }
+
+            int stars = 1;
+            if (failedBarrierCount > 0)
+            {
+                return stars;
+            }
+
+            stars = 2;
+            if (expectedReasonableCutUsage > 0
+                && acceptedCutCount <= expectedReasonableCutUsage)
+            {
+                stars = MaximumStars;
+            }
+
+            return stars;
+        }
+
+        public static int PreserveBest(int storedRating, int runRating)
+        {
+            ValidateRating(storedRating, nameof(storedRating));
+            ValidateRating(runRating, nameof(runRating));
+            return Math.Max(storedRating, runRating);
+        }
+
+        private static void ValidateRating(int rating, string parameterName)
+        {
+            if (rating < 0 || rating > MaximumStars)
+            {
+                throw new ArgumentOutOfRangeException(parameterName);
+            }
+        }
+    }
+
     public readonly struct CoreFunLevelMetrics
     {
         public CoreFunLevelMetrics(
@@ -16,7 +85,10 @@ namespace Cutrium.Gameplay.Session
             float largestSingleCapturedFraction,
             float finalCapturedFraction,
             int retryCount,
-            bool nextPressed)
+            bool nextPressed,
+            int nearMissCount,
+            int perfectCutCount,
+            bool anyPowerUpUsed)
         {
             LevelId = levelId;
             LevelNumber = levelNumber;
@@ -29,6 +101,9 @@ namespace Cutrium.Gameplay.Session
             FinalCapturedFraction = finalCapturedFraction;
             RetryCount = retryCount;
             NextPressed = nextPressed;
+            NearMissCount = nearMissCount;
+            PerfectCutCount = perfectCutCount;
+            AnyPowerUpUsed = anyPowerUpUsed;
         }
 
         public string LevelId { get; }
@@ -42,6 +117,19 @@ namespace Cutrium.Gameplay.Session
         public float FinalCapturedFraction { get; }
         public int RetryCount { get; }
         public bool NextPressed { get; }
+
+        /// Times a barrier locked close enough to a threat to count as a
+        /// near miss this run (see NearMissEvaluator). Reset every retry.
+        public int NearMissCount { get; }
+
+        /// Times a single barrier lock captured a "large" fraction of the
+        /// room in one cut this run (see LargeCaptureEvaluator). Reset
+        /// every retry.
+        public int PerfectCutCount { get; }
+
+        /// Whether Freeze Pulse, Instant Barrier, or Gravity Well was
+        /// activated at least once this run. Reset every retry.
+        public bool AnyPowerUpUsed { get; }
     }
 
     public sealed class CoreFunMetricsTracker
@@ -58,6 +146,9 @@ namespace Cutrium.Gameplay.Session
         private float _largestSingleCapturedFraction;
         private float _finalCapturedFraction;
         private int _retryCount;
+        private int _nearMissCount;
+        private int _perfectCutCount;
+        private bool _anyPowerUpUsed;
 
         public CoreFunLevelMetrics Current => Snapshot(false);
 
@@ -131,6 +222,21 @@ namespace Cutrium.Gameplay.Session
             SetFinalCapturedFraction(capturedFraction);
         }
 
+        public void RecordNearMiss()
+        {
+            _nearMissCount++;
+        }
+
+        public void RecordPerfectCut()
+        {
+            _perfectCutCount++;
+        }
+
+        public void RecordPowerUpUsed()
+        {
+            _anyPowerUpUsed = true;
+        }
+
         public void RetryCurrentLevel()
         {
             ResetRun(_retryCount + 1);
@@ -163,7 +269,10 @@ namespace Cutrium.Gameplay.Session
                 _largestSingleCapturedFraction,
                 _finalCapturedFraction,
                 _retryCount,
-                nextPressed);
+                nextPressed,
+                _nearMissCount,
+                _perfectCutCount,
+                _anyPowerUpUsed);
 
         private void ResetRun(int retryCount)
         {
@@ -175,6 +284,9 @@ namespace Cutrium.Gameplay.Session
             _largestSingleCapturedFraction = 0f;
             _finalCapturedFraction = 0f;
             _retryCount = retryCount;
+            _nearMissCount = 0;
+            _perfectCutCount = 0;
+            _anyPowerUpUsed = false;
         }
 
         private void SetFinalCapturedFraction(float capturedFraction)

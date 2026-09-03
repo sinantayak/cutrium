@@ -200,6 +200,12 @@ namespace Cutrium.Unity.Simulation
         // an earlier level never re-locks levels already reached.
         public int HighestUnlockedLevelIndex { get; private set; }
 
+        /// Stars earned by the run that just completed. Reset to zero when
+        /// a new run loads; the persisted best remains available separately.
+        public int LastCompletedStarRating { get; private set; }
+
+        public int CurrentLevelBestStarRating { get; private set; }
+
         public int CurrentLevelNumber =>
             CurrentLevelConfiguration.DisplayNumber;
 
@@ -721,6 +727,7 @@ namespace Cutrium.Unity.Simulation
             {
                 _completionReported = true;
                 Metrics.RecordCompletion(Session.CapturedFraction);
+                RecordCompletedStarRating();
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 CompletionLogCount++;
                 CoreFunLevelMetrics metrics = Metrics.Current;
@@ -831,6 +838,10 @@ namespace Cutrium.Unity.Simulation
         private void LoadCurrentLevel()
         {
             _currentLevelRunId = Guid.NewGuid().ToString("N");
+            LastCompletedStarRating = 0;
+            CurrentLevelBestStarRating = _progressStore
+                .LoadLocalBestLevelStarRating(
+                    CurrentLevelConfiguration.StableId);
             GravityWellTargeting = false;
             // A guided-training presenter's hold/gesture restrictions are
             // scoped to whichever level currently has an authored
@@ -866,17 +877,61 @@ namespace Cutrium.Unity.Simulation
             DispatchFeedbackEvents();
         }
 
-        private void DispatchFeedbackEvents()
+        private void RecordCompletedStarRating()
         {
-            if (Session == null || FeedbackEventRaised == null)
+            CoreFunLevelMetrics metrics = Metrics.Current;
+            LastCompletedStarRating = LevelStarRatingCalculator.Calculate(
+                levelCompleted: true,
+                metrics.FailedBarriers,
+                metrics.BarrierAttempts,
+                CurrentLevelConfiguration.ExpectedReasonableCutUsage);
+            if (LastCompletedStarRating <= CurrentLevelBestStarRating)
             {
                 return;
             }
 
+            CurrentLevelBestStarRating = LastCompletedStarRating;
+            _progressStore.SaveBestLevelStarRating(
+                CurrentLevelConfiguration.StableId,
+                CurrentLevelBestStarRating);
+        }
+
+        private void DispatchFeedbackEvents()
+        {
+            if (Session == null)
+            {
+                return;
+            }
+
+            // Performance-bonus tracking must happen regardless of whether
+            // any presenter has subscribed yet (Metrics is always valid
+            // here -- it is created together with Session in
+            // InitializeOnce), so this no longer short-circuits on a null
+            // FeedbackEventRaised the way just re-raising the event does.
             IReadOnlyList<FeedbackEvent> events = Session.FeedbackEvents;
             for (int index = 0; index < events.Count; index++)
             {
-                FeedbackEventRaised.Invoke(events[index]);
+                FeedbackEvent feedbackEvent = events[index];
+                RecordPerformanceMetric(feedbackEvent.Kind);
+                FeedbackEventRaised?.Invoke(feedbackEvent);
+            }
+        }
+
+        private void RecordPerformanceMetric(FeedbackEventKind kind)
+        {
+            switch (kind)
+            {
+                case FeedbackEventKind.NearMiss:
+                    Metrics.RecordNearMiss();
+                    break;
+                case FeedbackEventKind.LargeCapture:
+                    Metrics.RecordPerfectCut();
+                    break;
+                case FeedbackEventKind.PowerFreezePulseActivated:
+                case FeedbackEventKind.PowerInstantBarrierArmed:
+                case FeedbackEventKind.PowerGravityWellActivated:
+                    Metrics.RecordPowerUpUsed();
+                    break;
             }
         }
 

@@ -192,27 +192,7 @@ No Power-Up Used:+30 Coins
 - Show a clear reward breakdown on level completion.
 - Prevent duplicate bonus payouts for the same completion.
 
-### Assets
-```text
-Near Miss Bonus Icon:
-[ASSET PATH]
 
-Perfect Cut Bonus Icon:
-[ASSET PATH]
-
-No Life Lost Icon:
-[ASSET PATH]
-
-No Power-Up Icon:
-[ASSET PATH]
-
-Bonus SFX:
-[ASSET PATH]
-Usage: Play when a performance bonus row/badge is revealed or confirmed on the result screen. If several bonuses appear together, sequence/throttle the sound instead of stacking multiple identical instances at once.
-ElevenLabs SFX Prompt: `Short skill-bonus sparkle for a premium mobile puzzle game, crisp glassy shimmer with a soft upward twinkle and tiny rewarding pop, light and clever rather than explosive, no coins, no voice, no melody, around 0.4–0.55 seconds.`
-```
-
----
 
 # PHASE 2 — ECONOMY SINKS
 

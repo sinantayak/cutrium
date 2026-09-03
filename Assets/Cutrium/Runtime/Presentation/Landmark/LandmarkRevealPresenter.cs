@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cutrium.Gameplay.Board;
+using Cutrium.Gameplay.Economy;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
 using Cutrium.Presentation.Capture;
@@ -564,9 +565,23 @@ namespace Cutrium.Presentation.Landmark
             ResolveCompletionRewardDependencies();
             HideCompletionDecorations();
             UpdateCompletionSequence(false);
-            _completionFeedbackPresenter?.ShowCompletionSummary(
-                _completionSummarySeconds);
+            // Claim first so the reward presenter's LastBreakdown reflects
+            // this completion before the summary reads it -- the displayed
+            // bonus lines must always be exactly what was just credited,
+            // never a stale value from an earlier run.
             _levelCoinRewardPresenter?.BeginCompletionPresentation();
+            int baseAmount = _levelCoinRewardPresenter != null
+                ? _levelCoinRewardPresenter.LastBaseAmount
+                : 0;
+            IReadOnlyList<PerformanceCoinRewardLine> bonusLines =
+                _levelCoinRewardPresenter != null
+                    ? _levelCoinRewardPresenter.LastBreakdown.Lines
+                    : null;
+            _completionFeedbackPresenter?.ShowCompletionSummary(
+                _completionSummarySeconds,
+                baseAmount,
+                bonusLines,
+                _controller.LastCompletedStarRating);
         }
 
         private void UpdateCompletionPresentation(bool completed)

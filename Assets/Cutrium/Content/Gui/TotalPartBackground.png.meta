@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: ed8f924c0083e254a8ab096c32466f6e
+guid: 177f7f463f434654b93220d00bb4f782
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 8121445304733685897
-    second: GrayStar_0
+      213: -5766427210368364334
+    second: TotalPartBackground_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: GrayStar_0
+      name: TotalPartBackground_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 7
-        width: 512
-        height: 498
+        x: 60
+        y: 87
+        width: 404
+        height: 137
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 9885a63b97b25b070800000000000000
-      internalID: 8121445304733685897
+      spriteID: 2d0d8d6010989ffa0800000000000000
+      internalID: -5766427210368364334
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      GrayStar_0: 8121445304733685897
+      TotalPartBackground_0: -5766427210368364334
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

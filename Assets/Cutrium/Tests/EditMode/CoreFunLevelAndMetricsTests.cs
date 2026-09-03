@@ -413,6 +413,62 @@ namespace Cutrium.Gameplay.EditModeTests
         }
 
         [Test]
+        public void Metrics_AccumulatesPerformanceBonusSignals()
+        {
+            var tracker = new CoreFunMetricsTracker();
+            tracker.StartSequence(Defaults()[0]);
+
+            tracker.RecordNearMiss();
+            tracker.RecordNearMiss();
+            tracker.RecordPerfectCut();
+            tracker.RecordPowerUpUsed();
+
+            CoreFunLevelMetrics metrics = tracker.Current;
+            Assert.That(metrics.NearMissCount, Is.EqualTo(2));
+            Assert.That(metrics.PerfectCutCount, Is.EqualTo(1));
+            Assert.That(metrics.AnyPowerUpUsed, Is.True);
+        }
+
+        [Test]
+        public void Metrics_RetryResetsPerformanceBonusSignals()
+        {
+            var tracker = new CoreFunMetricsTracker();
+            tracker.StartSequence(Defaults()[0]);
+            tracker.RecordNearMiss();
+            tracker.RecordPerfectCut();
+            tracker.RecordPowerUpUsed();
+
+            tracker.RetryCurrentLevel();
+
+            CoreFunLevelMetrics metrics = tracker.Current;
+            Assert.That(metrics.NearMissCount, Is.Zero);
+            Assert.That(metrics.PerfectCutCount, Is.Zero);
+            Assert.That(metrics.AnyPowerUpUsed, Is.False);
+        }
+
+        [Test]
+        public void Metrics_AdvanceToNextLevelResetsPerformanceBonusSignals()
+        {
+            CoreFunLevelConfiguration[] levels = Defaults();
+            var tracker = new CoreFunMetricsTracker();
+            tracker.StartSequence(levels[0]);
+            tracker.RecordNearMiss();
+            tracker.RecordPowerUpUsed();
+
+            tracker.AdvanceTo(levels[1]);
+
+            CoreFunLevelMetrics metrics = tracker.Current;
+            Assert.That(metrics.NearMissCount, Is.Zero);
+            Assert.That(metrics.AnyPowerUpUsed, Is.False);
+            Assert.That(tracker.SequenceRuns[0].NearMissCount,
+                Is.EqualTo(1),
+                "The completed run's own snapshot must keep its earned " +
+                "bonus signals even after the next level resets the " +
+                "live tracker.");
+            Assert.That(tracker.SequenceRuns[0].AnyPowerUpUsed, Is.True);
+        }
+
+        [Test]
         public void Metrics_NextAndFinalRestartRecordCompleteSequence()
         {
             CoreFunLevelConfiguration[] levels = Defaults();

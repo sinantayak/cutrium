@@ -2229,3 +2229,42 @@ run ID and in-memory claim ledger intentionally do not survive an application
 restart because the project does not restore an already-completed transient
 overlay; if that product behavior changes, completion-claim IDs must become
 part of persisted session state rather than being inferred from level ID.
+
+## ADR-052 — Result Stars Use Completion, Life, and Authored Cut Economy
+
+**Status:** Accepted for implementation.
+
+**Context:**
+The completion reward flow now itemizes base and performance Coins before the
+landmark reveal, and the supplied result-card design adds three stars above
+that breakdown. Stars must reflect gameplay rather than Coin tuning, survive
+replays, and remain meaningful across levels with different intended cut
+counts.
+
+**Decision:**
+The engine-free star calculator follows the roadmap's cumulative conditions:
+one star for completion, two when no barrier failed, and three when the
+no-failure condition is met and accepted barrier attempts do not exceed the
+level-authored positive `ExpectedReasonableCutUsage`. A missing/zero threshold
+does not fabricate a third-star target. `FirstPlayableController` computes the
+run result at the same authoritative completion point as metrics, and
+`PlayerProgressStore` persists only per-stable-level improvements in the
+existing local-first `PlayerPrefs` plus best-effort Cloud Save pattern.
+
+The result panel shows the current run's rating, while the controller exposes
+the stored best separately for later Challenge/collection presentation. Stars
+do not grant Coins here; that remains the distinct roadmap Task 12 economy.
+
+The supplied `LevelCompletePanelBackground`, `LevelCompleteBackground`,
+`TotalPartBackground`, `YellowStar`, and `GrayStar` sprites are composed by the
+idempotent Editor setup pass. Existing row calculation, single Coin claim,
+total count-up, HUD flight, and landmark gating remain code-owned and do not
+depend on sprite bounds.
+
+**Consequences:**
+Replaying poorly cannot erase prior progress, economy retuning cannot change
+star results, and every visible star has a real gameplay input. Later levels
+whose expected cut usage is still zero can currently earn at most two stars
+until their content is authored. The result card has a fixed reference-canvas
+composition sized to remain inside supported portrait phone/tablet safe areas;
+it still requires the standard tall/common/4:3 visual review after setup.

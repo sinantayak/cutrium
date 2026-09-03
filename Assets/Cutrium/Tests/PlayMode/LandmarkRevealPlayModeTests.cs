@@ -1382,19 +1382,32 @@ namespace Cutrium.PlayModeTests
                     Is.True);
                 Assert.That(
                     rig.FeedbackPresenter.SummaryRows[0].Text.text,
-                    Does.Contain("<color=#F4C15D>LEVEL 1 COMPLETE</color>"));
+                    Does.Contain("LEVEL 1\nCOMPLETE"));
                 Assert.That(
-                    rig.FeedbackPresenter.SummaryRows[1].Text.text,
-                    Does.Contain("CAPTURED"));
+                    rig.Controller.LastCompletedStarRating,
+                    Is.EqualTo(2),
+                    "The test level has no failures but no configured cut " +
+                    "threshold, so it should earn two stars.");
                 Assert.That(
-                    rig.FeedbackPresenter.SummaryRows[2].Text.text,
-                    Does.Contain("CUT"));
-                Assert.That(
-                    rig.FeedbackPresenter.SummaryRows[3].Text.text,
-                    Does.Contain("TIME"));
-                Assert.That(
-                    rig.FeedbackPresenter.SummaryRows[4].Text.text,
-                    Does.Contain("BROKEN"));
+                    rig.FeedbackPresenter.SummaryRows[0].Group.gameObject
+                        .activeSelf,
+                    Is.True);
+                // This rig has no LevelCoinRewardPresenter wired (see
+                // ConfigureCompletionRewardFlowForSetup below), so no
+                // performance-bonus breakdown exists to show -- every
+                // optional bonus row slot must collapse rather than show
+                // stale or placeholder text.
+                for (int index = 1; index < FeedbackPresenter
+                    .CompletionSummaryRowCount; index++)
+                {
+                    Assert.That(
+                        rig.FeedbackPresenter.SummaryRows[index].Group
+                            .gameObject.activeSelf,
+                        Is.False,
+                        $"Bonus row {index} should be hidden when no " +
+                        "performance bonus was earned.");
+                }
+
                 // The ephemeral single-line cue system (LOCKED, BIG CUT,
                 // ...) is never touched by the completion summary -- it
                 // stays idle throughout.
@@ -1411,16 +1424,6 @@ namespace Cutrium.PlayModeTests
                     rig.FeedbackPresenter.CompletionSummaryBackground
                         .raycastTarget,
                     Is.False);
-                var summaryListRect = (RectTransform)
-                    rig.FeedbackPresenter.SummaryListGroup.transform;
-                Assert.That(
-                    rig.FeedbackPresenter.CompletionSummaryBackground
-                        .rectTransform.rect.width,
-                    Is.GreaterThan(summaryListRect.rect.width));
-                Assert.That(
-                    rig.FeedbackPresenter.CompletionSummaryBackground
-                        .rectTransform.rect.height,
-                    Is.GreaterThan(summaryListRect.rect.height));
                 Assert.That(rig.Presenter.StatsCanvasGroup.alpha, Is.Zero);
                 Assert.That(
                     rig.Root.Find("CompletionArtworkTransition"),
@@ -1742,10 +1745,35 @@ namespace Cutrium.PlayModeTests
                     rowObject.transform.SetParent(
                         summaryListObject.transform,
                         false);
+                    if (index == 0)
+                    {
+                        summaryRows[index] = new FeedbackPresenter
+                            .CompletionSummaryRow(
+                                rowObject.GetComponent<TextMeshProUGUI>(),
+                                rowObject.GetComponent<CanvasGroup>());
+                        continue;
+                    }
+
+                    var iconObject = new GameObject(
+                        "SummaryRow" + index + "Icon",
+                        typeof(RectTransform),
+                        typeof(CanvasRenderer),
+                        typeof(Image));
+                    iconObject.transform.SetParent(rowObject.transform, false);
+                    var amountObject = new GameObject(
+                        "SummaryRow" + index + "Amount",
+                        typeof(RectTransform),
+                        typeof(CanvasRenderer),
+                        typeof(TextMeshProUGUI));
+                    amountObject.transform.SetParent(
+                        rowObject.transform,
+                        false);
                     summaryRows[index] = new FeedbackPresenter
                         .CompletionSummaryRow(
                             rowObject.GetComponent<TextMeshProUGUI>(),
-                            rowObject.GetComponent<CanvasGroup>());
+                            rowObject.GetComponent<CanvasGroup>(),
+                            iconObject.GetComponent<Image>(),
+                            amountObject.GetComponent<TextMeshProUGUI>());
                 }
 
                 FeedbackPresenter.ConfigureCompletionSummaryForSetup(

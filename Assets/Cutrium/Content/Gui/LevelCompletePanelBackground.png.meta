@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: ed8f924c0083e254a8ab096c32466f6e
+guid: 3ef1570eed12b854498ee0269f02371f
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 8121445304733685897
-    second: GrayStar_0
+      213: 4420337064366965462
+    second: LevelCompletePanelBackground_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: GrayStar_0
+      name: LevelCompletePanelBackground_0
       rect:
         serializedVersion: 2
-        x: 0
+        x: 4
         y: 7
-        width: 512
-        height: 498
+        width: 570
+        height: 776
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 9885a63b97b25b070800000000000000
-      internalID: 8121445304733685897
+      spriteID: 6d2061dd321385d30800000000000000
+      internalID: 4420337064366965462
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      GrayStar_0: 8121445304733685897
+      LevelCompletePanelBackground_0: 4420337064366965462
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Cutrium.Gameplay.Session;
 using Unity.Services.Authentication;
 using Unity.Services.CloudSave;
 using Unity.Services.CloudSave.Models;
@@ -37,6 +38,9 @@ namespace Cutrium.Unity.Services
         private const string CoinBalanceCloudKey = "CoinBalance";
         private const string CoinBalancePrefsKey =
             "Cutrium.Economy.CoinBalance";
+        private const string LevelStarsCloudKeyPrefix = "LevelStars_";
+        private const string LevelStarsPrefsKeyPrefix =
+            "Cutrium.Progress.LevelStars.";
 
         // Coin mutations may happen several times in one frame. Serializing
         // their Cloud Save writes prevents an older request from completing
@@ -111,6 +115,52 @@ namespace Cutrium.Unity.Services
             PlayerPrefs.SetInt(HighestUnlockedLevelIndexPrefsKey, levelIndex);
             PlayerPrefs.Save();
             PushToCloud(HighestUnlockedLevelIndexCloudKey, levelIndex);
+        }
+
+        /// Returns the best 0-3 star result stored for a stable level ID.
+        /// Legacy saves have no key and therefore safely read as zero.
+        public int LoadLocalBestLevelStarRating(string stableLevelId)
+        {
+            ValidateStableLevelId(stableLevelId);
+            if (TestModeDetector.IsRunningTests)
+            {
+                return 0;
+            }
+
+            int stored = PlayerPrefs.GetInt(
+                LevelStarsPrefsKeyPrefix + stableLevelId,
+                0);
+            return Mathf.Clamp(stored, 0, 3);
+        }
+
+        /// Persists only an improvement, so replaying a level can never
+        /// lower its best result. Returns true only when storage changed.
+        public bool SaveBestLevelStarRating(
+            string stableLevelId,
+            int starRating)
+        {
+            ValidateStableLevelId(stableLevelId);
+            ValidateStarRating(starRating);
+            if (TestModeDetector.IsRunningTests)
+            {
+                return false;
+            }
+
+            int current = LoadLocalBestLevelStarRating(stableLevelId);
+            int best = LevelStarRatingCalculator.PreserveBest(
+                current,
+                starRating);
+            if (best == current)
+            {
+                return false;
+            }
+
+            PlayerPrefs.SetInt(
+                LevelStarsPrefsKeyPrefix + stableLevelId,
+                best);
+            PlayerPrefs.Save();
+            PushToCloud(LevelStarsCloudKeyPrefix + stableLevelId, best);
+            return true;
         }
 
         /// Reads the local Coin mirror without creating a key for a legacy
@@ -399,6 +449,26 @@ namespace Cutrium.Unity.Services
                 throw new ArgumentOutOfRangeException(
                     nameof(balance),
                     "A Coin balance cannot be negative.");
+            }
+        }
+
+        private static void ValidateStableLevelId(string stableLevelId)
+        {
+            if (string.IsNullOrWhiteSpace(stableLevelId))
+            {
+                throw new ArgumentException(
+                    "A star rating requires a stable non-empty level ID.",
+                    nameof(stableLevelId));
+            }
+        }
+
+        private static void ValidateStarRating(int starRating)
+        {
+            if (starRating < 0 || starRating > 3)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(starRating),
+                    "A level star rating must be in the range 0 through 3.");
             }
         }
     }
