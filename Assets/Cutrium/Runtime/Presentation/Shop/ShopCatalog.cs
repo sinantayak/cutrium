@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Cutrium.Gameplay.Economy;
 using UnityEngine;
 
 namespace Cutrium.Presentation.Shop
@@ -84,6 +85,58 @@ namespace Cutrium.Presentation.Shop
         public bool IsRewardedAd => _isRewardedAd;
     }
 
+    [Serializable]
+    public sealed class ShopPowerUpOffer
+    {
+        [SerializeField] private PowerUpKind _kind;
+        [SerializeField] private string _displayName;
+        [SerializeField] private Sprite _icon;
+        [SerializeField] [Min(1)] private int _quantity = 1;
+        [SerializeField] [Min(1)] private int _coinPrice;
+        [SerializeField] private Color _accentColor = Color.white;
+
+        public ShopPowerUpOffer(
+            PowerUpKind kind,
+            string displayName,
+            Sprite icon,
+            int quantity,
+            int coinPrice,
+            Color accentColor)
+        {
+            PowerUpInventory.ValidateKind(kind);
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                throw new ArgumentException(
+                    "A Shop power-up offer needs a display name.",
+                    nameof(displayName));
+            }
+
+            if (quantity <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(quantity));
+            }
+
+            if (coinPrice <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(coinPrice));
+            }
+
+            _kind = kind;
+            _displayName = displayName.Trim();
+            _icon = icon;
+            _quantity = quantity;
+            _coinPrice = coinPrice;
+            _accentColor = accentColor;
+        }
+
+        public PowerUpKind Kind => _kind;
+        public string DisplayName => _displayName;
+        public Sprite Icon => _icon;
+        public int Quantity => _quantity;
+        public int CoinPrice => _coinPrice;
+        public Color AccentColor => _accentColor;
+    }
+
     /// UI-facing shop content (prices are placeholders until real store
     /// integration lands): the Remove Ads offer, coin/power bundles, and
     /// gold packs. Rebuilding the Shop page via ShopContentSceneSetup
@@ -99,19 +152,35 @@ namespace Cutrium.Presentation.Shop
         private ShopBundleOffer[] _bundles = Array.Empty<ShopBundleOffer>();
         [SerializeField]
         private ShopGoldOffer[] _goldOffers = Array.Empty<ShopGoldOffer>();
+        [SerializeField]
+        private ShopPowerUpOffer[] _powerUpOffers =
+            Array.Empty<ShopPowerUpOffer>();
 
         public string RemoveAdsPriceLabel => _removeAdsPriceLabel;
         public IReadOnlyList<ShopBundleOffer> Bundles => _bundles;
         public IReadOnlyList<ShopGoldOffer> GoldOffers => _goldOffers;
+        public IReadOnlyList<ShopPowerUpOffer> PowerUpOffers =>
+            _powerUpOffers;
 
         public void ConfigureForSetup(
             string removeAdsPriceLabel,
             ShopBundleOffer[] bundles,
-            ShopGoldOffer[] goldOffers)
+            ShopGoldOffer[] goldOffers,
+            ShopPowerUpOffer[] powerUpOffers)
         {
             _removeAdsPriceLabel = removeAdsPriceLabel;
             _bundles = bundles ?? Array.Empty<ShopBundleOffer>();
             _goldOffers = goldOffers ?? Array.Empty<ShopGoldOffer>();
+            _powerUpOffers = powerUpOffers
+                ?? Array.Empty<ShopPowerUpOffer>();
+        }
+
+
+        public void ConfigurePowerUpsForSetup(
+            ShopPowerUpOffer[] powerUpOffers)
+        {
+            _powerUpOffers = powerUpOffers
+                ?? Array.Empty<ShopPowerUpOffer>();
         }
     }
 }

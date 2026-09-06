@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cutrium.Presentation.Economy;
+using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.Frontend;
 using Cutrium.Presentation.HUD;
 using Cutrium.Unity.Layout;
@@ -92,11 +93,16 @@ namespace Cutrium.Editor.Setup
                 .GetComponentInChildren<FirstPlayableController>(true);
             PreLevelIntroPresenter preLevelIntro = root
                 .GetComponentInChildren<PreLevelIntroPresenter>(true);
-            if (controller == null || preLevelIntro == null)
+            CloudServicesBootstrap cloudServices = root
+                .GetComponentInChildren<CloudServicesBootstrap>(true);
+            FeedbackAudioPresenter feedbackAudio = root
+                .GetComponentInChildren<FeedbackAudioPresenter>(true);
+            if (controller == null || preLevelIntro == null
+                || cloudServices == null || feedbackAudio == null)
             {
                 throw new InvalidOperationException(
-                    "Frontend setup requires FirstPlayableController and " +
-                    "PreLevelIntroPresenter in VerticalSliceRoot.");
+                    "Frontend setup requires its controller, intro, Cloud "
+                    + "services, and feedback audio dependencies.");
             }
 
             int levelCount = controller.LevelDefinitions.Count;
@@ -133,6 +139,11 @@ namespace Cutrium.Editor.Setup
             rootBackground.raycastTarget = true;
             CanvasGroup rootGroup = GetOrAddComponent<CanvasGroup>(
                 frontEndRoot.gameObject);
+            // Created early (not yet configured) so Home's power-up
+            // inventory stack can wire its "jump to Shop" buttons to it
+            // before ConfigureForSetup runs near the end of this method.
+            FrontEndPresenter presenter = GetOrAddComponent<FrontEndPresenter>(
+                frontEndRoot.gameObject);
 
             Image backgroundArtwork = ConfigureBackgroundArtwork(
                 frontEndRoot,
@@ -156,12 +167,21 @@ namespace Cutrium.Editor.Setup
                 frontEndRoot,
                 frontEndSafeArea);
 
-            ConfigureShopPage(shopPage, font);
+            ConfigureShopPage(
+                shopPage,
+                font,
+                cloudServices,
+                controller,
+                feedbackAudio);
             Button homePlayButton = ConfigureHomePage(
                 homePage,
                 font,
                 playButtonSprite,
-                homeLogo);
+                homeLogo,
+                cloudServices,
+                presenter);
+            PowerUpInventoryHudPresenter inventoryHud = homePage
+                .GetComponentInChildren<PowerUpInventoryHudPresenter>(true);
             Image homeLogoImage = RequireChild(
                     homePage.transform,
                     "CutriumLogo")
@@ -190,15 +210,6 @@ namespace Cutrium.Editor.Setup
             // balance reads identically no matter which tab is active --
             // same reasoning as the Settings gear added in
             // SettingsPanelSceneSetup.ConfigureSettingsEntryPoints.
-            CloudServicesBootstrap cloudServices = root
-                .GetComponentInChildren<CloudServicesBootstrap>(true);
-            if (cloudServices == null)
-            {
-                throw new InvalidOperationException(
-                    "Frontend setup requires CloudServicesBootstrap for " +
-                    "the Coin balance display.");
-            }
-
             Undo.RecordObject(controller, "Wire Star Progress Cloud Save");
             controller.ConfigureProgressCloudForSetup(cloudServices);
 
@@ -212,8 +223,6 @@ namespace Cutrium.Editor.Setup
                     SharedHudCoinAnchoredPosition,
                     BrownLabelText);
 
-            FrontEndPresenter presenter = GetOrAddComponent<FrontEndPresenter>(
-                frontEndRoot.gameObject);
             presenter.ConfigureForSetup(
                 controller,
                 preLevelIntro,
@@ -253,7 +262,9 @@ namespace Cutrium.Editor.Setup
                 filledStarSprite,
                 emptyStarSprite,
                 homeBackground,
-                homeLogo);
+                homeLogo,
+                inventoryHud,
+                cloudServices);
             if (coinBalance.CloudServices != cloudServices
                 || coinBalance.transform.parent != frontEndSafeArea)
             {
@@ -262,6 +273,7 @@ namespace Cutrium.Editor.Setup
             }
 
             EditorUtility.SetDirty(coinBalance);
+            EditorUtility.SetDirty(inventoryHud);
             EditorUtility.SetDirty(controller);
             EditorUtility.SetDirty(presenter);
             EditorUtility.SetDirty(rootGroup);
@@ -324,19 +336,29 @@ namespace Cutrium.Editor.Setup
 
         private static void ConfigureShopPage(
             CanvasGroup page,
-            TMP_FontAsset font)
+            TMP_FontAsset font,
+            CloudServicesBootstrap cloudServices,
+            FirstPlayableController controller,
+            FeedbackAudioPresenter feedbackAudio)
         {
             DestroyUiChildIfPresent(page.transform, "ShopTitle");
             DestroyUiChildIfPresent(page.transform, "ShopSubtitle");
             DestroyUiChildIfPresent(page.transform, "FutureShopContent");
-            ShopContentSceneSetup.Configure((RectTransform)page.transform, font);
+            ShopContentSceneSetup.Configure(
+                (RectTransform)page.transform,
+                font,
+                cloudServices,
+                controller,
+                feedbackAudio);
         }
 
         private static Button ConfigureHomePage(
             CanvasGroup page,
             TMP_FontAsset font,
             Sprite playButtonSprite,
-            Sprite homeLogo)
+            Sprite homeLogo,
+            CloudServicesBootstrap cloudServices,
+            FrontEndPresenter presenter)
         {
             RectTransform futureContent = GetOrCreateUiChild(
                 page.transform,
@@ -369,6 +391,12 @@ namespace Cutrium.Editor.Setup
             logo.preserveAspect = true;
             logo.raycastTarget = false;
 
+            ConfigureHomePowerInventoryForSetup(
+                (RectTransform)page.transform,
+                font,
+                cloudServices,
+                presenter);
+
             return ConfigurePlayButton(
                 page.transform,
                 "HomePlayButton",
@@ -377,6 +405,122 @@ namespace Cutrium.Editor.Setup
                 playButtonSprite,
                 new Vector2(0.5f, 0.31f),
                 new Vector2(420f, 172f));
+        }
+
+        internal static PowerUpInventoryHudPresenter
+            ConfigureHomePowerInventoryForSetup(
+                RectTransform homePage,
+                TMP_FontAsset font,
+                CloudServicesBootstrap cloudServices,
+                FrontEndPresenter frontEndPresenter)
+        {
+            if (homePage == null || font == null || cloudServices == null
+                || frontEndPresenter == null)
+            {
+                throw new ArgumentNullException(
+                    "Home inventory setup dependencies cannot be null.");
+            }
+
+            Sprite[] icons =
+            {
+                EnsureUiSprite(ShopContentSceneSetup.FreezeSkillPath),
+                EnsureUiSprite(ShopContentSceneSetup.InstantBarrierSkillPath),
+                EnsureUiSprite(ShopContentSceneSetup.GravityWellSkillPath),
+            };
+            Cutrium.Gameplay.Economy.PowerUpKind[] kinds =
+            {
+                Cutrium.Gameplay.Economy.PowerUpKind.FreezePulse,
+                Cutrium.Gameplay.Economy.PowerUpKind.InstantBarrier,
+                Cutrium.Gameplay.Economy.PowerUpKind.GravityWell,
+            };
+
+            RectTransform panel = GetOrCreateUiChild(
+                homePage,
+                "PowerInventoryPanel");
+            panel.anchorMin = Vector2.one;
+            panel.anchorMax = Vector2.one;
+            panel.pivot = Vector2.one;
+            panel.anchoredPosition = new Vector2(-24f, -24f);
+            panel.sizeDelta = new Vector2(132f, 388f);
+            panel.SetAsLastSibling();
+            ClearGeneratedChildren(panel);
+            VerticalLayoutGroup layout =
+                GetOrAddComponent<VerticalLayoutGroup>(panel.gameObject);
+            layout.padding = new RectOffset(4, 4, 2, 2);
+            layout.spacing = 8f;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+
+            var entries = new PowerUpInventoryHudPresenter.Entry[3];
+            for (int index = 0; index < kinds.Length; index++)
+            {
+                RectTransform item = CreateUiChild(
+                    panel,
+                    kinds[index].ToString());
+                LayoutElement itemLayout = GetOrAddComponent<LayoutElement>(
+                    item.gameObject);
+                itemLayout.preferredHeight = 120f;
+                itemLayout.minHeight = 104f;
+                itemLayout.flexibleWidth = 1f;
+                Button itemButton = MakeHomeInventoryItemClickable(item);
+
+                RectTransform iconRect = GetOrCreateUiChild(item, "Icon");
+                Stretch(iconRect);
+                Image icon = GetOrAddComponent<Image>(iconRect.gameObject);
+                icon.sprite = icons[index];
+                icon.preserveAspect = true;
+                icon.raycastTarget = false;
+
+                RectTransform quantityRect = GetOrCreateUiChild(
+                    item,
+                    "Quantity");
+                Anchor(
+                    quantityRect,
+                    new Vector2(0.76f, 0.21f),
+                    new Vector2(60f, 54f));
+                TMP_Text quantity = ConfigureText(
+                    quantityRect,
+                    "x0",
+                    font,
+                    30f,
+                    Color.white,
+                    TextAlignmentOptions.Center);
+                quantity.fontSizeMin = 20f;
+                entries[index] = new PowerUpInventoryHudPresenter.Entry(
+                    kinds[index],
+                    quantity,
+                    itemButton);
+            }
+
+            PowerUpInventoryHudPresenter hudPresenter =
+                GetOrAddComponent<PowerUpInventoryHudPresenter>(
+                    panel.gameObject);
+            hudPresenter.ConfigureForSetup(
+                cloudServices,
+                frontEndPresenter,
+                entries);
+            EditorUtility.SetDirty(hudPresenter);
+            return hudPresenter;
+        }
+
+        // Makes each Home skill icon tappable so it can jump straight to the
+        // Shop; kept invisible (no background art of its own) since the icon
+        // and quantity label already carry the entry's whole visual.
+        private static Button MakeHomeInventoryItemClickable(
+            RectTransform item)
+        {
+            Image hitArea = GetOrAddComponent<Image>(item.gameObject);
+            hitArea.sprite = null;
+            hitArea.color = Color.clear;
+            hitArea.raycastTarget = true;
+            Button button = GetOrAddComponent<Button>(item.gameObject);
+            button.targetGraphic = hitArea;
+            button.transition = Selectable.Transition.None;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            return button;
         }
 
         private static ChallengeSetupResult ConfigureChallengePage(
@@ -1020,7 +1164,9 @@ namespace Cutrium.Editor.Setup
             Sprite filledStarSprite,
             Sprite emptyStarSprite,
             Sprite homeBackground,
-            Sprite homeLogo)
+            Sprite homeLogo,
+            PowerUpInventoryHudPresenter inventoryHud,
+            CloudServicesBootstrap cloudServices)
         {
             if (root.parent == null
                 || root.GetSiblingIndex() != root.parent.childCount - 1
@@ -1046,7 +1192,12 @@ namespace Cutrium.Editor.Setup
                     .GetComponent<FrontEndPulseAnimator>() == null
                 || presenter.ChallengeScrollRect == null
                 || presenter.LevelNodes.Count != levelCount
-                || presenter.PathConnectors.Count != levelCount - 1)
+                || presenter.PathConnectors.Count != levelCount - 1
+                || inventoryHud == null
+                || inventoryHud.CloudServices != cloudServices
+                || inventoryHud.FrontEndPresenter != presenter
+                || inventoryHud.Entries.Count != 3
+                || inventoryHud.transform.parent != presenter.HomePage.transform)
             {
                 throw new InvalidOperationException(
                     "Frontend hierarchy or serialized references are incomplete.");

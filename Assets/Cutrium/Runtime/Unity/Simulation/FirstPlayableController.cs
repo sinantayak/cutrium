@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Cutrium.Gameplay.Barriers;
+using Cutrium.Gameplay.Economy;
 using Cutrium.Gameplay.Feedback;
 using Cutrium.Gameplay.Geometry;
 using Cutrium.Gameplay.Session;
@@ -101,6 +102,9 @@ namespace Cutrium.Unity.Simulation
             new PlayerProgressStore();
         private bool _progressCloudSubscribed;
         private Task _starCloudSyncTask;
+        private int _runFreezeInventoryRemaining;
+        private int _runInstantInventoryRemaining;
+        private int _runGravityInventoryRemaining;
 
         public bool GravityWellTargeting { get; private set; }
 
@@ -483,10 +487,15 @@ namespace Cutrium.Unity.Simulation
         public BarrierStartResult SubmitBarrierIntent(BarrierIntent intent)
         {
             InitializeOnce();
+            bool consumesArmedInstantBarrier = Session.InstantBarrierArmed;
             LastBarrierStartResult = Session.TryStartBarrier(intent);
             if (LastBarrierStartResult.Accepted)
             {
                 Metrics.RecordBarrierAttempt();
+                if (consumesArmedInstantBarrier)
+                {
+                    ConsumeRunInventory(PowerUpKind.InstantBarrier);
+                }
             }
 
             DispatchFeedbackEvents();
@@ -504,6 +513,11 @@ namespace Cutrium.Unity.Simulation
         {
             InitializeOnce();
             bool activated = Session.TryActivateFreezePulse();
+            if (activated)
+            {
+                ConsumeRunInventory(PowerUpKind.FreezePulse);
+            }
+
             DispatchFeedbackEvents();
             return activated;
         }
@@ -552,6 +566,7 @@ namespace Cutrium.Unity.Simulation
             bool activated = Session.TryActivateGravityWell(position);
             if (activated)
             {
+                ConsumeRunInventory(PowerUpKind.GravityWell);
                 CancelGravityWellTargeting();
             }
 
@@ -922,6 +937,9 @@ namespace Cutrium.Unity.Simulation
             _barrierGesture?.SetRequiredOrigin(null);
             _barrierGesture?.SetPointTargeting(false);
             _barrierGesture?.SetInputSuppressed(false);
+            PowerConfiguration effectivePower =
+                BuildEffectivePowerConfiguration(
+                    CurrentLevelConfiguration.Power);
             Session = new ThreatMotionSession(
                 CurrentLevelConfiguration.ThreatMotions,
                 CurrentLevelConfiguration.Barrier,
@@ -929,7 +947,7 @@ namespace Cutrium.Unity.Simulation
                 _feedbackTuning != null
                     ? _feedbackTuning.ToRuntimeConfiguration()
                     : FeedbackTuningConfiguration.Default,
-                CurrentLevelConfiguration.Power,
+                effectivePower,
                 Tolerance);
             _accumulator = new FixedStepAccumulator(
                 SimulationStep,
@@ -944,6 +962,78 @@ namespace Cutrium.Unity.Simulation
             LevelLoadCount++;
             DispatchFeedbackEvents();
         }
+
+        private PowerConfiguration BuildEffectivePowerConfiguration(
+            PowerConfiguration authoredPower)
+        {
+            PowerUpInventorySnapshot inventory = _progressCloudServices != null
+                ? _progressCloudServices.PowerUps.Snapshot
+                : default;
+            _runFreezeInventoryRemaining = inventory.FreezePulse;
+            _runInstantInventoryRemaining = inventory.InstantBarrier;
+            _runGravityInventoryRemaining = inventory.GravityWell;
+            return new PowerConfiguration(
+                AddPowerCharges(
+                    authoredPower.FreezePulseCharges,
+                    inventory.FreezePulse),
+                authoredPower.FreezePulseDurationSeconds,
+                authoredPower.FreezePulseSpeedMultiplier,
+                AddPowerCharges(
+                    authoredPower.InstantBarrierCharges,
+                    inventory.InstantBarrier),
+                authoredPower.InstantBarrierGrowthSpeed,
+                AddPowerCharges(
+                    authoredPower.GravityWellCharges,
+                    inventory.GravityWell),
+                authoredPower.GravityWellDurationSeconds,
+                authoredPower.GravityWellRadius,
+                authoredPower.GravityWellTurnDegreesPerSecond);
+        }
+
+        private void ConsumeRunInventory(PowerUpKind kind)
+        {
+            ref int allocatedQuantity = ref GetRunInventoryQuantity(kind);
+            if (allocatedQuantity <= 0 || _progressCloudServices == null)
+            {
+                return;
+            }
+
+            PowerUpInventoryTransactionResult result =
+                _progressCloudServices.PowerUps.TryConsume(
+                    kind,
+                    1,
+                    "gameplay_consumption",
+                    CurrentLevelConfiguration.StableId);
+            if (result.Succeeded)
+            {
+                allocatedQuantity--;
+            }
+            else
+            {
+                // Inventory may have changed outside this loaded run. The
+                // current session already consumed its effective charge, so
+                // stop treating later authored charges as inventory-backed.
+                allocatedQuantity = 0;
+            }
+        }
+
+        private ref int GetRunInventoryQuantity(PowerUpKind kind)
+        {
+            switch (kind)
+            {
+                case PowerUpKind.FreezePulse:
+                    return ref _runFreezeInventoryRemaining;
+                case PowerUpKind.InstantBarrier:
+                    return ref _runInstantInventoryRemaining;
+                case PowerUpKind.GravityWell:
+                    return ref _runGravityInventoryRemaining;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(kind));
+            }
+        }
+
+        private static int AddPowerCharges(int authored, int inventory) =>
+            (int)Math.Min(int.MaxValue, (long)authored + inventory);
 
         private void RecordCompletedStarRating()
         {

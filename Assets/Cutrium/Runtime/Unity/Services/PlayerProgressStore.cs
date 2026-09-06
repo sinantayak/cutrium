@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Cutrium.Gameplay.Economy;
 using Cutrium.Gameplay.Session;
 using Unity.Services.Authentication;
 using Unity.Services.CloudSave;
@@ -22,7 +23,9 @@ namespace Cutrium.Unity.Services
     /// (`SettingsPanelPresenter`, `LocalizationService`) exactly as
     /// before -- this store only mirrors their already-decided value to
     /// Cloud Save, it is not the source of truth for them.
-    public sealed class PlayerProgressStore : ICoinBalanceStore
+    public sealed class PlayerProgressStore :
+        ICoinBalanceStore,
+        IPowerUpInventoryStore
     {
         private const string CurrentLevelIndexCloudKey = "CurrentLevelIndex";
         private const string CurrentLevelIndexPrefsKey =
@@ -41,6 +44,20 @@ namespace Cutrium.Unity.Services
         private const string LevelStarsCloudKeyPrefix = "LevelStars_";
         private const string LevelStarsPrefsKeyPrefix =
             "Cutrium.Progress.LevelStars.";
+        private const string PowerInventoryVersionPrefsKey =
+            "Cutrium.Economy.PowerInventory.Version";
+        private const string FreezeInventoryPrefsKey =
+            "Cutrium.Economy.PowerInventory.FreezePulse";
+        private const string InstantInventoryPrefsKey =
+            "Cutrium.Economy.PowerInventory.InstantBarrier";
+        private const string GravityInventoryPrefsKey =
+            "Cutrium.Economy.PowerInventory.GravityWell";
+        private const string FreezeInventoryCloudKey =
+            "PowerInventory_FreezePulse";
+        private const string InstantInventoryCloudKey =
+            "PowerInventory_InstantBarrier";
+        private const string GravityInventoryCloudKey =
+            "PowerInventory_GravityWell";
 
         // Coin mutations may happen several times in one frame. Serializing
         // their Cloud Save writes prevents an older request from completing
@@ -52,6 +69,10 @@ namespace Cutrium.Unity.Services
         // remote mirror.
         private readonly object _starCloudOperationLock = new object();
         private Task _starCloudOperationTail = Task.CompletedTask;
+        // Inventory is spendable like Coins, so complete snapshots are
+        // serialized in write order instead of max-merged like stars.
+        private readonly object _powerInventoryCloudWriteLock = new object();
+        private Task _powerInventoryCloudWriteTail = Task.CompletedTask;
 
         /// Synchronous, offline-safe. Call at boot before the level catalog
         /// needs an index to load. Deliberately a no-op (always 0) while
@@ -305,6 +326,105 @@ namespace Cutrium.Unity.Services
             }
         }
 
+        public bool TryLoadLocalPowerUpInventory(
+            out PowerUpInventorySnapshot inventory)
+        {
+            inventory = default;
+            if (TestModeDetector.IsRunningTests
+                || !PlayerPrefs.HasKey(PowerInventoryVersionPrefsKey))
+            {
+                return false;
+            }
+
+            int freeze = RepairLocalInventoryCount(
+                FreezeInventoryPrefsKey);
+            int instant = RepairLocalInventoryCount(
+                InstantInventoryPrefsKey);
+            int gravity = RepairLocalInventoryCount(
+                GravityInventoryPrefsKey);
+            inventory = new PowerUpInventorySnapshot(
+                freeze,
+                instant,
+                gravity);
+            return true;
+        }
+
+        public void SavePowerUpInventory(
+            PowerUpInventorySnapshot inventory)
+        {
+            if (TestModeDetector.IsRunningTests)
+            {
+                return;
+            }
+
+            PlayerPrefs.SetInt(
+                FreezeInventoryPrefsKey,
+                inventory.FreezePulse);
+            PlayerPrefs.SetInt(
+                InstantInventoryPrefsKey,
+                inventory.InstantBarrier);
+            PlayerPrefs.SetInt(
+                GravityInventoryPrefsKey,
+                inventory.GravityWell);
+            PlayerPrefs.SetInt(PowerInventoryVersionPrefsKey, 1);
+            PlayerPrefs.Save();
+            _ = QueuePowerUpInventoryCloudPush(inventory);
+        }
+
+        public Task PushPowerUpInventoryToCloudAsync(
+            PowerUpInventorySnapshot inventory) =>
+            TestModeDetector.IsRunningTests
+                ? Task.CompletedTask
+                : QueuePowerUpInventoryCloudPush(inventory);
+
+        public async Task<PowerUpInventorySnapshot?>
+            TryLoadCloudPowerUpInventoryAsync()
+        {
+            try
+            {
+                if (TestModeDetector.IsRunningTests || !IsSignedIn())
+                {
+                    return null;
+                }
+
+                var keys = new HashSet<string>
+                {
+                    FreezeInventoryCloudKey,
+                    InstantInventoryCloudKey,
+                    GravityInventoryCloudKey,
+                };
+                Dictionary<string, Item> results = await CloudSaveService
+                    .Instance.Data.Player.LoadAsync(keys);
+                if (!results.ContainsKey(FreezeInventoryCloudKey)
+                    && !results.ContainsKey(InstantInventoryCloudKey)
+                    && !results.ContainsKey(GravityInventoryCloudKey))
+                {
+                    return null;
+                }
+
+                int freeze = ReadCloudInventoryCount(
+                    results,
+                    FreezeInventoryCloudKey);
+                int instant = ReadCloudInventoryCount(
+                    results,
+                    InstantInventoryCloudKey);
+                int gravity = ReadCloudInventoryCount(
+                    results,
+                    GravityInventoryCloudKey);
+                return new PowerUpInventorySnapshot(
+                    freeze,
+                    instant,
+                    gravity);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    "Cloud power-up inventory pull failed; local inventory "
+                    + "unchanged. " + exception);
+                return null;
+            }
+        }
+
         /// Mirrors an already-locally-saved sound preference to Cloud
         /// Save. Call alongside the existing `PlayerPrefs` write in
         /// `SettingsPanelPresenter` -- this does not touch local storage.
@@ -463,6 +583,56 @@ namespace Cutrium.Unity.Services
                     _coinCloudWriteTail,
                     balance);
                 return _coinCloudWriteTail;
+            }
+        }
+
+        private Task QueuePowerUpInventoryCloudPush(
+            PowerUpInventorySnapshot inventory)
+        {
+            lock (_powerInventoryCloudWriteLock)
+            {
+                _powerInventoryCloudWriteTail =
+                    PushPowerUpInventoryAfterAsync(
+                        _powerInventoryCloudWriteTail,
+                        inventory);
+                return _powerInventoryCloudWriteTail;
+            }
+        }
+
+        private static async Task PushPowerUpInventoryAfterAsync(
+            Task previousPush,
+            PowerUpInventorySnapshot inventory)
+        {
+            try
+            {
+                await previousPush;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    "Previous power-up inventory Cloud Save failed; "
+                    + "continuing with the latest snapshot. " + exception);
+            }
+
+            var values = new Dictionary<string, object>
+            {
+                { FreezeInventoryCloudKey, inventory.FreezePulse },
+                { InstantInventoryCloudKey, inventory.InstantBarrier },
+                { GravityInventoryCloudKey, inventory.GravityWell },
+            };
+            try
+            {
+                if (IsSignedIn())
+                {
+                    await CloudSaveService.Instance.Data.Player.SaveAsync(
+                        values);
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    "Cloud power-up inventory save failed; kept locally "
+                    + "only. " + exception);
             }
         }
 
@@ -629,6 +799,53 @@ namespace Cutrium.Unity.Services
                     nameof(balance),
                     "A Coin balance cannot be negative.");
             }
+        }
+
+        private static int RepairLocalInventoryCount(string prefsKey)
+        {
+            int value = PlayerPrefs.GetInt(prefsKey, 0);
+            if (value >= 0)
+            {
+                return value;
+            }
+
+            Debug.LogWarning(
+                $"Stored power-up quantity '{prefsKey}' was negative and "
+                + "has been repaired to zero.");
+            PlayerPrefs.SetInt(prefsKey, 0);
+            PlayerPrefs.Save();
+            return 0;
+        }
+
+        private static int ReadCloudInventoryCount(
+            IReadOnlyDictionary<string, Item> values,
+            string key)
+        {
+            if (!values.TryGetValue(key, out Item item))
+            {
+                return 0;
+            }
+
+            try
+            {
+                int value = item.Value.GetAs<int>();
+                if (value >= 0)
+                {
+                    return value;
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    $"Cloud power-up quantity '{key}' was invalid and "
+                    + "will be repaired to zero. " + exception);
+                return 0;
+            }
+
+            Debug.LogWarning(
+                $"Cloud power-up quantity '{key}' was negative and will "
+                + "be repaired to zero.");
+            return 0;
         }
 
         private static void ValidateStableLevelId(string stableLevelId)

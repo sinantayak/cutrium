@@ -18,6 +18,9 @@ namespace Cutrium.Unity.Services
         private Task _signInTask;
         private CoinWalletService _coins;
         private LevelCoinRewardService _levelRewards;
+        private PowerUpInventoryService _powerUps;
+        private PowerUpPurchaseService _powerUpPurchases;
+        private PlayerProgressStore _playerProgressStore;
 
         public event Action SignedIn;
         public event Action<Exception> SignInFailed;
@@ -30,6 +33,14 @@ namespace Cutrium.Unity.Services
 
         public LevelCoinRewardService LevelRewards =>
             _levelRewards ??= new LevelCoinRewardService(EnsureCoinService());
+
+        public PowerUpInventoryService PowerUps =>
+            EnsurePowerUpInventoryService();
+
+        public PowerUpPurchaseService PowerUpPurchases =>
+            _powerUpPurchases ??= new PowerUpPurchaseService(
+                EnsureCoinService(),
+                EnsurePowerUpInventoryService());
 
         public bool IsSignedIn
         {
@@ -65,11 +76,13 @@ namespace Cutrium.Unity.Services
         private void Awake()
         {
             EnsureCoinService();
+            EnsurePowerUpInventoryService();
         }
 
         private void OnEnable()
         {
             EnsureCoinService();
+            EnsurePowerUpInventoryService();
             if (_started
                 || !Application.isPlaying
                 || TestModeDetector.IsRunningTests)
@@ -84,8 +97,12 @@ namespace Cutrium.Unity.Services
         private void OnDestroy()
         {
             _coins?.Dispose();
+            _powerUps?.Dispose();
             _coins = null;
             _levelRewards = null;
+            _powerUps = null;
+            _powerUpPurchases = null;
+            _playerProgressStore = null;
         }
 
         /// Idempotent: safe to call again (e.g. after linking a social
@@ -118,7 +135,9 @@ namespace Cutrium.Unity.Services
                         .SignInAnonymouslyAsync();
                 }
 
-                await Coins.SynchronizeWithCloudAsync();
+                await Task.WhenAll(
+                    Coins.SynchronizeWithCloudAsync(),
+                    PowerUps.SynchronizeWithCloudAsync());
                 SignedIn?.Invoke();
             }
             catch (Exception exception)
@@ -138,11 +157,25 @@ namespace Cutrium.Unity.Services
             if (_coins == null)
             {
                 _coins = new CoinWalletService(
-                    new PlayerProgressStore(),
+                    EnsurePlayerProgressStore(),
                     CoinWalletService.DefaultStartingBalance);
             }
 
             return _coins;
         }
+
+        private PowerUpInventoryService EnsurePowerUpInventoryService()
+        {
+            if (_powerUps == null)
+            {
+                _powerUps = new PowerUpInventoryService(
+                    EnsurePlayerProgressStore());
+            }
+
+            return _powerUps;
+        }
+
+        private PlayerProgressStore EnsurePlayerProgressStore() =>
+            _playerProgressStore ??= new PlayerProgressStore();
     }
 }

@@ -1,5 +1,9 @@
+using Cutrium.Gameplay.Economy;
+using Cutrium.Presentation.Feedback;
 using Cutrium.Presentation.Frontend;
 using Cutrium.Presentation.Shop;
+using Cutrium.Unity.Services;
+using Cutrium.Unity.Simulation;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -9,12 +13,8 @@ using UnityEngine.UI;
 
 namespace Cutrium.Editor.Setup
 {
-    /// Builds the Shop tab's visual content (Remove Ads card, Bundles
-    /// section, Gold section) inside a vertical ScrollRect matching the
-    /// Challenge level-map's scroll pattern (see FrontEndSceneSetup). This
-    /// is presentation only -- no purchase/ad/IAP wiring yet; prices and
-    /// bundle contents live in a ShopCatalog asset so they can be retuned
-    /// here without touching scene structure.
+    /// Builds the Shop tab's visual content and wires a-la-carte power-up
+    /// purchases to the central Coin wallet and persistent inventory.
     internal static class ShopContentSceneSetup
     {
         private const string ScenePath =
@@ -32,11 +32,11 @@ namespace Cutrium.Editor.Setup
             "Assets/Cutrium/Content/Gui/SaleBadge.png";
         private const string GoldBackgroundPath =
             "Assets/Cutrium/Content/Gui/GoldBackground.png";
-        private const string FreezeSkillPath =
+        internal const string FreezeSkillPath =
             "Assets/Cutrium/Content/Gui/FreezeSkill.png";
-        private const string InstantBarrierSkillPath =
+        internal const string InstantBarrierSkillPath =
             "Assets/Cutrium/Content/Gui/InstantBarrierSkill.png";
-        private const string GravityWellSkillPath =
+        internal const string GravityWellSkillPath =
             "Assets/Cutrium/Content/Gui/GravityWellSkill.png";
         private const string ButtonBackgroundPath =
             "Assets/Cutrium/Content/Gui/GeneralButtonBackground.png";
@@ -62,6 +62,10 @@ namespace Cutrium.Editor.Setup
         // just breathing room inside that already-safe viewport.
         private const float ContentTopPadding = 24f;
         private const float ContentBottomPadding = 52f;
+        private const int SkillColumnCount = 3;
+        private const float SkillRowSpacing = 16f;
+        private const int SkillRowVerticalInset = 8;
+        private const float ShopFeedbackHeight = 48f;
 
         private static readonly Color PrimaryText =
             new Color32(255, 230, 191, 255);
@@ -73,6 +77,8 @@ namespace Cutrium.Editor.Setup
             Color.white;
         private static readonly Color AmountStrokeColor =
             new Color32(104, 48, 17, 235);
+        private static readonly Color AmountShadowColor =
+            new Color32(0, 0, 0, 150);
         private static readonly Color OriginalPriceColor =
             new Color32(214, 176, 150, 220);
         private static readonly Color SaleBadgeTextColor = Color.white;
@@ -92,8 +98,14 @@ namespace Cutrium.Editor.Setup
 
             Scene scene = OpenVerticalSliceScene();
             FrontEndPresenter presenter = null;
+            GameObject verticalSliceRoot = null;
             foreach (GameObject root in scene.GetRootGameObjects())
             {
+                if (root.name == "VerticalSliceRoot")
+                {
+                    verticalSliceRoot = root;
+                }
+
                 presenter = root.GetComponentInChildren<FrontEndPresenter>(
                     true);
                 if (presenter != null)
@@ -112,8 +124,34 @@ namespace Cutrium.Editor.Setup
                     "Shop setup requires the configured frontend and its font.");
             }
 
-            Configure((RectTransform)presenter.ShopPage.transform, font);
+            CloudServicesBootstrap cloudServices = verticalSliceRoot
+                ?.GetComponentInChildren<CloudServicesBootstrap>(true);
+            FirstPlayableController controller = verticalSliceRoot
+                ?.GetComponentInChildren<FirstPlayableController>(true);
+            FeedbackAudioPresenter feedbackAudio = verticalSliceRoot
+                ?.GetComponentInChildren<FeedbackAudioPresenter>(true);
+            if (cloudServices == null || controller == null
+                || feedbackAudio == null)
+            {
+                throw new System.InvalidOperationException(
+                    "Shop setup requires Cloud services, the gameplay "
+                    + "controller, and FeedbackAudioPresenter.");
+            }
+
+            Configure(
+                (RectTransform)presenter.ShopPage.transform,
+                font,
+                cloudServices,
+                controller,
+                feedbackAudio);
+            PowerUpInventoryHudPresenter inventoryHud =
+                FrontEndSceneSetup.ConfigureHomePowerInventoryForSetup(
+                    (RectTransform)presenter.HomePage.transform,
+                    font,
+                    cloudServices,
+                    presenter);
             EditorUtility.SetDirty(presenter.ShopPage);
+            EditorUtility.SetDirty(inventoryHud);
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene, ScenePath))
             {
@@ -123,12 +161,26 @@ namespace Cutrium.Editor.Setup
 
             AssetDatabase.SaveAssets();
             Debug.Log(
-                "Shop visual parity applied: responsive Remove Ads, bundles, " +
-                "and three-column gold offers saved in VerticalSlice.unity.");
+                "Shop power-up purchases and Home inventory HUD applied "
+                + "alongside the existing responsive offers.");
         }
 
-        public static void Configure(RectTransform shopPage, TMP_FontAsset font)
+        [MenuItem("Cutrium/Setup/Apply Task 04 Power-Up Inventory")]
+        private static void ApplyTask04PowerUpInventory() => Apply();
+
+        public static void Configure(
+            RectTransform shopPage,
+            TMP_FontAsset font,
+            CloudServicesBootstrap cloudServices,
+            FirstPlayableController controller,
+            FeedbackAudioPresenter feedbackAudio)
         {
+            if (shopPage == null || font == null || cloudServices == null)
+            {
+                throw new System.ArgumentNullException(
+                    "Shop setup dependencies cannot be null.");
+            }
+
             ShopCatalog catalog = EnsureCatalog();
 
             Sprite removeAdsBackground = FrontEndSceneSetup.EnsureUiSprite(
@@ -144,6 +196,8 @@ namespace Cutrium.Editor.Setup
                 ButtonBackgroundPath);
             Sprite watchAdsCamera = FrontEndSceneSetup.EnsureUiSprite(
                 WatchAdsCameraPath);
+            Sprite coinIcon = FrontEndSceneSetup.EnsureUiSprite(
+                string.Format(CoinStackPathFormat, 1));
 
             RectTransform scrollRoot = FrontEndSceneSetup.GetOrCreateUiChild(
                 shopPage,
@@ -225,6 +279,46 @@ namespace Cutrium.Editor.Setup
                     offer);
             }
 
+            // An older pass built one full-width card per skill, directly
+            // under content. Skills now live in a 3-per-row grid (like Gold)
+            // nested under SkillRow_XX instead -- remove any leftover
+            // top-level card so it doesn't sit around as a stale duplicate.
+            for (int index = 0; index < catalog.PowerUpOffers.Count; index++)
+            {
+                FrontEndSceneSetup.DestroyUiChildIfPresent(
+                    content,
+                    $"PowerUpCard_{catalog.PowerUpOffers[index].Kind}");
+            }
+
+            BuildSectionLabel(content, "SkillsLabel", "SKILLS", font);
+            PowerUpShopPresenter.ItemView[] powerUpViews = BuildSkillGrid(
+                content,
+                font,
+                goldBackground,
+                buttonBackground,
+                coinIcon,
+                catalog);
+
+            RectTransform feedbackRect =
+                FrontEndSceneSetup.GetOrCreateUiChild(
+                    content,
+                    "SkillsFeedback");
+            feedbackRect.sizeDelta = new Vector2(
+                feedbackRect.sizeDelta.x,
+                ShopFeedbackHeight);
+            LayoutElement feedbackLayout =
+                FrontEndSceneSetup.GetOrAddComponent<LayoutElement>(
+                    feedbackRect.gameObject);
+            feedbackLayout.preferredHeight = ShopFeedbackHeight;
+            feedbackLayout.flexibleWidth = 1f;
+            TMP_Text feedbackText = FrontEndSceneSetup.ConfigureText(
+                feedbackRect,
+                string.Empty,
+                font,
+                30f,
+                PrimaryText,
+                TextAlignmentOptions.Center);
+
             BuildSectionLabel(content, "GoldLabel", "GOLD", font);
             BuildGoldGrid(
                 content,
@@ -233,6 +327,38 @@ namespace Cutrium.Editor.Setup
                 buttonBackground,
                 watchAdsCamera,
                 catalog);
+
+            // Skills purchases move to the very end of the scroll content, so
+            // browsing starts with the higher-intent Bundles/Gold offers. Move
+            // every already-existing Skills element there explicitly -- an
+            // idempotent re-run finds these objects at whatever sibling index
+            // an earlier setup pass left them at and would otherwise leave
+            // them in their old position ahead of Gold.
+            content.Find("GoldLabel")?.SetAsLastSibling();
+            for (int row = 0; ; row++)
+            {
+                Transform goldRow = content.Find($"GoldRow_{row + 1:00}");
+                if (goldRow == null)
+                {
+                    break;
+                }
+
+                goldRow.SetAsLastSibling();
+            }
+
+            content.Find("SkillsLabel")?.SetAsLastSibling();
+            for (int row = 0; ; row++)
+            {
+                Transform skillRow = content.Find($"SkillRow_{row + 1:00}");
+                if (skillRow == null)
+                {
+                    break;
+                }
+
+                skillRow.SetAsLastSibling();
+            }
+
+            feedbackRect.SetAsLastSibling();
 
             ScrollRect scrollRect =
                 FrontEndSceneSetup.GetOrAddComponent<ScrollRect>(
@@ -247,20 +373,34 @@ namespace Cutrium.Editor.Setup
             scrollRect.scrollSensitivity = 72f;
             scrollRect.verticalNormalizedPosition = 1f;
 
+            PowerUpShopPresenter powerUpShop =
+                FrontEndSceneSetup.GetOrAddComponent<PowerUpShopPresenter>(
+                    scrollRoot.gameObject);
+            powerUpShop.ConfigureForSetup(
+                catalog,
+                cloudServices,
+                controller,
+                feedbackAudio,
+                feedbackText,
+                powerUpViews);
+
             Validate(
                 scrollRect,
                 content,
                 catalog,
+                powerUpShop,
                 removeAdsBackground,
                 bundleBackground,
                 goldBackground);
+            EditorUtility.SetDirty(powerUpShop);
         }
 
         private static ShopCatalog EnsureCatalog()
         {
             ShopCatalog catalog =
                 AssetDatabase.LoadAssetAtPath<ShopCatalog>(CatalogPath);
-            if (catalog == null)
+            bool created = catalog == null;
+            if (created)
             {
                 string folder = System.IO.Path.GetDirectoryName(CatalogPath)
                     ?.Replace('\\', '/');
@@ -345,9 +485,50 @@ namespace Cutrium.Editor.Setup
                     false),
             };
 
-            catalog.ConfigureForSetup("$25.99", bundles, goldOffers);
-            EditorUtility.SetDirty(catalog);
-            AssetDatabase.SaveAssets();
+            var powerUpOffers = new[]
+            {
+                new ShopPowerUpOffer(
+                    PowerUpKind.FreezePulse,
+                    "FREEZE PULSE",
+                    freeze,
+                    1,
+                    200,
+                    freezeAccent),
+                new ShopPowerUpOffer(
+                    PowerUpKind.InstantBarrier,
+                    "INSTANT BARRIER",
+                    instant,
+                    1,
+                    250,
+                    instantAccent),
+                new ShopPowerUpOffer(
+                    PowerUpKind.GravityWell,
+                    "GRAVITY WELL",
+                    gravity,
+                    1,
+                    250,
+                    gravityAccent),
+            };
+
+            if (created)
+            {
+                catalog.ConfigureForSetup(
+                    "$25.99",
+                    bundles,
+                    goldOffers,
+                    powerUpOffers);
+            }
+            else if (catalog.PowerUpOffers.Count == 0)
+            {
+                catalog.ConfigurePowerUpsForSetup(powerUpOffers);
+            }
+
+            if (created || catalog.PowerUpOffers.Count == powerUpOffers.Length)
+            {
+                EditorUtility.SetDirty(catalog);
+                AssetDatabase.SaveAssets();
+            }
+
             return catalog;
         }
 
@@ -664,12 +845,32 @@ namespace Cutrium.Editor.Setup
             icon.preserveAspect = true;
             icon.raycastTarget = false;
 
+            // root isn't guaranteed square (its layout element is stretched
+            // by the row's HorizontalLayoutGroup), so an AspectRatioFitter
+            // keeps Icon's own rect an exact centered square matching the
+            // 1:1 skill artwork -- otherwise preserveAspect just letterboxes
+            // inside a non-square rect and the badge below drifts off the
+            // visible art depending on how much that rect got stretched.
+            AspectRatioFitter iconAspect =
+                FrontEndSceneSetup.GetOrAddComponent<AspectRatioFitter>(
+                    iconRect.gameObject);
+            iconAspect.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            iconAspect.aspectRatio = 1f;
+
+            // Clips the shine sweep below to Icon's own square bounds so it
+            // never spills past the art's edges while sweeping in/out.
+            RectMask2D iconMask = FrontEndSceneSetup.GetOrAddComponent<
+                RectMask2D>(iconRect.gameObject);
+            iconMask.padding = Vector4.zero;
+
             // The skill artwork already paints its own folded-corner badge
             // shape at bottom-right (a flat brown plate meant to hold a
             // label) -- no separate colored pill is needed on top of it,
             // just a plain white label sized and centered onto that shape.
+            // Parented under Icon (not root) so the anchor fraction lands on
+            // the icon's own corner regardless of how root got stretched.
             RectTransform quantityRect = FrontEndSceneSetup.GetOrCreateUiChild(
-                root,
+                iconRect,
                 "QuantityLabel");
             FrontEndSceneSetup.Anchor(
                 quantityRect,
@@ -684,19 +885,255 @@ namespace Cutrium.Editor.Setup
                 TextAlignmentOptions.Center);
             quantityLabel.fontSizeMin = 20f;
 
-            FrontEndPulseAnimator pulse = FrontEndSceneSetup
-                .GetOrAddComponent<FrontEndPulseAnimator>(root.gameObject);
-            // Slow and subtle -- a gentle multi-second drift, not something
-            // that draws the eye.
-            pulse.ConfigureForSetup(
+            // The grow/shrink pulse read as distracting at this size; a
+            // sun-glint sweep across the icon reads as "alive" without it.
+            RemoveComponentIfPresent<FrontEndPulseAnimator>(root.gameObject);
+
+            RectTransform shineRect = FrontEndSceneSetup.GetOrCreateUiChild(
                 iconRect,
-                null,
-                0.12f,
-                0.025f,
-                1f,
-                1f,
-                index * 0.31f);
-            pulse.enabled = true;
+                "Shine");
+            FrontEndSceneSetup.Stretch(shineRect);
+            FrontEndSceneSetup.GetOrAddComponent<CanvasRenderer>(
+                shineRect.gameObject);
+            FrontEndShineSweepGraphic shineGraphic = FrontEndSceneSetup
+                .GetOrAddComponent<FrontEndShineSweepGraphic>(
+                    shineRect.gameObject);
+            shineGraphic.ConfigureForSetup(
+                new Color(1f, 1f, 1f, 0.55f),
+                22f,
+                0.16f);
+            FrontEndShineSweepAnimator shineAnimator = FrontEndSceneSetup
+                .GetOrAddComponent<FrontEndShineSweepAnimator>(
+                    shineRect.gameObject);
+            shineAnimator.ConfigureForSetup(
+                shineGraphic,
+                1.1f,
+                4.9f,
+                index * 0.33f);
+            shineAnimator.enabled = true;
+        }
+
+        // Mirrors BuildGoldGrid's own row layout so Skills reads as a third
+        // "3 tiles per row" section, matching Bundles/Gold instead of one
+        // full-width card per skill.
+        private static PowerUpShopPresenter.ItemView[] BuildSkillGrid(
+            Transform parent,
+            TMP_FontAsset font,
+            Sprite background,
+            Sprite buttonSprite,
+            Sprite coinSprite,
+            ShopCatalog catalog)
+        {
+            int count = catalog.PowerUpOffers.Count;
+            int rowCount = Mathf.CeilToInt(count / (float)SkillColumnCount);
+            var views = new PowerUpShopPresenter.ItemView[count];
+            for (int row = 0; row < rowCount; row++)
+            {
+                RectTransform rowRect = FrontEndSceneSetup.GetOrCreateUiChild(
+                    parent,
+                    $"SkillRow_{row + 1:00}");
+                ConfigureResponsiveHeight(
+                    rowRect,
+                    background,
+                    SkillColumnCount,
+                    SkillRowSpacing,
+                    verticalPadding: SkillRowVerticalInset * 2f);
+
+                HorizontalLayoutGroup rowLayout =
+                    FrontEndSceneSetup.GetOrAddComponent<HorizontalLayoutGroup>(
+                        rowRect.gameObject);
+                rowLayout.spacing = SkillRowSpacing;
+                rowLayout.padding = new RectOffset(
+                    0,
+                    0,
+                    SkillRowVerticalInset,
+                    SkillRowVerticalInset);
+                rowLayout.childAlignment = TextAnchor.MiddleCenter;
+                rowLayout.childControlWidth = true;
+                rowLayout.childControlHeight = true;
+                rowLayout.childForceExpandWidth = true;
+                rowLayout.childForceExpandHeight = true;
+
+                FrontEndSceneSetup.ClearGeneratedChildren(rowRect);
+                int firstIndex = row * SkillColumnCount;
+                int lastIndex = Mathf.Min(
+                    firstIndex + SkillColumnCount - 1,
+                    count - 1);
+                for (int index = firstIndex; index <= lastIndex; index++)
+                {
+                    ShopPowerUpOffer offer = catalog.PowerUpOffers[index];
+                    views[index] = BuildPowerUpCard(
+                        rowRect,
+                        $"PowerUpCard_{offer.Kind}",
+                        font,
+                        background,
+                        buttonSprite,
+                        coinSprite,
+                        offer);
+                }
+            }
+
+            for (int row = rowCount; ; row++)
+            {
+                Transform stale = parent.Find($"SkillRow_{row + 1:00}");
+                if (stale == null)
+                {
+                    break;
+                }
+
+                FrontEndSceneSetup.DestroyUiChildIfPresent(
+                    parent,
+                    $"SkillRow_{row + 1:00}");
+            }
+
+            return views;
+        }
+
+        private static PowerUpShopPresenter.ItemView BuildPowerUpCard(
+            Transform parent,
+            string name,
+            TMP_FontAsset font,
+            Sprite background,
+            Sprite buttonSprite,
+            Sprite coinSprite,
+            ShopPowerUpOffer offer)
+        {
+            RectTransform card = FrontEndSceneSetup.GetOrCreateUiChild(
+                parent,
+                name);
+            RemoveComponentIfPresent<LayoutElement>(card.gameObject);
+            RemoveComponentIfPresent<Image>(card.gameObject);
+
+            RectTransform artwork = FrontEndSceneSetup.GetOrCreateUiChild(
+                card,
+                "Artwork");
+            artwork.anchorMin = Vector2.zero;
+            artwork.anchorMax = Vector2.one;
+            artwork.pivot = new Vector2(0.5f, 0.5f);
+            artwork.offsetMin = new Vector2(GoldArtworkInset, GoldArtworkInset);
+            artwork.offsetMax = new Vector2(
+                -GoldArtworkInset,
+                -GoldArtworkInset);
+            Image backgroundImage = FrontEndSceneSetup.GetOrAddComponent<Image>(
+                artwork.gameObject);
+            backgroundImage.sprite = background;
+            backgroundImage.type = Image.Type.Simple;
+            backgroundImage.preserveAspect = false;
+            backgroundImage.color = Color.white;
+            Button purchaseButton = MakeCardClickable(artwork);
+
+            // Clean up elements the older one-card-per-skill layout built,
+            // which no longer have a place in this compact grid tile.
+            FrontEndSceneSetup.DestroyUiChildIfPresent(artwork, "IconPlate");
+            FrontEndSceneSetup.DestroyUiChildIfPresent(artwork, "Title");
+            FrontEndSceneSetup.DestroyUiChildIfPresent(
+                artwork,
+                "Description");
+
+            // A square box (the tile itself is always square -- both Gold
+            // and Skill rows share the same 3-column, square-background
+            // grid) so preserveAspect renders the 1:1 skill artwork with no
+            // letterboxing. Smaller than Gold's own coin box because the
+            // skill art is full-bleed (no internal padding), so the same
+            // bounding box would read as visibly bigger than Gold's coin.
+            RectTransform iconRect = FrontEndSceneSetup.GetOrCreateUiChild(
+                artwork,
+                "Icon");
+            iconRect.anchorMin = new Vector2(0.28f, 0.46f);
+            iconRect.anchorMax = new Vector2(0.72f, 0.90f);
+            iconRect.pivot = new Vector2(0.5f, 0.5f);
+            iconRect.anchoredPosition = Vector2.zero;
+            iconRect.sizeDelta = Vector2.zero;
+            Image icon = FrontEndSceneSetup.GetOrAddComponent<Image>(
+                iconRect.gameObject);
+            icon.sprite = offer.Icon;
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+
+            // Matches the bundle skill row / Home inventory stack's own
+            // "xN" plate convention -- the icon art already paints a folded
+            // badge shape at its own bottom-right corner for this to sit on.
+            // Parented under the icon itself (not the artwork) so the
+            // anchor fraction lands on the icon's own corner regardless of
+            // how big the icon box is scaled -- anchoring it to the wider
+            // artwork rect is what made the badge drift off the icon.
+            RectTransform quantityRect = FrontEndSceneSetup.GetOrCreateUiChild(
+                iconRect,
+                "QuantityLabel");
+            FrontEndSceneSetup.Anchor(
+                quantityRect,
+                new Vector2(0.76f, 0.21f),
+                new Vector2(58f, 54f));
+            TMP_Text quantityLabel = FrontEndSceneSetup.ConfigureText(
+                quantityRect,
+                $"{offer.Quantity}x",
+                font,
+                26f,
+                Color.white,
+                TextAlignmentOptions.Center);
+            quantityLabel.fontSizeMin = 18f;
+
+            RectTransform ownedRect = FrontEndSceneSetup.GetOrCreateUiChild(
+                card,
+                "Owned");
+            ownedRect.anchorMin = new Vector2(0f, 0.32f);
+            ownedRect.anchorMax = new Vector2(1f, 0.44f);
+            ownedRect.pivot = new Vector2(0.5f, 0.5f);
+            ownedRect.anchoredPosition = Vector2.zero;
+            ownedRect.sizeDelta = Vector2.zero;
+            TMP_Text ownedText = FrontEndSceneSetup.ConfigureText(
+                ownedRect,
+                "OWNED  x0",
+                font,
+                22f,
+                SecondaryText,
+                TextAlignmentOptions.Center);
+            ownedText.fontSizeMin = 16f;
+
+            // Same size/position as Gold's own PriceButton so every Shop
+            // tile's buy button reads as one consistent control.
+            RectTransform priceButton = BuildPriceButton(
+                card,
+                "PriceButton",
+                offer.CoinPrice.ToString("N0"),
+                font,
+                buttonSprite,
+                new Vector2(0.5f, 0f),
+                new Vector2(0f, 12f),
+                new Vector2(190f, 82f),
+                34f);
+            RectTransform coinRect = FrontEndSceneSetup.GetOrCreateUiChild(
+                priceButton,
+                "CoinIcon");
+            FrontEndSceneSetup.Anchor(
+                coinRect,
+                new Vector2(0f, 0.5f),
+                new Vector2(40f, 40f));
+            coinRect.pivot = new Vector2(0f, 0.5f);
+            coinRect.anchoredPosition = new Vector2(16f, 0f);
+            Image coin = FrontEndSceneSetup.GetOrAddComponent<Image>(
+                coinRect.gameObject);
+            coin.sprite = coinSprite;
+            coin.preserveAspect = true;
+            coin.raycastTarget = false;
+
+            TMP_Text priceText = priceButton.Find("Label")
+                ?.GetComponent<TMP_Text>();
+            if (priceText == null)
+            {
+                throw new System.InvalidOperationException(
+                    $"Power-up price label is missing for {offer.Kind}.");
+            }
+
+            RectTransform priceLabelRect = (RectTransform)priceText.transform;
+            priceLabelRect.offsetMin = new Vector2(
+                56f,
+                priceLabelRect.offsetMin.y);
+            return new PowerUpShopPresenter.ItemView(
+                offer.Kind,
+                purchaseButton,
+                ownedText,
+                priceText);
         }
 
         private static void BuildGoldGrid(
@@ -946,18 +1383,35 @@ namespace Cutrium.Editor.Setup
             float fontSize,
             TextAlignmentOptions alignment)
         {
-            FrontEndSceneSetup.ConfigureText(
+            TMP_Text label = FrontEndSceneSetup.ConfigureText(
                 rect,
                 value,
                 font,
                 fontSize,
                 AmountFillColor,
                 alignment);
-            Outline stroke = FrontEndSceneSetup.GetOrAddComponent<Outline>(
-                rect.gameObject);
-            stroke.effectColor = AmountStrokeColor;
-            stroke.effectDistance = new Vector2(3f, -3f);
-            stroke.useGraphicAlpha = true;
+
+            // UnityEngine.UI.Outline/Shadow are IMeshModifier effects that
+            // Graphic.UpdateGeometry() applies after OnPopulateMesh -- but
+            // TMP_Text overrides UpdateGeometry itself and never runs that
+            // pipeline, so those components silently render nothing on a
+            // TextMeshProUGUI. The stroke and shadow both have to come from
+            // the SDF font material's own Outline/Underlay features instead.
+            RemoveComponentIfPresent<Outline>(rect.gameObject);
+            RemoveComponentIfPresent<Shadow>(rect.gameObject);
+
+            Material material = label.fontMaterial;
+            material.EnableKeyword(ShaderUtilities.Keyword_Outline);
+            material.SetColor(ShaderUtilities.ID_OutlineColor, AmountStrokeColor);
+            material.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.2f);
+
+            material.EnableKeyword(ShaderUtilities.Keyword_Underlay);
+            material.SetColor(ShaderUtilities.ID_UnderlayColor, AmountShadowColor);
+            material.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 1f);
+            material.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -1f);
+            material.SetFloat(ShaderUtilities.ID_UnderlayDilate, 0f);
+            material.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.5f);
+            label.fontMaterial = material;
         }
 
         private static RectTransform BuildPriceButton(
@@ -1113,6 +1567,7 @@ namespace Cutrium.Editor.Setup
             ScrollRect scrollRect,
             RectTransform content,
             ShopCatalog catalog,
+            PowerUpShopPresenter powerUpShop,
             Sprite removeAdsBackground,
             Sprite bundleBackground,
             Sprite goldBackground)
@@ -1190,6 +1645,80 @@ namespace Cutrium.Editor.Setup
                 {
                     throw new System.InvalidOperationException(
                         $"Bundle card {index + 1} is incomplete.");
+                }
+            }
+
+            if (powerUpShop == null
+                || powerUpShop.Catalog != catalog
+                || powerUpShop.ItemViews.Count
+                    != catalog.PowerUpOffers.Count
+                || powerUpShop.FeedbackText == null)
+            {
+                throw new System.InvalidOperationException(
+                    "Power-up Shop presenter is not wired correctly.");
+            }
+
+            int skillRowCount = Mathf.CeilToInt(
+                catalog.PowerUpOffers.Count / (float)SkillColumnCount);
+            int skillOfferIndex = 0;
+            for (int row = 0; row < skillRowCount; row++)
+            {
+                RectTransform rowRect = RequireChild(
+                    content,
+                    $"SkillRow_{row + 1:00}");
+                ValidateResponsiveArtwork(
+                    rowRect,
+                    goldBackground,
+                    SkillColumnCount,
+                    SkillRowSpacing,
+                    0f,
+                    SkillRowVerticalInset * 2f,
+                    validateImage: false);
+
+                int expectedChildren = Mathf.Min(
+                    SkillColumnCount,
+                    catalog.PowerUpOffers.Count - skillOfferIndex);
+                if (rowRect.childCount != expectedChildren)
+                {
+                    throw new System.InvalidOperationException(
+                        $"Skill row {row + 1} has the wrong offer count.");
+                }
+
+                for (int child = 0; child < expectedChildren; child++)
+                {
+                    ShopPowerUpOffer offer =
+                        catalog.PowerUpOffers[skillOfferIndex];
+                    RectTransform tile =
+                        (RectTransform)rowRect.GetChild(child);
+                    RectTransform artwork = RequireChild(tile, "Artwork");
+                    Image tileImage = artwork.GetComponent<Image>();
+                    PowerUpShopPresenter.ItemView view =
+                        powerUpShop.ItemViews[skillOfferIndex];
+                    Transform iconTransform = artwork.Find("Icon");
+                    TMP_Text quantityLabel = iconTransform
+                        ?.Find("QuantityLabel")
+                        ?.GetComponent<TMP_Text>();
+                    if (tileImage == null
+                        || tileImage.sprite != goldBackground
+                        || view.Kind != offer.Kind
+                        || view.PurchaseButton == null
+                        || view.PurchaseButton.transform != artwork
+                        || view.OwnedText == null
+                        || view.PriceText == null
+                        || iconTransform?.GetComponent<Image>()
+                            ?.sprite != offer.Icon
+                        || tile.Find("PriceButton/CoinIcon") == null
+                        || artwork.Find("IconPlate") != null
+                        || artwork.Find("Title") != null
+                        || artwork.Find("Description") != null
+                        || quantityLabel == null
+                        || quantityLabel.text != $"{offer.Quantity}x")
+                    {
+                        throw new System.InvalidOperationException(
+                            $"Power-up offer {offer.Kind} is incomplete.");
+                    }
+
+                    skillOfferIndex++;
                 }
             }
 

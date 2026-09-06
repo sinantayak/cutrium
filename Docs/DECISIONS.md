@@ -2354,3 +2354,59 @@ at different times. The HUD visibly acknowledges the amount that arrived while
 the wallet remains immediately durable. The nested transition Canvas must keep
 its high sorting order and full-screen anchors; the setup pass validates those
 properties, and phone/tablet visual timing still needs Play Mode review.
+
+## ADR-055 — Persistent Power-Up Inventory Adds to, Never Replaces, Authored Level Charges
+
+**Status:** Accepted.
+
+**Context:**
+Task 04 gives Freeze Pulse, Instant Barrier, and Gravity Well persistent owned
+quantities and a Shop purchase for each, priced at 200/250/250 Coins. Every
+existing level already grants its own authored free `PowerConfiguration`
+charges for tutorial/support purposes. The two sources of charges needed one
+unambiguous consumption order, and the new spendable inventory needed a Cloud
+reconciliation policy consistent with the existing Coin wallet rather than a
+new one invented for this feature.
+
+**Decision:**
+`PowerUpInventory` (`Cutrium.Gameplay.Economy`, no `UnityEngine` reference)
+holds only the three stable `PowerUpKind` counts and validates every add/
+consume as an atomic, event-emitting transaction; underflow, overflow, and
+non-positive amounts are rejected without mutating state. `PowerUpInventoryService`
+wraps one inventory with the same local-first persistence and Cloud
+reconciliation shape ADR-050 established for Coins: an existing local save
+always wins and is pushed to Cloud after sign-in, a fresh device imports its
+Cloud snapshot once, and a local mutation racing a Cloud pull wins the race.
+Maximum-merging inventory like ADR-053 does for stars is deliberately rejected
+here, because a consumable resource must not resurrect quantities the player
+already spent. `PlayerProgressStore` implements the new `IPowerUpInventoryStore`
+boundary with one local presence marker, three integer values, and one
+serialized Cloud write queue, mirroring its existing Coin/star queues.
+
+`PowerUpPurchaseService` validates kind, positive price/quantity, inventory
+capacity, and affordability before spending through the central
+`CoinWalletService`, adds inventory only after the spend is accepted, and
+defensively refunds if the inventory mutation is then unexpectedly rejected.
+
+At level load, `FirstPlayableController` snapshots the currently owned
+quantities and builds an effective `PowerConfiguration` whose charges equal
+the authored free amount plus the owned amount; it does not alter
+`ThreatMotionSession` itself. It separately tracks how much of that combined
+total is still inventory-backed. Each successful activation (Freeze and
+Gravity on activation; Instant Barrier only when an armed charge is applied to
+an accepted barrier, matching its existing consumption point) consumes one
+tracked owned unit from the persistent inventory first; once that run's
+snapshot is exhausted, remaining activations draw only from the untouched
+authored charges. A retry reloads fresh authored charges but only whatever
+inventory quantity is still actually persisted, so retrying cannot restore
+already-spent purchases.
+
+**Consequences:**
+Buying a skill increases what a level offers without silently removing or
+duplicating its authored tutorial/support charges, and inventory purchased
+mid-run cannot be spent twice by retrying. Home and Shop both read the same
+persistent owned counts (never the level's effective total), while the
+gameplay HUD continues to show total currently usable charges. As with Coins,
+true cross-process transactional safety between the Coin and inventory local
+writes is not guaranteed; the purchase coordinator's in-process atomicity and
+defensive refund are the accepted mitigation.

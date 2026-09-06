@@ -67,3 +67,22 @@ MonoBehaviour:
     _coinStackIcon: {fileID: 21300000, guid: 8599ec297287ef2458916c950bdab2a2, type: 3}
     _priceLabel: $14.99
     _isRewardedAd: 0
+  _powerUpOffers:
+  - _kind: 0
+    _displayName: FREEZE PULSE
+    _icon: {fileID: 21300000, guid: cc4022a83a81f704fbfbe817a2f14736, type: 3}
+    _quantity: 1
+    _coinPrice: 200
+    _accentColor: {r: 0.2509804, g: 0.61960787, b: 0.8392157, a: 1}
+  - _kind: 1
+    _displayName: INSTANT BARRIER
+    _icon: {fileID: 21300000, guid: 7a644b4ee4ba6b04ca6b172c59b137b3, type: 3}
+    _quantity: 1
+    _coinPrice: 250
+    _accentColor: {r: 0.8392157, g: 0.32941177, b: 0.18039216, a: 1}
+  - _kind: 2
+    _displayName: GRAVITY WELL
+    _icon: {fileID: 21300000, guid: d5247435170900a458688c07ee1ce103, type: 3}
+    _quantity: 1
+    _coinPrice: 250
+    _accentColor: {r: 0.5882353, g: 0.30588236, b: 0.78039217, a: 1}

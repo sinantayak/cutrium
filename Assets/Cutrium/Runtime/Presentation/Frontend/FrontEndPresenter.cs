@@ -210,6 +210,15 @@ namespace Cutrium.Presentation.Frontend
             }
         }
 
+        // Lets other Home content (the power-up inventory stack) jump
+        // straight to a purchase without duplicating the bottom nav's own
+        // feedback/transition handling.
+        public void GoToShopTab()
+        {
+            _controller?.NotifyUiFeedback();
+            TransitionToTab(FrontEndTab.Shop);
+        }
+
         public void SelectLevel(int oneBasedLevelNumber)
         {
             if (oneBasedLevelNumber <= 0
