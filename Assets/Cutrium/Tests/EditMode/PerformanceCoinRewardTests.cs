@@ -207,5 +207,59 @@ namespace Cutrium.Gameplay.EditModeTests
                 LevelStarRatingCalculator.PreserveBest(2, 2),
                 Is.EqualTo(2));
         }
+
+        [TestCase(0, 0)]
+        [TestCase(1, 50)]
+        [TestCase(2, 75)]
+        [TestCase(3, 100)]
+        public void StarCoinReward_DefaultScalesConfiguredMaximum(
+            int starRating,
+            int expectedCoins)
+        {
+            Assert.That(
+                LevelStarCoinRewardCalculator.Calculate(
+                    100,
+                    starRating,
+                    LevelStarCoinRewardConfiguration.Default),
+                Is.EqualTo(expectedCoins));
+        }
+
+        [Test]
+        public void StarCoinReward_RoundsAndPreservesPositiveSmallTiers()
+        {
+            Assert.That(
+                LevelStarCoinRewardCalculator.Calculate(
+                    101,
+                    2,
+                    LevelStarCoinRewardConfiguration.Default),
+                Is.EqualTo(76));
+            Assert.That(
+                LevelStarCoinRewardCalculator.Calculate(
+                    1,
+                    1,
+                    LevelStarCoinRewardConfiguration.Default),
+                Is.EqualTo(1));
+        }
+
+        [Test]
+        public void StarCoinReward_RejectsInvalidInputsAndDecreasingTiers()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                LevelStarCoinRewardCalculator.Calculate(
+                    -1,
+                    1,
+                    LevelStarCoinRewardConfiguration.Default));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                LevelStarCoinRewardCalculator.Calculate(
+                    100,
+                    4,
+                    LevelStarCoinRewardConfiguration.Default));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                new LevelStarCoinRewardConfiguration(-1, 75, 100));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                new LevelStarCoinRewardConfiguration(50, 75, 101));
+            Assert.Throws<ArgumentException>(() =>
+                new LevelStarCoinRewardConfiguration(75, 50, 100));
+        }
     }
 }

@@ -95,7 +95,6 @@ namespace Cutrium.Presentation.Feedback
         private bool _subscribed;
         private bool _completionSummaryVisible;
         private float _summaryStartTime;
-        private float _summaryDuration;
 
         // Header + fixed base-reward row + up to 4 optional bonus rows.
         public const int CompletionSummaryRowCount = 6;
@@ -105,7 +104,6 @@ namespace Cutrium.Presentation.Feedback
         // schedule in a second place.
         public const float CompletionSummaryRowStaggerSeconds = 0.35f;
         public const float CompletionSummaryRowFadeSeconds = 0.28f;
-        private const float CompletionSummaryFadeOutSeconds = 0.4f;
         private const float StarRevealStartSeconds = 0.05f;
         private const float StarRevealStaggerSeconds = 0.13f;
         private const float StarRevealSeconds = 0.3f;
@@ -224,7 +222,6 @@ namespace Cutrium.Presentation.Feedback
             _summaryListGroup.gameObject.SetActive(true);
             _summaryListGroup.alpha = 1f;
             _summaryStartTime = Time.unscaledTime;
-            _summaryDuration = duration;
             _completionSummaryVisible = true;
         }
 
@@ -419,19 +416,10 @@ namespace Cutrium.Presentation.Feedback
                 group.transform.localScale = Vector3.one * EaseOutBack(t);
             }
 
-            float fadeOutStart = Mathf.Max(
-                0f,
-                _summaryDuration - CompletionSummaryFadeOutSeconds);
-            _summaryListGroup.alpha = elapsed >= fadeOutStart
-                ? 1f - Mathf.Clamp01(
-                    (elapsed - fadeOutStart)
-                        / Mathf.Max(0.01f, CompletionSummaryFadeOutSeconds))
-                : 1f;
-
-            if (elapsed >= _summaryDuration)
-            {
-                HideCompletionSummary();
-            }
+            // LandmarkRevealPresenter owns the exit. Keep stars, every row,
+            // and the separately-presented total intact until the shared
+            // full-screen fade covers and dismisses the whole composition.
+            _summaryListGroup.alpha = 1f;
         }
 
         private void HideCompletionSummary()

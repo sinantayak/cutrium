@@ -1,4 +1,5 @@
 using Cutrium.Gameplay.Session;
+using Cutrium.Presentation.Frontend;
 using Cutrium.Presentation.Landmark;
 using Cutrium.Unity.Simulation;
 using UnityEngine;
@@ -58,6 +59,9 @@ namespace Cutrium.Presentation.HUD
         private LandmarkRevealPresenter _completionRevealGate;
 
         [SerializeField]
+        private ScreenTransitionPresenter _screenTransition;
+
+        [SerializeField]
         [Min(0f)]
         private float _percentageAnimationSeconds = 0.22f;
 
@@ -104,6 +108,9 @@ namespace Cutrium.Presentation.HUD
 
         public LandmarkRevealPresenter CompletionRevealGate =>
             _completionRevealGate;
+
+        public ScreenTransitionPresenter ScreenTransition =>
+            _screenTransition;
 
         public float DisplayedCapturedFraction =>
             _displayedCapturedFraction;
@@ -233,6 +240,14 @@ namespace Cutrium.Presentation.HUD
             }
 
             _completionOverlayFadeSeconds = duration;
+        }
+
+        public void ConfigureScreenTransitionForSetup(
+            ScreenTransitionPresenter screenTransition)
+        {
+            _screenTransition = screenTransition
+                ?? throw new System.ArgumentNullException(
+                    nameof(screenTransition));
         }
 
         private void RefreshPresentation(
@@ -453,15 +468,32 @@ namespace Cutrium.Presentation.HUD
         private void OnRetryClicked()
         {
             _controller.NotifyUiFeedback();
-            _controller.RetryLevel();
-            RefreshNow();
+            RunScreenTransition(() =>
+            {
+                _controller.RetryLevel();
+                RefreshNow();
+            });
         }
 
         private void OnNextClicked()
         {
             _controller.NotifyUiFeedback();
-            _controller.AdvanceLevelOrRestartSequence();
-            RefreshNow();
+            RunScreenTransition(() =>
+            {
+                _controller.AdvanceLevelOrRestartSequence();
+                RefreshNow();
+            });
+        }
+
+        private void RunScreenTransition(System.Action midpointAction)
+        {
+            if (_screenTransition != null)
+            {
+                _screenTransition.TryTransition(midpointAction);
+                return;
+            }
+
+            midpointAction();
         }
 
         private void SetCompletionVisible(

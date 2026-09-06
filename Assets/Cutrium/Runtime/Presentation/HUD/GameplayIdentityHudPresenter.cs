@@ -1,5 +1,6 @@
 using System;
 using Cutrium.Gameplay.Session;
+using Cutrium.Presentation.Frontend;
 using Cutrium.Unity.Simulation;
 using TMPro;
 using UnityEngine;
@@ -19,6 +20,7 @@ namespace Cutrium.Presentation.HUD
         [SerializeField] private Text _failureText;
         [SerializeField] private Button _retryButton;
         [SerializeField] private Button _watchAdButton;
+        [SerializeField] private ScreenTransitionPresenter _screenTransition;
 
         private const string FailurePrompt =
             "Watch an AD\nto Continue!";
@@ -31,6 +33,8 @@ namespace Cutrium.Presentation.HUD
         public CanvasGroup FailureCanvasGroup => _failureCanvasGroup;
         public Button RetryButton => _retryButton;
         public Button WatchAdButton => _watchAdButton;
+        public ScreenTransitionPresenter ScreenTransition =>
+            _screenTransition;
 
         public void Configure(
             FirstPlayableController controller,
@@ -89,6 +93,13 @@ namespace Cutrium.Presentation.HUD
             }
 
             RefreshNow(0f);
+        }
+
+        public void ConfigureScreenTransitionForSetup(
+            ScreenTransitionPresenter screenTransition)
+        {
+            _screenTransition = screenTransition
+                ?? throw new ArgumentNullException(nameof(screenTransition));
         }
 
         // The speedometer needle position is meaningful only relative to
@@ -244,6 +255,16 @@ namespace Cutrium.Presentation.HUD
         private void OnRetryClicked()
         {
             _controller.NotifyUiFeedback();
+            if (_screenTransition != null)
+            {
+                _screenTransition.TryTransition(() =>
+                {
+                    _controller.RetryLevel();
+                    RefreshNow(0f);
+                });
+                return;
+            }
+
             _controller.RetryLevel();
             RefreshNow(0f);
         }

@@ -84,6 +84,9 @@ namespace Cutrium.Editor.Setup
             Scene scene = OpenVerticalSliceScene();
             GameObject root = RequireRoot(scene, "VerticalSliceRoot");
             Transform canvas = RequireChild(root.transform, "Canvas");
+            ScreenTransitionPresenter screenTransition =
+                LandmarkRevealPresentationSetup
+                    .ConfigureScreenTransitionForSetup(canvas);
             RequireChild(canvas, "SafeAreaRoot");
             FirstPlayableController controller = root
                 .GetComponentInChildren<FirstPlayableController>(true);
@@ -108,6 +111,10 @@ namespace Cutrium.Editor.Setup
             Sprite challengeIcon = EnsureUiSprite(ChallengeIconPath);
             Sprite nodeSprite = EnsureUiSprite(NodeSpritePath);
             Sprite nodeLockSprite = EnsureUiSprite(NodeLockSpritePath);
+            Sprite filledStarSprite = EnsureUiSprite(
+                LandmarkRevealPresentationSetup.YellowStarPath);
+            Sprite emptyStarSprite = EnsureUiSprite(
+                LandmarkRevealPresentationSetup.GrayStarPath);
             Sprite playButtonSprite = EnsureUiSprite(PlayButtonSpritePath);
             Sprite homeBackground = EnsureUiSprite(HomeBackgroundPath);
             Sprite homeLogo = EnsureUiSprite(HomeLogoPath);
@@ -166,6 +173,8 @@ namespace Cutrium.Editor.Setup
                 playButtonSprite,
                 nodeSprite,
                 nodeLockSprite,
+                filledStarSprite,
+                emptyStarSprite,
                 levelCount);
 
             NavigationSetupResult navigation = ConfigureBottomNavigation(
@@ -189,6 +198,9 @@ namespace Cutrium.Editor.Setup
                     "Frontend setup requires CloudServicesBootstrap for " +
                     "the Coin balance display.");
             }
+
+            Undo.RecordObject(controller, "Wire Star Progress Cloud Save");
+            controller.ConfigureProgressCloudForSetup(cloudServices);
 
             CoinBalanceHudPresenter coinBalance =
                 LandmarkRevealPresentationSetup.ConfigureCoinBalanceSlot(
@@ -222,7 +234,12 @@ namespace Cutrium.Editor.Setup
                 challenge.PlayLabel,
                 challenge.ScrollRect,
                 challenge.Nodes,
-                challenge.Connectors);
+                challenge.Connectors,
+                screenTransition);
+            LandmarkRevealPresentationSetup
+                .WireScreenTransitionConsumersForSetup(
+                    root,
+                    screenTransition);
 
             Validate(
                 frontEndRoot,
@@ -233,6 +250,8 @@ namespace Cutrium.Editor.Setup
                 challengeIcon,
                 nodeSprite,
                 nodeLockSprite,
+                filledStarSprite,
+                emptyStarSprite,
                 homeBackground,
                 homeLogo);
             if (coinBalance.CloudServices != cloudServices
@@ -243,6 +262,7 @@ namespace Cutrium.Editor.Setup
             }
 
             EditorUtility.SetDirty(coinBalance);
+            EditorUtility.SetDirty(controller);
             EditorUtility.SetDirty(presenter);
             EditorUtility.SetDirty(rootGroup);
             EditorSceneManager.MarkSceneDirty(scene);
@@ -365,6 +385,8 @@ namespace Cutrium.Editor.Setup
             Sprite playButtonSprite,
             Sprite nodeSprite,
             Sprite nodeLockSprite,
+            Sprite filledStarSprite,
+            Sprite emptyStarSprite,
             int levelCount)
         {
             DestroyUiChildIfPresent(page.transform, "ChallengeHeader");
@@ -422,7 +444,9 @@ namespace Cutrium.Editor.Setup
                 positions,
                 font,
                 nodeSprite,
-                nodeLockSprite);
+                nodeLockSprite,
+                filledStarSprite,
+                emptyStarSprite);
 
             ScrollRect scrollRect = GetOrAddComponent<ScrollRect>(
                 scrollRectTransform.gameObject);
@@ -515,7 +539,9 @@ namespace Cutrium.Editor.Setup
             IReadOnlyList<Vector2> positions,
             TMP_FontAsset font,
             Sprite nodeSprite,
-            Sprite nodeLockSprite)
+            Sprite nodeLockSprite,
+            Sprite filledStarSprite,
+            Sprite emptyStarSprite)
         {
             var nodes = new FrontEndLevelNodeView[positions.Count];
             for (int index = 0; index < positions.Count; index++)
@@ -572,6 +598,34 @@ namespace Cutrium.Editor.Setup
                 lockImage.raycastTarget = false;
                 lockImage.gameObject.SetActive(false);
 
+                RectTransform starsRoot = CreateUiChild(root, "Stars");
+                Anchor(
+                    starsRoot,
+                    new Vector2(0.5f, 0.5f),
+                    new Vector2(138f, 46f));
+                starsRoot.anchoredPosition = new Vector2(0f, 104f);
+                var starImages = new Image[3];
+                for (int starIndex = 0; starIndex < starImages.Length;
+                    starIndex++)
+                {
+                    RectTransform starRect = CreateUiChild(
+                        starsRoot,
+                        $"Star{starIndex + 1}");
+                    Anchor(
+                        starRect,
+                        new Vector2(0.5f, 0.5f),
+                        new Vector2(46f, 46f));
+                    starRect.anchoredPosition = new Vector2(
+                        (starIndex - 1) * 44f,
+                        0f);
+                    Image starImage = starRect.gameObject.AddComponent<Image>();
+                    starImage.sprite = emptyStarSprite;
+                    starImage.preserveAspect = true;
+                    starImage.color = Color.white;
+                    starImage.raycastTarget = false;
+                    starImages[starIndex] = starImage;
+                }
+
                 Button button = root.gameObject.AddComponent<Button>();
                 button.targetGraphic = visual;
                 button.transition = Selectable.Transition.ColorTint;
@@ -589,7 +643,10 @@ namespace Cutrium.Editor.Setup
                     visual,
                     glow,
                     label,
-                    lockImage);
+                    lockImage,
+                    starImages,
+                    filledStarSprite,
+                    emptyStarSprite);
                 nodes[index] = node;
             }
 
@@ -960,12 +1017,17 @@ namespace Cutrium.Editor.Setup
             Sprite challengeIcon,
             Sprite nodeSprite,
             Sprite nodeLockSprite,
+            Sprite filledStarSprite,
+            Sprite emptyStarSprite,
             Sprite homeBackground,
             Sprite homeLogo)
         {
             if (root.parent == null
                 || root.GetSiblingIndex() != root.parent.childCount - 1
                 || presenter.Controller == null
+                || presenter.Controller.ProgressCloudServices == null
+                || presenter.ScreenTransition == null
+                || presenter.ScreenTransition.OverlayCanvasGroup == null
                 || presenter.FrontEndCanvasGroup == null
                 || presenter.HomePage == null
                 || presenter.ShopPage == null
@@ -1044,7 +1106,10 @@ namespace Cutrium.Editor.Setup
                     || node.SelectionGlow
                         .GetComponent<FrontEndPulseAnimator>() != null
                     || node.LockImage == null
-                    || node.LockImage.sprite != nodeLockSprite)
+                    || node.LockImage.sprite != nodeLockSprite
+                    || node.StarImages.Count != 3
+                    || node.FilledStarSprite != filledStarSprite
+                    || node.EmptyStarSprite != emptyStarSprite)
                 {
                     throw new InvalidOperationException(
                         $"Challenge node {index + 1} is not wired correctly.");

@@ -221,6 +221,8 @@ namespace Cutrium.Gameplay.Session
 
         public int ExpectedReasonableCutUsage { get; }
 
+        /// Maximum base Coin reward, granted in full for a three-star run and
+        /// scaled for lower ratings by the presentation/economy tuning.
         public int CompletionCoinReward { get; }
 
         private static void ValidateThreat(

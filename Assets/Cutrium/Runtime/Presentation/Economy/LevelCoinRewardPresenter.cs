@@ -60,6 +60,7 @@ namespace Cutrium.Presentation.Economy
         private int _lastRevealedStepIndex;
         private float _lastStepPulseTime = float.NegativeInfinity;
         private float _countCompleteTime;
+        private int _awardedBalance;
 
         public FirstPlayableController Controller => _controller;
         public CloudServicesBootstrap CloudServices => _cloudServices;
@@ -139,8 +140,16 @@ namespace Cutrium.Presentation.Economy
                 return;
             }
 
-            int baseAmount = _controller.CurrentLevelConfiguration
+            int maximumBaseAmount = _controller.CurrentLevelConfiguration
                 .CompletionCoinReward;
+            LevelStarCoinRewardConfiguration starRewardConfiguration =
+                _performanceTuning != null
+                    ? _performanceTuning.ToStarRewardConfiguration()
+                    : LevelStarCoinRewardConfiguration.Default;
+            int baseAmount = LevelStarCoinRewardCalculator.Calculate(
+                maximumBaseAmount,
+                _controller.LastCompletedStarRating,
+                starRewardConfiguration);
             PerformanceCoinRewardBreakdown breakdown =
                 CalculatePerformanceBreakdown();
             int amount = baseAmount + breakdown.TotalCoinAmount;
@@ -165,6 +174,7 @@ namespace Cutrium.Presentation.Economy
             }
 
             LastAwardedAmount = amount;
+            _awardedBalance = claim.Balance;
             LastBaseAmount = baseAmount;
             LastBreakdown = breakdown;
             BuildRevealSteps(baseAmount, breakdown);
@@ -284,12 +294,15 @@ namespace Cutrium.Presentation.Economy
             if (!_balanceReleased && elapsed >= lastArrival)
             {
                 _balanceReleased = true;
-                _balanceHud.ReleaseDisplayedBalance();
+                _balanceHud.ReleaseDisplayedBalanceAnimated(
+                    _awardedBalance);
             }
 
             AnimateTargetPulse(elapsed, lastArrival);
             float settle = Mathf.Max(0f, _settleSeconds);
-            if (elapsed >= holdEnd + settle)
+            if (elapsed >= holdEnd + settle
+                && (_balanceHud == null
+                    || !_balanceHud.IsAnimatingDisplayedBalance))
             {
                 CompletePresentation();
             }

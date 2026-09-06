@@ -17,10 +17,15 @@ namespace Cutrium.Presentation.Economy
         [SerializeField] private CloudServicesBootstrap _cloudServices;
         [SerializeField] private Image _coinIcon;
         [SerializeField] private TMP_Text _balanceText;
+        [SerializeField] [Min(0f)] private float _balanceCountSeconds = 0.45f;
 
         private CoinWalletService _subscribedWallet;
         private bool _displayHeld;
         private int _heldBalance;
+        private bool _displayAnimationActive;
+        private int _animationStartBalance;
+        private int _animationTargetBalance;
+        private float _animationElapsed;
 
         public CloudServicesBootstrap CloudServices => _cloudServices;
         public Image CoinIcon => _coinIcon;
@@ -28,13 +33,17 @@ namespace Cutrium.Presentation.Economy
         public RectTransform FlightTarget =>
             _coinIcon != null ? _coinIcon.rectTransform : null;
         public bool DisplayHeld => _displayHeld;
+        public bool IsAnimatingDisplayedBalance => _displayAnimationActive;
+        public float BalanceCountSeconds => _balanceCountSeconds;
         public int DisplayedBalance { get; private set; }
 
         public void ConfigureForSetup(
             CloudServicesBootstrap cloudServices,
             Image coinIcon,
-            TMP_Text balanceText)
+            TMP_Text balanceText,
+            float balanceCountSeconds = 0.45f)
         {
+            ValidateDuration(balanceCountSeconds, nameof(balanceCountSeconds));
             Unsubscribe();
             _cloudServices = cloudServices
                 ?? throw new ArgumentNullException(nameof(cloudServices));
@@ -42,6 +51,8 @@ namespace Cutrium.Presentation.Economy
                 ?? throw new ArgumentNullException(nameof(coinIcon));
             _balanceText = balanceText
                 ?? throw new ArgumentNullException(nameof(balanceText));
+            _balanceCountSeconds = balanceCountSeconds;
+            _displayAnimationActive = false;
             if (isActiveAndEnabled && Application.isPlaying)
             {
                 Subscribe();
@@ -59,13 +70,68 @@ namespace Cutrium.Presentation.Economy
 
             _displayHeld = true;
             _heldBalance = balance;
+            _displayAnimationActive = false;
             Render(balance);
         }
 
         public void ReleaseDisplayedBalance()
         {
             _displayHeld = false;
+            _displayAnimationActive = false;
             RefreshNow();
+        }
+
+        /// Releases the presentation hold while counting only the visible
+        /// label toward an already-authoritative wallet balance. This never
+        /// mutates or delays persistence.
+        public void ReleaseDisplayedBalanceAnimated(int targetBalance)
+        {
+            if (targetBalance < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(targetBalance));
+            }
+
+            _displayHeld = false;
+            if (_balanceCountSeconds <= 0f
+                || targetBalance <= DisplayedBalance)
+            {
+                _displayAnimationActive = false;
+                Render(targetBalance);
+                return;
+            }
+
+            _animationStartBalance = DisplayedBalance;
+            _animationTargetBalance = targetBalance;
+            _animationElapsed = 0f;
+            _displayAnimationActive = true;
+        }
+
+        public void AdvanceDisplayAnimation(float elapsedSeconds)
+        {
+            ValidateDuration(elapsedSeconds, nameof(elapsedSeconds));
+            if (!_displayAnimationActive)
+            {
+                return;
+            }
+
+            _animationElapsed += elapsedSeconds;
+            float progress = _balanceCountSeconds <= 0f
+                ? 1f
+                : Mathf.Clamp01(_animationElapsed / _balanceCountSeconds);
+            float eased = 1f - Mathf.Pow(1f - progress, 3f);
+            int displayed = Mathf.RoundToInt(Mathf.Lerp(
+                _animationStartBalance,
+                _animationTargetBalance,
+                eased));
+            Render(Mathf.Clamp(
+                displayed,
+                DisplayedBalance,
+                _animationTargetBalance));
+            if (progress >= 1f)
+            {
+                _displayAnimationActive = false;
+                Render(_animationTargetBalance);
+            }
         }
 
         public void RefreshNow()
@@ -73,6 +139,11 @@ namespace Cutrium.Presentation.Economy
             if (_displayHeld)
             {
                 Render(_heldBalance);
+                return;
+            }
+
+            if (_displayAnimationActive)
+            {
                 return;
             }
 
@@ -93,6 +164,11 @@ namespace Cutrium.Presentation.Economy
         }
 
         private void OnDisable() => Unsubscribe();
+
+        private void Update()
+        {
+            AdvanceDisplayAnimation(Time.unscaledDeltaTime);
+        }
 
         private void Subscribe()
         {
@@ -116,9 +192,34 @@ namespace Cutrium.Presentation.Economy
 
         private void OnBalanceChanged(CoinBalanceChangedEvent change)
         {
-            if (!_displayHeld)
+            if (_displayHeld)
             {
-                Render(change.CurrentBalance);
+                return;
+            }
+
+            if (_displayAnimationActive)
+            {
+                if (change.CurrentBalance <= DisplayedBalance)
+                {
+                    _displayAnimationActive = false;
+                    Render(change.CurrentBalance);
+                }
+                else
+                {
+                    _animationTargetBalance = change.CurrentBalance;
+                }
+
+                return;
+            }
+
+            Render(change.CurrentBalance);
+        }
+
+        private static void ValidateDuration(float value, string name)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value) || value < 0f)
+            {
+                throw new ArgumentOutOfRangeException(name);
             }
         }
 

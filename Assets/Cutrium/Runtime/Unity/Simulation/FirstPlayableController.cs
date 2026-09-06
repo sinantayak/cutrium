@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Cutrium.Gameplay.Barriers;
 using Cutrium.Gameplay.Feedback;
 using Cutrium.Gameplay.Geometry;
@@ -69,6 +70,9 @@ namespace Cutrium.Unity.Simulation
         [SerializeField]
         private CoreFunLevelCatalogDefinition _levelCatalogDefinition;
 
+        [SerializeField]
+        private CloudServicesBootstrap _progressCloudServices;
+
         [Header("Feedback")]
         [SerializeField]
         private FeedbackTuningDefinition _feedbackTuning;
@@ -95,6 +99,8 @@ namespace Cutrium.Unity.Simulation
         private SimulationHoldReason _simulationHoldReasons;
         private readonly PlayerProgressStore _progressStore =
             new PlayerProgressStore();
+        private bool _progressCloudSubscribed;
+        private Task _starCloudSyncTask;
 
         public bool GravityWellTargeting { get; private set; }
 
@@ -111,6 +117,8 @@ namespace Cutrium.Unity.Simulation
                 != SimulationHoldReason.None;
 
         public event Action<FeedbackEvent> FeedbackEventRaised;
+
+        public event Action LevelMapProgressChanged;
 
         public GeometryTolerancePolicy Tolerance { get; private set; }
 
@@ -185,6 +193,9 @@ namespace Cutrium.Unity.Simulation
         public CoreFunLevelCatalogDefinition LevelCatalogDefinition =>
             _levelCatalogDefinition;
 
+        public CloudServicesBootstrap ProgressCloudServices =>
+            _progressCloudServices;
+
         public CoreFunLevelConfiguration CurrentLevelConfiguration
         {
             get;
@@ -255,6 +266,8 @@ namespace Cutrium.Unity.Simulation
                 _barrierGesture.IntentCommitted += OnBarrierIntentCommitted;
                 _barrierGesture.PointCommitted += OnPointCommitted;
             }
+
+            SubscribeProgressCloud();
         }
 
         private void OnDisable()
@@ -264,6 +277,8 @@ namespace Cutrium.Unity.Simulation
                 _barrierGesture.IntentCommitted -= OnBarrierIntentCommitted;
                 _barrierGesture.PointCommitted -= OnPointCommitted;
             }
+
+            UnsubscribeProgressCloud();
         }
 
         private void Update()
@@ -411,6 +426,58 @@ namespace Cutrium.Unity.Simulation
                     nameof(levelCatalogDefinition));
             _ = _levelCatalogDefinition.BuildRuntimeCatalog();
             _activeLevelDefinitions = null;
+        }
+
+        public void ConfigureProgressCloudForSetup(
+            CloudServicesBootstrap cloudServices)
+        {
+            if (_progressCloudServices == cloudServices)
+            {
+                return;
+            }
+
+            UnsubscribeProgressCloud();
+            _progressCloudServices = cloudServices
+                ?? throw new ArgumentNullException(nameof(cloudServices));
+            if (isActiveAndEnabled && Application.isPlaying)
+            {
+                SubscribeProgressCloud();
+            }
+        }
+
+        /// Returns the persisted best for any one-based catalog level. The
+        /// stable level ID remains an internal persistence detail rather than
+        /// leaking into level-map presentation code.
+        public int GetBestStarRatingForLevel(int oneBasedLevelNumber)
+        {
+            InitializeOnce();
+            int index = oneBasedLevelNumber - 1;
+            if (index < 0 || index >= _levelCatalog.Count)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(oneBasedLevelNumber));
+            }
+
+            return _progressStore.LoadLocalBestLevelStarRating(
+                _levelCatalog[index].StableId);
+        }
+
+        public Task SynchronizeBestLevelStarRatingsWithCloudAsync()
+        {
+            InitializeOnce();
+            if (_progressCloudServices == null
+                || !_progressCloudServices.IsSignedIn)
+            {
+                return Task.CompletedTask;
+            }
+
+            if (_starCloudSyncTask != null && !_starCloudSyncTask.IsCompleted)
+            {
+                return _starCloudSyncTask;
+            }
+
+            _starCloudSyncTask = SynchronizeBestLevelStarRatingsCoreAsync();
+            return _starCloudSyncTask;
         }
 
         public BarrierStartResult SubmitBarrierIntent(BarrierIntent intent)
@@ -699,6 +766,7 @@ namespace Cutrium.Unity.Simulation
 
             HighestUnlockedLevelIndex = index;
             _progressStore.SaveHighestUnlockedLevelIndex(index);
+            LevelMapProgressChanged?.Invoke();
         }
 
         private void TickSession(float elapsedTime)
@@ -894,6 +962,83 @@ namespace Cutrium.Unity.Simulation
             _progressStore.SaveBestLevelStarRating(
                 CurrentLevelConfiguration.StableId,
                 CurrentLevelBestStarRating);
+            LevelMapProgressChanged?.Invoke();
+        }
+
+        private void SubscribeProgressCloud()
+        {
+            if (_progressCloudSubscribed || _progressCloudServices == null)
+            {
+                return;
+            }
+
+            _progressCloudServices.SignedIn += OnProgressCloudSignedIn;
+            _progressCloudSubscribed = true;
+            if (_progressCloudServices.IsSignedIn)
+            {
+                OnProgressCloudSignedIn();
+            }
+        }
+
+        private void UnsubscribeProgressCloud()
+        {
+            if (!_progressCloudSubscribed || _progressCloudServices == null)
+            {
+                return;
+            }
+
+            _progressCloudServices.SignedIn -= OnProgressCloudSignedIn;
+            _progressCloudSubscribed = false;
+        }
+
+        private void OnProgressCloudSignedIn()
+        {
+            _ = SynchronizeBestLevelStarRatingsWithCloudAsync();
+        }
+
+        private async Task SynchronizeBestLevelStarRatingsCoreAsync()
+        {
+            var stableLevelIds = new string[_levelCatalog.Count];
+            for (int index = 0; index < _levelCatalog.Count; index++)
+            {
+                stableLevelIds[index] = _levelCatalog[index].StableId;
+            }
+
+            // CurrentLevelIndex intentionally stays fixed for this active
+            // run, but pulling its persisted mirror preserves the existing
+            // next-boot behavior. HighestUnlockedLevelIndex can safely rise
+            // immediately because it only changes map access, not gameplay.
+            await _progressStore.PullCloudCurrentLevelIndexAsync();
+            await _progressStore.PullCloudHighestUnlockedLevelIndexAsync();
+            bool localStarsChanged = await _progressStore
+                .SynchronizeBestLevelStarRatingsWithCloudAsync(
+                    stableLevelIds);
+            if (this == null)
+            {
+                return;
+            }
+
+            int storedHighestUnlocked = Math.Min(
+                _progressStore.LoadLocalHighestUnlockedLevelIndex(),
+                _levelCatalog.Count - 1);
+            bool unlockChanged = storedHighestUnlocked
+                > HighestUnlockedLevelIndex;
+            if (unlockChanged)
+            {
+                HighestUnlockedLevelIndex = storedHighestUnlocked;
+            }
+
+            if (localStarsChanged)
+            {
+                CurrentLevelBestStarRating = _progressStore
+                    .LoadLocalBestLevelStarRating(
+                        CurrentLevelConfiguration.StableId);
+            }
+
+            if (localStarsChanged || unlockChanged)
+            {
+                LevelMapProgressChanged?.Invoke();
+            }
         }
 
         private void DispatchFeedbackEvents()

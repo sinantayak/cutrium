@@ -7,6 +7,7 @@ using Cutrium.Gameplay.Session;
 using Cutrium.Presentation.Capture;
 using Cutrium.Presentation.Economy;
 using Cutrium.Presentation.Feedback;
+using Cutrium.Presentation.Frontend;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Localization;
 using Cutrium.Presentation.Threats;
@@ -123,6 +124,7 @@ namespace Cutrium.Presentation.Landmark
             _completionFeedbackPresenter;
         [SerializeField] private LevelCoinRewardPresenter
             _levelCoinRewardPresenter;
+        [SerializeField] private ScreenTransitionPresenter _screenTransition;
         [SerializeField] [Min(0f)] private float _completionSummarySeconds =
             2.2f;
         [SerializeField] private LandmarkCatalog _landmarkCatalog;
@@ -152,6 +154,7 @@ namespace Cutrium.Presentation.Landmark
         private float _completionRevealStartTime;
         private bool _completionSummaryStarted;
         private bool _completionSummaryFinished;
+        private bool _completionTransitionRequested;
         private bool _completionDecorationsHidden;
         private bool _grainFlightRootWasActive;
         private float _completionSummaryStartTime;
@@ -192,6 +195,8 @@ namespace Cutrium.Presentation.Landmark
             _completionFeedbackPresenter;
         public LevelCoinRewardPresenter LevelCoinRewardPresenter =>
             _levelCoinRewardPresenter;
+        public ScreenTransitionPresenter ScreenTransition =>
+            _screenTransition;
         public float CompletionSummarySeconds =>
             _completionSummarySeconds;
         public LandmarkCatalog Catalog => _landmarkCatalog;
@@ -316,6 +321,7 @@ namespace Cutrium.Presentation.Landmark
             _completionSequenceStarted = false;
             _completionSummaryStarted = false;
             _completionSummaryFinished = false;
+            _completionTransitionRequested = false;
             _lastSeenSession = null;
             _capturedRoomsSeen = 0;
             _lastCompletionLayoutSize = new Vector2(float.NaN, float.NaN);
@@ -327,7 +333,8 @@ namespace Cutrium.Presentation.Landmark
             CaptureBoardPresenter captureBoardPresenter,
             FeedbackPresenter completionFeedbackPresenter,
             float completionSummarySeconds,
-            LevelCoinRewardPresenter levelCoinRewardPresenter = null)
+            LevelCoinRewardPresenter levelCoinRewardPresenter = null,
+            ScreenTransitionPresenter screenTransition = null)
         {
             if (!IsFinite(completionSummarySeconds)
                 || completionSummarySeconds < 0f)
@@ -345,6 +352,7 @@ namespace Cutrium.Presentation.Landmark
                 ?? throw new ArgumentNullException(
                     nameof(completionFeedbackPresenter));
             _levelCoinRewardPresenter = levelCoinRewardPresenter;
+            _screenTransition = screenTransition;
             _completionSummarySeconds = completionSummarySeconds;
         }
 
@@ -364,6 +372,13 @@ namespace Cutrium.Presentation.Landmark
             _completionFontResolutionAttempted = true;
             _lastCompletionLayoutSize = new Vector2(float.NaN, float.NaN);
             RefreshCompletionLayoutNow();
+        }
+
+        public void ConfigureScreenTransitionForSetup(
+            ScreenTransitionPresenter screenTransition)
+        {
+            _screenTransition = screenTransition
+                ?? throw new ArgumentNullException(nameof(screenTransition));
         }
 
         public void ConfigureAudio(
@@ -559,6 +574,7 @@ namespace Cutrium.Presentation.Landmark
         {
             _completionSummaryStarted = true;
             _completionSummaryFinished = false;
+            _completionTransitionRequested = false;
             _completionSequenceStarted = false;
             _completionSummaryStartTime = Time.unscaledTime;
 
@@ -619,12 +635,43 @@ namespace Cutrium.Presentation.Landmark
                 && (_levelCoinRewardPresenter == null
                     || _levelCoinRewardPresenter.IsPresentationComplete))
             {
-                FinishCompletionSummary();
+                RequestCompletionTransition();
             }
+        }
+
+        private void RequestCompletionTransition()
+        {
+            if (_completionTransitionRequested)
+            {
+                return;
+            }
+
+            if (_screenTransition != null)
+            {
+                if (_screenTransition.TryTransition(
+                        FinishCompletionSummary))
+                {
+                    _completionTransitionRequested = true;
+                }
+
+                return;
+            }
+
+            _completionTransitionRequested = true;
+            FinishCompletionSummary();
         }
 
         private void FinishCompletionSummary()
         {
+            if (!_completionSummaryStarted
+                || _controller == null
+                || _controller.Session == null
+                || _controller.Session.LevelStatus
+                    != CaptureLevelStatus.Completed)
+            {
+                return;
+            }
+
             _completionFeedbackPresenter?.DismissCompletionSummary();
             _levelCoinRewardPresenter?.CancelPresentation();
             _completionSummaryFinished = true;
@@ -651,6 +698,7 @@ namespace Cutrium.Presentation.Landmark
             RestoreCompletionDecorations();
             _completionSummaryStarted = false;
             _completionSummaryFinished = false;
+            _completionTransitionRequested = false;
             _completionSequenceStarted = false;
         }
 

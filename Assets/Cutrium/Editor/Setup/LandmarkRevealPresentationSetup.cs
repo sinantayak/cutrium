@@ -7,9 +7,11 @@ using Cutrium.Presentation.Barriers;
 using Cutrium.Presentation.Capture;
 using Cutrium.Presentation.Economy;
 using Cutrium.Presentation.Feedback;
+using Cutrium.Presentation.Frontend;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
 using Cutrium.Presentation.Powers;
+using Cutrium.Presentation.Settings;
 using Cutrium.Presentation.Theme;
 using Cutrium.Presentation.Threats;
 using Cutrium.Unity.Layout;
@@ -42,6 +44,8 @@ namespace Cutrium.Editor.Setup
         // nothing auto-hides early.
         private const float CompletionSummarySeconds = 5.2f;
         private const float CompletionOverlayFadeSeconds = 0.45f;
+        private const float BalanceCountSeconds = 0.45f;
+        private const int ScreenTransitionSortingOrder = 32000;
         public const string PerformanceCoinRewardTuningAssetPath =
             "Assets/Cutrium/Content/Economy/PerformanceCoinRewardTuning.asset";
         public const string GeneratedFolder =
@@ -229,9 +233,10 @@ namespace Cutrium.Editor.Setup
                     "LandmarkRevealPresenter.");
             }
 
-            Transform safeArea = RequireChild(
-                root.transform,
-                "Canvas/SafeAreaRoot");
+            Transform canvas = RequireChild(root.transform, "Canvas");
+            ScreenTransitionPresenter screenTransition =
+                ConfigureScreenTransitionForSetup(canvas);
+            Transform safeArea = RequireChild(canvas, "SafeAreaRoot");
             Transform completion = RequireChild(
                 safeArea,
                 "LevelCompleteOverlay");
@@ -254,7 +259,8 @@ namespace Cutrium.Editor.Setup
             ConfigureFeedbackReadabilityForSetup(safeArea);
             ConfigureCompletionRewardFlowForSetup(
                 root,
-                landmarkPresenter);
+                landmarkPresenter,
+                screenTransition);
             ApplyCompletionReadability(completion, LoadCompletionFont());
             ConfigureGeneralActionButtonLayoutForSetup(safeArea);
             ApplyGeneralButtonStylesForSetup(root);
@@ -275,6 +281,105 @@ namespace Cutrium.Editor.Setup
                 RequireChild(completion, "RetryButton").GetComponent<Button>());
             ValidateGeneralButtonStyle(
                 RequireChild(completion, "NextButton").GetComponent<Button>());
+        }
+
+        public static ScreenTransitionPresenter
+            ConfigureScreenTransitionForSetup(Transform canvas)
+        {
+            if (canvas == null)
+            {
+                throw new ArgumentNullException(nameof(canvas));
+            }
+
+            RectTransform transitionRoot = GetOrCreateUiChild(
+                canvas,
+                "ScreenTransitionOverlay");
+            StretchToParent(transitionRoot);
+            transitionRoot.gameObject.SetActive(true);
+            // Sorting is explicit, so setup order and sibling order cannot
+            // place FrontEnd or Settings above the transition cover.
+            transitionRoot.SetAsFirstSibling();
+            Canvas transitionCanvas = GetOrAddComponent<Canvas>(
+                transitionRoot.gameObject);
+            transitionCanvas.overrideSorting = true;
+            transitionCanvas.sortingOrder = ScreenTransitionSortingOrder;
+            GetOrAddComponent<GraphicRaycaster>(transitionRoot.gameObject);
+
+            Image cover = GetOrAddComponent<Image>(
+                transitionRoot.gameObject);
+            cover.sprite = null;
+            cover.type = Image.Type.Simple;
+            cover.color = Color.black;
+            cover.raycastTarget = true;
+            CanvasGroup group = GetOrAddComponent<CanvasGroup>(
+                transitionRoot.gameObject);
+            ScreenTransitionPresenter presenter = GetOrAddComponent<
+                ScreenTransitionPresenter>(transitionRoot.gameObject);
+            presenter.ConfigureForSetup(group);
+
+            EditorUtility.SetDirty(transitionRoot);
+            EditorUtility.SetDirty(transitionCanvas);
+            EditorUtility.SetDirty(cover);
+            EditorUtility.SetDirty(group);
+            EditorUtility.SetDirty(presenter);
+            return presenter;
+        }
+
+        public static void WireScreenTransitionConsumersForSetup(
+            GameObject root,
+            ScreenTransitionPresenter screenTransition)
+        {
+            if (root == null)
+            {
+                throw new ArgumentNullException(nameof(root));
+            }
+
+            if (screenTransition == null)
+            {
+                throw new ArgumentNullException(nameof(screenTransition));
+            }
+
+            foreach (FrontEndPresenter presenter in root
+                .GetComponentsInChildren<FrontEndPresenter>(true))
+            {
+                presenter.ConfigureScreenTransitionForSetup(screenTransition);
+                EditorUtility.SetDirty(presenter);
+            }
+
+            foreach (SettingsPanelPresenter presenter in root
+                .GetComponentsInChildren<SettingsPanelPresenter>(true))
+            {
+                presenter.ConfigureScreenTransitionForSetup(screenTransition);
+                EditorUtility.SetDirty(presenter);
+            }
+
+            foreach (LandmarkRevealPresenter presenter in root
+                .GetComponentsInChildren<LandmarkRevealPresenter>(true))
+            {
+                presenter.ConfigureScreenTransitionForSetup(screenTransition);
+                EditorUtility.SetDirty(presenter);
+            }
+
+            foreach (CaptureHudPresenter presenter in root
+                .GetComponentsInChildren<CaptureHudPresenter>(true))
+            {
+                presenter.ConfigureScreenTransitionForSetup(screenTransition);
+                EditorUtility.SetDirty(presenter);
+            }
+
+            foreach (GameplayIdentityHudPresenter presenter in root
+                .GetComponentsInChildren<GameplayIdentityHudPresenter>(true))
+            {
+                presenter.ConfigureScreenTransitionForSetup(screenTransition);
+                EditorUtility.SetDirty(presenter);
+            }
+
+            foreach (QuickRetryPresenter presenter in root
+                .GetComponentsInChildren<QuickRetryPresenter>(true))
+            {
+                presenter.ConfigureScreenTransitionForSetup(screenTransition);
+                EditorUtility.SetDirty(presenter);
+            }
         }
 
         [MenuItem("Cutrium/Setup/Apply Gravity Well Visuals Only")]
@@ -306,9 +411,8 @@ namespace Cutrium.Editor.Setup
                 .GetComponentInChildren<FirstPlayableController>(true);
             PowerHudPresenter powerHud = root
                 .GetComponentInChildren<PowerHudPresenter>(true);
-            Transform safeArea = RequireChild(
-                root.transform,
-                "Canvas/SafeAreaRoot");
+            Transform canvas = RequireChild(root.transform, "Canvas");
+            Transform safeArea = RequireChild(canvas, "SafeAreaRoot");
             RectTransform boardFrame = (RectTransform)RequireChild(
                 root.transform,
                 "Canvas/SafeAreaRoot/BoardStage/BoardViewport/BoardFrame");
@@ -523,14 +627,18 @@ namespace Cutrium.Editor.Setup
                     "Completion reward flow requires LandmarkRevealPresenter.");
             }
 
-            Transform safeArea = RequireChild(
-                root.transform,
-                "Canvas/SafeAreaRoot");
+            Transform canvas = RequireChild(root.transform, "Canvas");
+            ScreenTransitionPresenter screenTransition =
+                ConfigureScreenTransitionForSetup(canvas);
+            Transform safeArea = RequireChild(canvas, "SafeAreaRoot");
             Transform completionOverlay = RequireChild(
                 safeArea,
                 "LevelCompleteOverlay");
             ConfigureFeedbackReadabilityForSetup(safeArea);
-            ConfigureCompletionRewardFlowForSetup(root, presenter);
+            ConfigureCompletionRewardFlowForSetup(
+                root,
+                presenter,
+                screenTransition);
             ApplyCompletionReadability(
                 completionOverlay,
                 LoadCompletionFont());
@@ -1419,7 +1527,10 @@ namespace Cutrium.Editor.Setup
             ProgressSprites progressSprites)
         {
             GameObject root = RequireRoot(scene, "VerticalSliceRoot");
-            Transform safeArea = RequireChild(root.transform, "Canvas/SafeAreaRoot");
+            Transform canvas = RequireChild(root.transform, "Canvas");
+            ScreenTransitionPresenter screenTransition =
+                ConfigureScreenTransitionForSetup(canvas);
+            Transform safeArea = RequireChild(canvas, "SafeAreaRoot");
             Transform boardStage = RequireChild(safeArea, "BoardStage");
             Transform boardViewport = RequireChild(boardStage, "BoardViewport");
             RectTransform boardFrame =
@@ -1478,6 +1589,7 @@ namespace Cutrium.Editor.Setup
                 grainFlightRoot,
                 progressFillStartTarget,
                 sandProgressPresenter,
+                screenTransition,
                 out LandmarkRevealPresenter landmarkPresenter);
 
             HideDebugFooter(bottomHud);
@@ -1562,6 +1674,7 @@ namespace Cutrium.Editor.Setup
             RectTransform grainFlightRoot,
             RectTransform progressFillStartTarget,
             SandProgressPresenter sandProgressPresenter,
+            ScreenTransitionPresenter screenTransition,
             out LandmarkRevealPresenter landmarkPresenter)
         {
             RectTransform boardSurface =
@@ -1802,7 +1915,8 @@ namespace Cutrium.Editor.Setup
                 landmarks);
             ConfigureCompletionRewardFlowForSetup(
                 root,
-                landmarkPresenter);
+                landmarkPresenter,
+                screenTransition);
             Font completionFont = LoadCompletionFont();
             ApplyCompletionReadability(
                 completionOverlay,
@@ -1831,7 +1945,8 @@ namespace Cutrium.Editor.Setup
 
         private static void ConfigureCompletionRewardFlowForSetup(
             GameObject root,
-            LandmarkRevealPresenter presenter)
+            LandmarkRevealPresenter presenter,
+            ScreenTransitionPresenter screenTransition)
         {
             ThreatPresenter threatPresenter = root
                 .GetComponentInChildren<ThreatPresenter>(true);
@@ -1845,6 +1960,10 @@ namespace Cutrium.Editor.Setup
                 .GetComponentInChildren<FirstPlayableController>(true);
             FeedbackAudioPresenter feedbackAudioPresenter = root
                 .GetComponentInChildren<FeedbackAudioPresenter>(true);
+            GameplayIdentityHudPresenter identityHudPresenter = root
+                .GetComponentInChildren<GameplayIdentityHudPresenter>(true);
+            QuickRetryPresenter quickRetryPresenter = root
+                .GetComponentInChildren<QuickRetryPresenter>(true);
             GameObject cloudServicesObject = GetOrCreateChild(
                 root.transform,
                 "CloudServices");
@@ -1855,18 +1974,24 @@ namespace Cutrium.Editor.Setup
                 || feedbackPresenter == null
                 || captureHudPresenter == null
                 || controller == null
-                || feedbackAudioPresenter == null)
+                || feedbackAudioPresenter == null
+                || identityHudPresenter == null
+                || quickRetryPresenter == null
+                || screenTransition == null)
             {
                 throw new InvalidOperationException(
                     "Completion reward flow requires ThreatPresenter, " +
                     "CaptureBoardPresenter, FeedbackPresenter, " +
                     "CaptureHudPresenter, FirstPlayableController, and " +
-                    "FeedbackAudioPresenter.");
+                    "FeedbackAudioPresenter plus retry and screen-transition " +
+                    "presenters.");
             }
 
             Transform safeArea = RequireChild(
                 root.transform,
                 "Canvas/SafeAreaRoot");
+            Undo.RecordObject(controller, "Wire Star Progress Cloud Save");
+            controller.ConfigureProgressCloudForSetup(cloudServices);
             Transform hudRow = RequireChild(
                 safeArea,
                 "TopHUD/GameplayHudRow");
@@ -1895,12 +2020,17 @@ namespace Cutrium.Editor.Setup
                 captureBoardPresenter,
                 feedbackPresenter,
                 CompletionSummarySeconds,
-                coinRewardPresenter);
+                coinRewardPresenter,
+                screenTransition);
             Undo.RecordObject(captureHudPresenter, "Tune Completion Fade");
             captureHudPresenter.ConfigureCompletionOverlayFadeForSetup(
                 CompletionOverlayFadeSeconds);
+            WireScreenTransitionConsumersForSetup(root, screenTransition);
             EditorUtility.SetDirty(presenter);
             EditorUtility.SetDirty(captureHudPresenter);
+            EditorUtility.SetDirty(identityHudPresenter);
+            EditorUtility.SetDirty(quickRetryPresenter);
+            EditorUtility.SetDirty(controller);
             EditorUtility.SetDirty(cloudServices);
         }
 
@@ -1920,8 +2050,22 @@ namespace Cutrium.Editor.Setup
                 .GetComponentInChildren<LevelCoinRewardPresenter>(true);
             CoinBalanceHudPresenter balanceHud = root
                 .GetComponentInChildren<CoinBalanceHudPresenter>(true);
+            FirstPlayableController controller = root
+                .GetComponentInChildren<FirstPlayableController>(true);
             CloudServicesBootstrap cloudServices = root
                 .GetComponentInChildren<CloudServicesBootstrap>(true);
+            ScreenTransitionPresenter screenTransition = root
+                .GetComponentInChildren<ScreenTransitionPresenter>(true);
+            GameplayIdentityHudPresenter identityHudPresenter = root
+                .GetComponentInChildren<GameplayIdentityHudPresenter>(true);
+            QuickRetryPresenter quickRetryPresenter = root
+                .GetComponentInChildren<QuickRetryPresenter>(true);
+            Canvas transitionCanvas = screenTransition != null
+                ? screenTransition.GetComponent<Canvas>()
+                : null;
+            Image transitionCover = screenTransition != null
+                ? screenTransition.GetComponent<Image>()
+                : null;
             if (presenter.ThreatPresenter != threatPresenter
                 || presenter.CaptureBoardPresenter != captureBoardPresenter
                 || presenter.CompletionFeedbackPresenter != feedbackPresenter
@@ -1939,6 +2083,21 @@ namespace Cutrium.Editor.Setup
                 || feedbackPresenter.EmptyStarSprite == null
                 || rewardPresenter == null
                 || presenter.LevelCoinRewardPresenter != rewardPresenter
+                || presenter.ScreenTransition != screenTransition
+                || screenTransition == null
+                || screenTransition.OverlayCanvasGroup == null
+                || transitionCanvas == null
+                || !transitionCanvas.overrideSorting
+                || transitionCanvas.sortingOrder
+                    != ScreenTransitionSortingOrder
+                || transitionCover == null
+                || transitionCover.color != Color.black
+                || !transitionCover.raycastTarget
+                || captureHudPresenter.ScreenTransition != screenTransition
+                || identityHudPresenter == null
+                || identityHudPresenter.ScreenTransition != screenTransition
+                || quickRetryPresenter == null
+                || quickRetryPresenter.ScreenTransition != screenTransition
                 || rewardPresenter.BalanceHud != balanceHud
                 || rewardPresenter.CloudServices != cloudServices
                 || rewardPresenter.RewardIcon == null
@@ -1948,8 +2107,17 @@ namespace Cutrium.Editor.Setup
                     != "TotalPart"
                 || rewardPresenter.FlightCoinTemplate == null
                 || rewardPresenter.PerformanceTuning == null
+                || rewardPresenter.PerformanceTuning.OneStarRewardPercent != 50
+                || rewardPresenter.PerformanceTuning.TwoStarRewardPercent != 75
+                || rewardPresenter.PerformanceTuning.ThreeStarRewardPercent
+                    != 100
                 || balanceHud == null
+                || controller == null
+                || controller.ProgressCloudServices != cloudServices
                 || balanceHud.CloudServices != cloudServices
+                || !Mathf.Approximately(
+                    balanceHud.BalanceCountSeconds,
+                    BalanceCountSeconds)
                 || balanceHud.CoinIcon == null
                 || balanceHud.BalanceText == null
                 || presenter.CompletionArtworkImage == null
@@ -2503,7 +2671,11 @@ namespace Cutrium.Editor.Setup
             CoinBalanceHudPresenter presenter = GetOrAddComponent<
                 CoinBalanceHudPresenter>(slot.gameObject);
             Undo.RecordObject(presenter, "Wire Coin Balance HUD");
-            presenter.ConfigureForSetup(cloudServices, icon, text);
+            presenter.ConfigureForSetup(
+                cloudServices,
+                icon,
+                text,
+                BalanceCountSeconds);
             EditorUtility.SetDirty(presenter);
             return presenter;
         }

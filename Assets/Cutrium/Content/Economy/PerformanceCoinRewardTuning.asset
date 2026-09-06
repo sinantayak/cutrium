@@ -16,3 +16,6 @@ MonoBehaviour:
   _perfectCutCoinsPerOccurrence: 20
   _noLifeLostCoins: 30
   _noPowerUpUsedCoins: 30
+  _oneStarRewardPercent: 50
+  _twoStarRewardPercent: 75
+  _threeStarRewardPercent: 100

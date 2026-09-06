@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using Cutrium.Gameplay.Session;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -21,12 +23,18 @@ namespace Cutrium.Presentation.Frontend
     [DisallowMultipleComponent]
     public sealed class FrontEndLevelNodeView : MonoBehaviour
     {
+        private const int MaximumStars =
+            LevelStarRatingCalculator.MaximumStars;
+
         [SerializeField] private int _levelNumber = 1;
         [SerializeField] private Button _button;
         [SerializeField] private Image _nodeImage;
         [SerializeField] private Image _selectionGlow;
         [SerializeField] private TMP_Text _numberLabel;
         [SerializeField] private Image _lockImage;
+        [SerializeField] private Image[] _starImages = Array.Empty<Image>();
+        [SerializeField] private Sprite _filledStarSprite;
+        [SerializeField] private Sprite _emptyStarSprite;
 
         private bool _subscribed;
 
@@ -38,6 +46,10 @@ namespace Cutrium.Presentation.Frontend
         public Image SelectionGlow => _selectionGlow;
         public TMP_Text NumberLabel => _numberLabel;
         public Image LockImage => _lockImage;
+        public IReadOnlyList<Image> StarImages => _starImages;
+        public Sprite FilledStarSprite => _filledStarSprite;
+        public Sprite EmptyStarSprite => _emptyStarSprite;
+        public int BestStarRating { get; private set; }
         public FrontEndLevelNodeState State { get; private set; }
 
         public void ConfigureForSetup(
@@ -46,7 +58,10 @@ namespace Cutrium.Presentation.Frontend
             Image nodeImage,
             Image selectionGlow,
             TMP_Text numberLabel,
-            Image lockImage = null)
+            Image lockImage = null,
+            Image[] starImages = null,
+            Sprite filledStarSprite = null,
+            Sprite emptyStarSprite = null)
         {
             if (levelNumber <= 0)
             {
@@ -60,6 +75,17 @@ namespace Cutrium.Presentation.Frontend
             _selectionGlow = selectionGlow;
             _numberLabel = numberLabel;
             _lockImage = lockImage;
+            _starImages = starImages ?? Array.Empty<Image>();
+            if (_starImages.Length != 0
+                && _starImages.Length != MaximumStars)
+            {
+                throw new ArgumentException(
+                    $"A level node needs exactly {MaximumStars} star slots.",
+                    nameof(starImages));
+            }
+
+            _filledStarSprite = filledStarSprite;
+            _emptyStarSprite = emptyStarSprite;
             if (isActiveAndEnabled && Application.isPlaying)
             {
                 Subscribe();
@@ -106,12 +132,50 @@ namespace Cutrium.Presentation.Frontend
                 _lockImage.gameObject.SetActive(locked);
             }
 
+            RefreshStarVisuals();
+
             transform.localScale = state == FrontEndLevelNodeState.Selected
                 ? Vector3.one * 1.08f
                 : Vector3.one;
             if (_button != null)
             {
                 _button.interactable = !locked;
+            }
+        }
+
+        public void ApplyBestStarRating(int starRating)
+        {
+            if (starRating < 0 || starRating > MaximumStars)
+            {
+                throw new ArgumentOutOfRangeException(nameof(starRating));
+            }
+
+            BestStarRating = starRating;
+            RefreshStarVisuals();
+        }
+
+        private void RefreshStarVisuals()
+        {
+            bool visible = State != FrontEndLevelNodeState.Locked
+                && _starImages.Length == MaximumStars
+                && _filledStarSprite != null
+                && _emptyStarSprite != null;
+            for (int index = 0; index < _starImages.Length; index++)
+            {
+                Image star = _starImages[index];
+                if (star == null)
+                {
+                    continue;
+                }
+
+                star.gameObject.SetActive(visible);
+                if (visible)
+                {
+                    star.sprite = index < BestStarRating
+                        ? _filledStarSprite
+                        : _emptyStarSprite;
+                    star.color = Color.white;
+                }
             }
         }
 

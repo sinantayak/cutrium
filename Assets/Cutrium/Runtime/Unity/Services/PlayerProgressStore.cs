@@ -47,6 +47,11 @@ namespace Cutrium.Unity.Services
         // after a newer one and leaving the remote mirror stale.
         private readonly object _coinCloudWriteLock = new object();
         private Task _coinCloudWriteTail = Task.CompletedTask;
+        // Star pulls and writes share one queue so an older one-star push
+        // cannot finish after a later three-star improvement and lower the
+        // remote mirror.
+        private readonly object _starCloudOperationLock = new object();
+        private Task _starCloudOperationTail = Task.CompletedTask;
 
         /// Synchronous, offline-safe. Call at boot before the level catalog
         /// needs an index to load. Deliberately a no-op (always 0) while
@@ -159,8 +164,47 @@ namespace Cutrium.Unity.Services
                 LevelStarsPrefsKeyPrefix + stableLevelId,
                 best);
             PlayerPrefs.Save();
-            PushToCloud(LevelStarsCloudKeyPrefix + stableLevelId, best);
+            _ = QueueLevelStarCloudPush(stableLevelId, best);
             return true;
+        }
+
+        /// Reconciles every supplied stable level ID after sign-in. Local and
+        /// Cloud values merge by maximum in both directions, so neither an
+        /// older device nor a delayed request can reduce earned stars.
+        /// Returns true when at least one local best increased.
+        public Task<bool> SynchronizeBestLevelStarRatingsWithCloudAsync(
+            IReadOnlyList<string> stableLevelIds)
+        {
+            if (stableLevelIds == null)
+            {
+                throw new ArgumentNullException(nameof(stableLevelIds));
+            }
+
+            var uniqueIds = new List<string>(stableLevelIds.Count);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int index = 0; index < stableLevelIds.Count; index++)
+            {
+                string stableLevelId = stableLevelIds[index];
+                ValidateStableLevelId(stableLevelId);
+                if (seen.Add(stableLevelId))
+                {
+                    uniqueIds.Add(stableLevelId);
+                }
+            }
+
+            if (TestModeDetector.IsRunningTests || uniqueIds.Count == 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            lock (_starCloudOperationLock)
+            {
+                Task<bool> operation = SynchronizeLevelStarsAfterAsync(
+                    _starCloudOperationTail,
+                    uniqueIds);
+                _starCloudOperationTail = operation;
+                return operation;
+            }
         }
 
         /// Reads the local Coin mirror without creating a key for a legacy
@@ -440,6 +484,141 @@ namespace Cutrium.Unity.Services
             }
 
             await PushToCloudAsync(CoinBalanceCloudKey, balance);
+        }
+
+        private Task QueueLevelStarCloudPush(
+            string stableLevelId,
+            int starRating)
+        {
+            lock (_starCloudOperationLock)
+            {
+                _starCloudOperationTail = PushLevelStarAfterAsync(
+                    _starCloudOperationTail,
+                    stableLevelId,
+                    starRating);
+                return _starCloudOperationTail;
+            }
+        }
+
+        private static async Task PushLevelStarAfterAsync(
+            Task previousOperation,
+            string stableLevelId,
+            int starRating)
+        {
+            await AwaitPreviousStarOperation(previousOperation);
+            await PushToCloudAsync(
+                LevelStarsCloudKeyPrefix + stableLevelId,
+                starRating);
+        }
+
+        private async Task<bool> SynchronizeLevelStarsAfterAsync(
+            Task previousOperation,
+            IReadOnlyList<string> stableLevelIds)
+        {
+            await AwaitPreviousStarOperation(previousOperation);
+            return await ReconcileLevelStarsAsync(stableLevelIds);
+        }
+
+        private async Task<bool> ReconcileLevelStarsAsync(
+            IReadOnlyList<string> stableLevelIds)
+        {
+            bool localChanged = false;
+            try
+            {
+                if (!IsSignedIn())
+                {
+                    return false;
+                }
+
+                var keys = new HashSet<string>(StringComparer.Ordinal);
+                for (int index = 0; index < stableLevelIds.Count; index++)
+                {
+                    keys.Add(LevelStarsCloudKeyPrefix + stableLevelIds[index]);
+                }
+
+                Dictionary<string, Item> results = await CloudSaveService
+                    .Instance.Data.Player.LoadAsync(keys);
+                var cloudUpdates = new Dictionary<string, object>();
+                for (int index = 0; index < stableLevelIds.Count; index++)
+                {
+                    string stableLevelId = stableLevelIds[index];
+                    string cloudKey = LevelStarsCloudKeyPrefix + stableLevelId;
+                    int localBest = LoadLocalBestLevelStarRating(stableLevelId);
+                    int cloudBest = 0;
+                    bool cloudNeedsRepair = false;
+                    if (results.TryGetValue(cloudKey, out Item item))
+                    {
+                        try
+                        {
+                            int rawCloudBest = item.Value.GetAs<int>();
+                            cloudBest = Mathf.Clamp(rawCloudBest, 0, 3);
+                            cloudNeedsRepair = rawCloudBest != cloudBest;
+                        }
+                        catch (Exception exception)
+                        {
+                            cloudNeedsRepair = true;
+                            Debug.LogWarning(
+                                $"Cloud star value '{cloudKey}' was invalid "
+                                + "and will be repaired. " + exception);
+                        }
+                    }
+
+                    int mergedBest = LevelStarRatingCalculator.PreserveBest(
+                        localBest,
+                        cloudBest);
+                    if (mergedBest > localBest)
+                    {
+                        PlayerPrefs.SetInt(
+                            LevelStarsPrefsKeyPrefix + stableLevelId,
+                            mergedBest);
+                        localChanged = true;
+                    }
+
+                    if (mergedBest > cloudBest || cloudNeedsRepair)
+                    {
+                        cloudUpdates[cloudKey] = mergedBest;
+                    }
+                }
+
+                if (localChanged)
+                {
+                    PlayerPrefs.Save();
+                }
+
+                if (cloudUpdates.Count > 0)
+                {
+                    await CloudSaveService.Instance.Data.Player.SaveAsync(
+                        cloudUpdates);
+                }
+
+                return localChanged;
+            }
+            catch (Exception exception)
+            {
+                string outcome = localChanged
+                    ? "The imported local maximum was kept, but its Cloud "
+                        + "mirror could not be updated. "
+                    : "Local star progress was left unchanged. ";
+                Debug.LogWarning(
+                    "Cloud star reconciliation failed. " + outcome
+                    + exception);
+                return localChanged;
+            }
+        }
+
+        private static async Task AwaitPreviousStarOperation(
+            Task previousOperation)
+        {
+            try
+            {
+                await previousOperation;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    "Previous star Cloud Save operation failed; continuing "
+                    + "with the latest progress. " + exception);
+            }
         }
 
         private static void ValidateCoinBalance(int balance)

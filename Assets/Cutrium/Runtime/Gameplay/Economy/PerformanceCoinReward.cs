@@ -3,6 +3,86 @@ using System.Collections.Generic;
 
 namespace Cutrium.Gameplay.Economy
 {
+    /// Percentage of a level's configured maximum completion reward granted
+    /// for each cumulative star tier. Values are ordered so better play can
+    /// never reduce the base Coin reward.
+    public readonly struct LevelStarCoinRewardConfiguration
+    {
+        public LevelStarCoinRewardConfiguration(
+            int oneStarPercent,
+            int twoStarPercent,
+            int threeStarPercent)
+        {
+            OneStarPercent = ValidatePercent(
+                oneStarPercent,
+                nameof(oneStarPercent));
+            TwoStarPercent = ValidatePercent(
+                twoStarPercent,
+                nameof(twoStarPercent));
+            ThreeStarPercent = ValidatePercent(
+                threeStarPercent,
+                nameof(threeStarPercent));
+            if (OneStarPercent > TwoStarPercent
+                || TwoStarPercent > ThreeStarPercent)
+            {
+                throw new ArgumentException(
+                    "Star reward percentages must not decrease as the "
+                    + "rating improves.");
+            }
+        }
+
+        public int OneStarPercent { get; }
+
+        public int TwoStarPercent { get; }
+
+        public int ThreeStarPercent { get; }
+
+        public static LevelStarCoinRewardConfiguration Default { get; } =
+            new LevelStarCoinRewardConfiguration(50, 75, 100);
+
+        public int GetPercent(int starRating) => starRating switch
+        {
+            0 => 0,
+            1 => OneStarPercent,
+            2 => TwoStarPercent,
+            3 => ThreeStarPercent,
+            _ => throw new ArgumentOutOfRangeException(nameof(starRating)),
+        };
+
+        private static int ValidatePercent(int value, string name) =>
+            value >= 0 && value <= 100
+                ? value
+                : throw new ArgumentOutOfRangeException(name);
+    }
+
+    /// Converts a level-authored three-star maximum into this run's base
+    /// completion reward. Integer results round to the nearest Coin and a
+    /// positive tier never disappears solely because the configured maximum
+    /// is small.
+    public static class LevelStarCoinRewardCalculator
+    {
+        public static int Calculate(
+            int maximumCoinReward,
+            int starRating,
+            LevelStarCoinRewardConfiguration configuration)
+        {
+            if (maximumCoinReward < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(maximumCoinReward));
+            }
+
+            int percent = configuration.GetPercent(starRating);
+            if (maximumCoinReward == 0 || percent == 0)
+            {
+                return 0;
+            }
+
+            long rounded = ((long)maximumCoinReward * percent + 50L) / 100L;
+            return Math.Max(1, (int)rounded);
+        }
+    }
+
     /// One kind of skillful-play bonus a level completion can earn. Every
     /// kind maps to a signal the simulation already tracks -- see
     /// PerformanceCoinRewardCalculator for exactly which one.

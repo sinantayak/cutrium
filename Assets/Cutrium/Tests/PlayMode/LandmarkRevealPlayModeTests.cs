@@ -8,6 +8,7 @@ using Cutrium.Gameplay.Session;
 using Cutrium.Presentation.Barriers;
 using Cutrium.Presentation.Capture;
 using Cutrium.Presentation.Feedback;
+using Cutrium.Presentation.Frontend;
 using Cutrium.Presentation.HUD;
 using Cutrium.Presentation.Landmark;
 using Cutrium.Presentation.Localization;
@@ -1481,6 +1482,61 @@ namespace Cutrium.PlayModeTests
             }
         }
 
+        [UnityTest]
+        public IEnumerator CompletionSummary_WaitsIntactForFadeMidpoint()
+        {
+            var rig = new IsolatedRig(
+                1,
+                completionSummarySeconds: 0.15f,
+                useScreenTransition: true);
+            try
+            {
+                rig.Controller.AdvanceSimulation(0f);
+                Assert.That(rig.CompleteWithoutAdvancing(), Is.True);
+                rig.Presenter.RefreshNow();
+
+                float waited = 0f;
+                while (!rig.ScreenTransition.IsTransitioning
+                    && waited < 1f)
+                {
+                    yield return null;
+                    rig.Presenter.RefreshNow();
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                Assert.That(rig.ScreenTransition.IsTransitioning, Is.True);
+                Assert.That(rig.Presenter.CompletionSummaryInProgress, Is.True);
+                Assert.That(
+                    rig.FeedbackPresenter.CompletionSummaryVisible,
+                    Is.True);
+                Assert.That(
+                    rig.FeedbackPresenter.SummaryListGroup.alpha,
+                    Is.EqualTo(1f).Within(0.001f));
+                Assert.That(
+                    rig.FeedbackPresenter.CompletionSummaryBackground
+                        .gameObject.activeSelf,
+                    Is.True);
+
+                rig.ScreenTransition.Advance(
+                    rig.ScreenTransition.CoverSeconds);
+
+                Assert.That(
+                    rig.Presenter.CompletionPresentationReady,
+                    Is.True);
+                Assert.That(
+                    rig.FeedbackPresenter.CompletionSummaryVisible,
+                    Is.False);
+                Assert.That(
+                    rig.FeedbackPresenter.CompletionSummaryBackground
+                        .gameObject.activeSelf,
+                    Is.False);
+            }
+            finally
+            {
+                rig.Dispose();
+            }
+        }
+
         private sealed class IsolatedRig
         {
             private readonly List<Texture2D> _textures = new List<Texture2D>();
@@ -1492,7 +1548,8 @@ namespace Cutrium.PlayModeTests
                 int levelCount,
                 LandmarkCompletionTiming? timing = null,
                 float? completionSummarySeconds = null,
-                IReadOnlyList<CoreFunLevelDefinition> explicitLevels = null)
+                IReadOnlyList<CoreFunLevelDefinition> explicitLevels = null,
+                bool useScreenTransition = false)
             {
                 _simulationObject = new GameObject(
                     "LandmarkRevealTestRig",
@@ -1781,11 +1838,31 @@ namespace Cutrium.PlayModeTests
                     summaryListObject.GetComponent<CanvasGroup>(),
                     summaryRows);
 
+                if (useScreenTransition)
+                {
+                    var transitionObject = new GameObject(
+                        "ScreenTransition",
+                        typeof(RectTransform),
+                        typeof(CanvasGroup));
+                    transitionObject.transform.SetParent(
+                        _simulationObject.transform,
+                        false);
+                    ScreenTransition = transitionObject
+                        .AddComponent<ScreenTransitionPresenter>();
+                    ScreenTransition.ConfigureForSetup(
+                        transitionObject.GetComponent<CanvasGroup>(),
+                        2f,
+                        0f,
+                        0.1f);
+                }
+
                 Presenter.ConfigureCompletionRewardFlowForSetup(
                     ThreatPresenter,
                     CaptureBoardPresenter,
                     FeedbackPresenter,
-                    completionSummarySeconds ?? 0.12f);
+                    completionSummarySeconds ?? 0.12f,
+                    null,
+                    ScreenTransition);
 
                 _simulationObject.SetActive(true);
             }
@@ -1797,6 +1874,7 @@ namespace Cutrium.PlayModeTests
             public ThreatPresenter ThreatPresenter { get; }
             public CaptureBoardPresenter CaptureBoardPresenter { get; }
             public FeedbackPresenter FeedbackPresenter { get; }
+            public ScreenTransitionPresenter ScreenTransition { get; }
             public Transform Root => _simulationObject.transform;
 
             public void SetCompletionLayoutSize(float width, float height)

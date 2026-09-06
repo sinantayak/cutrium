@@ -1,3 +1,5 @@
+using System;
+using Cutrium.Presentation.Frontend;
 using Cutrium.Unity.Simulation;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,11 +15,17 @@ namespace Cutrium.Presentation.HUD
         [SerializeField]
         private Button _retryButton;
 
+        [SerializeField]
+        private ScreenTransitionPresenter _screenTransition;
+
         private bool _retryButtonSubscribed;
 
         public FirstPlayableController Controller => _controller;
 
         public Button RetryButton => _retryButton;
+
+        public ScreenTransitionPresenter ScreenTransition =>
+            _screenTransition;
 
         public void Configure(
             FirstPlayableController controller,
@@ -30,6 +38,13 @@ namespace Cutrium.Presentation.HUD
             {
                 SubscribeButton();
             }
+        }
+
+        public void ConfigureScreenTransitionForSetup(
+            ScreenTransitionPresenter screenTransition)
+        {
+            _screenTransition = screenTransition
+                ?? throw new ArgumentNullException(nameof(screenTransition));
         }
 
         private void OnEnable()
@@ -67,6 +82,12 @@ namespace Cutrium.Presentation.HUD
         private void OnRetryClicked()
         {
             _controller.NotifyUiFeedback();
+            if (_screenTransition != null)
+            {
+                _screenTransition.TryTransition(_controller.RetryLevel);
+                return;
+            }
+
             _controller.RetryLevel();
         }
     }

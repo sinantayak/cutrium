@@ -2268,3 +2268,89 @@ whose expected cut usage is still zero can currently earn at most two stars
 until their content is authored. The result card has a fixed reference-canvas
 composition sized to remain inside supported portrait phone/tablet safe areas;
 it still requires the standard tall/common/4:3 visual review after setup.
+
+## ADR-053 — Star Progress Uses Monotonic Cloud Merge and Scales Base Rewards
+
+**Status:** Accepted.
+
+**Context:**
+Task 11's first pass wrote an improved per-level star result locally and to a
+stable Cloud Save key, but did not pull those keys after sign-in and the
+Challenge map did not display them. Task 12 now needs the same run rating to
+change the configured completion reward: for a 100-Coin level, one, two, and
+three stars should grant 50, 75, and 100 base Coins respectively.
+
+**Decision:**
+`PlayerProgressStore` reconciles all catalog star keys after sign-in by taking
+`max(local, cloud)` for every stable level ID and writing that maximum in both
+directions. Star pulls and pushes share a serialized operation queue so a
+delayed lower write cannot finish after a later three-star result. The same
+controller sign-in path invokes the existing current/highest-level Cloud pulls;
+it may raise the in-memory map unlock frontier but never replaces the level
+currently being played.
+
+`FirstPlayableController` hides stable persistence IDs behind a one-based
+best-star query and raises one level-map progress event after a local
+improvement or Cloud import. `FrontEndPresenter` uses that query in its existing
+map refresh. Each reached node shows three presentation-only slots using
+`YellowStar` and `GrayStar`; locked nodes hide the strip.
+
+`CompletionCoinReward` is now the three-star maximum base reward. An
+engine-free calculator applies Inspector-configurable one/two/three-star
+percentages, defaulting to 50/75/100, before Task 03's separate performance
+bonuses are added. The resulting base, itemized bonuses, displayed total, and
+single wallet claim all use the same calculated amount. This adds no second
+"new best" payout ledger: ADR-051's run-scoped completion reward remains
+replayable, while duplicate callbacks for one run remain rejected.
+
+**Consequences:**
+A one-star result upgraded to three stars remains three locally and in Cloud
+Save, and the Challenge node updates without reopening the application. Better
+run performance increases the base reward without coupling star conditions to
+economy tuning. Existing 100-Coin definitions require no content migration;
+their effective base is now 50/75/100. Cross-device behavior remains
+best-effort and needs a signed-in Cloud integration check, while offline play
+continues to read and write the synchronous local mirror.
+
+## ADR-054 — Same-Scene Screen Changes Share One Covered Fade Midpoint
+
+**Status:** Accepted.
+
+**Context:**
+Frontend pages, gameplay, settings, completion results, and landmark content
+all live in `VerticalSlice.unity`. Their presenters previously changed
+CanvasGroup state directly, so major surfaces appeared in one frame. The
+completion result also had two conflicting exit owners: its rows faded and hid
+themselves near the end of their timer while the total remained until the
+landmark presenter cancelled it. At final Coin arrival, the HUD released its
+held value directly to the already-updated wallet balance, producing another
+one-frame jump.
+
+**Decision:**
+Add one presentation-only `ScreenTransitionPresenter` backed by a black,
+raycast-blocking, override-sorting full-Canvas overlay. It advances on unscaled
+time through cover, short covered hold, and reveal phases. A requested state
+change executes once at full opacity; duplicate requests are ignored until the
+current transition ends. Existing presenters retain ownership of navigation,
+simulation holds, and run changes, and receive the transition dependency
+through idempotent setup wiring.
+
+Route frontend tab/play actions, settings open/close/home/exit, completion
+retry/next, failure/quick retry, and the automatic result-to-landmark handoff
+through that covered midpoint. `FeedbackPresenter` no longer auto-fades or
+auto-hides the completion result: `LandmarkRevealPresenter` dismisses stars,
+rows, background, and total together only after the common overlay covers them.
+
+Keep Coin credit and persistence at reward-presentation start. At final flight
+arrival, `CoinBalanceHudPresenter` releases its old-value hold into a 0.45-second
+unscaled integer count toward the claim's authoritative resulting balance.
+`LevelCoinRewardPresenter` includes that display animation in its cosmetic
+completion gate, without moving economy state into presentation code.
+
+**Consequences:**
+Major same-scene screen changes darken and return smoothly, repeated taps cannot
+double-run a covered navigation action, and completion elements no longer exit
+at different times. The HUD visibly acknowledges the amount that arrived while
+the wallet remains immediately durable. The nested transition Canvas must keep
+its high sorting order and full-screen anchors; the setup pass validates those
+properties, and phone/tablet visual timing still needs Play Mode review.

@@ -219,25 +219,6 @@ Gravity Well       — initial price: 250 Coins
 - Gameplay consumption decrements inventory correctly.
 - Do not make power-ups mandatory to complete levels.
 
-### Assets
-```text
-Freeze Pulse Icon:
-[ASSET PATH]
-
-Instant Barrier Icon:
-[ASSET PATH]
-
-Gravity Well Icon:
-[ASSET PATH]
-
-Power-Up Purchase SFX:
-[ASSET PATH]
-Usage: Play after a power-up purchase succeeds and both Coin balance and inventory quantity have been updated. Never play on insufficient Coins or failed transactions.
-ElevenLabs SFX Prompt: `Short premium mobile-game purchase confirmation sound, soft coin clink into a warm magical pop with a subtle energy sparkle, positive and tactile, suitable for buying a power-up in a casual puzzle game, no casino feel, no voice, around 0.45–0.65 seconds.`
-
-Power-Up Empty State:
-[ASSET PATH]
-```
 
 ---
 

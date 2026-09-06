@@ -349,6 +349,9 @@ namespace Cutrium.Unity.Simulation
         [Header("Completion Economy")]
         [SerializeField]
         [Min(0)]
+        [Tooltip(
+            "Maximum base Coin reward for a three-star completion. Lower "
+            + "star ratings use the configured reward percentages.")]
         private int _completionCoinReward =
             CoreFunLevelConfiguration.DefaultCompletionCoinReward;
 

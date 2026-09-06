@@ -32,6 +32,7 @@ namespace Cutrium.Presentation.Settings
         [SerializeField] private LandmarkRevealPresenter _landmarkReveal;
         [SerializeField] private LocalizationService _localization;
         [SerializeField] private CanvasGroup _panelCanvasGroup;
+        [SerializeField] private ScreenTransitionPresenter _screenTransition;
 
         [Header("Actions")]
         [SerializeField] private Button _openButton;
@@ -99,6 +100,8 @@ namespace Cutrium.Presentation.Settings
         public IReadOnlyList<AudioSource> MusicSources => _musicSources;
         public PreLevelIntroPresenter PreLevelIntro => _preLevelIntro;
         public LandmarkRevealPresenter LandmarkReveal => _landmarkReveal;
+        public ScreenTransitionPresenter ScreenTransition =>
+            _screenTransition;
 
         public event Action ExitRequested;
 
@@ -118,6 +121,13 @@ namespace Cutrium.Presentation.Settings
             {
                 ApplyPreferences();
             }
+        }
+
+        public void ConfigureScreenTransitionForSetup(
+            ScreenTransitionPresenter screenTransition)
+        {
+            _screenTransition = screenTransition
+                ?? throw new ArgumentNullException(nameof(screenTransition));
         }
 
         public void ConfigureForSetup(
@@ -146,7 +156,8 @@ namespace Cutrium.Presentation.Settings
             AudioSource[] musicSources,
             bool persistPreferences = true,
             Button homeOpenButton = null,
-            LocalizationService localization = null)
+            LocalizationService localization = null,
+            ScreenTransitionPresenter screenTransition = null)
         {
             Unsubscribe();
             _controller = controller;
@@ -154,6 +165,7 @@ namespace Cutrium.Presentation.Settings
             _feedbackAudio = feedbackAudio;
             _feedbackHaptics = feedbackHaptics;
             _localization = localization;
+            _screenTransition = screenTransition;
             _panelCanvasGroup = panelCanvasGroup;
             _openButton = openButton;
             _homeOpenButton = homeOpenButton;
@@ -278,13 +290,13 @@ namespace Cutrium.Presentation.Settings
         private void OnOpenClicked()
         {
             _controller?.NotifyUiFeedback();
-            Open();
+            RunScreenTransition(Open);
         }
 
         private void OnCloseClicked()
         {
             _controller?.NotifyUiFeedback();
-            Close();
+            RunScreenTransition(Close);
         }
 
         private void OnSoundClicked()
@@ -338,18 +350,35 @@ namespace Cutrium.Presentation.Settings
         private void OnHomeClicked()
         {
             _controller?.NotifyUiFeedback();
-            _frontEnd?.Open(FrontEndTab.Home);
-            Close();
+            RunScreenTransition(() =>
+            {
+                _frontEnd?.Open(FrontEndTab.Home);
+                Close();
+            });
         }
 
         private void OnExitClicked()
         {
             _controller?.NotifyUiFeedback();
-            SavePreferences();
-            ExitRequested?.Invoke();
+            RunScreenTransition(() =>
+            {
+                SavePreferences();
+                ExitRequested?.Invoke();
 #if !UNITY_EDITOR
-            Application.Quit();
+                Application.Quit();
 #endif
+            });
+        }
+
+        private void RunScreenTransition(Action midpointAction)
+        {
+            if (_screenTransition != null)
+            {
+                _screenTransition.TryTransition(midpointAction);
+                return;
+            }
+
+            midpointAction();
         }
 
         private void LoadPreferences()

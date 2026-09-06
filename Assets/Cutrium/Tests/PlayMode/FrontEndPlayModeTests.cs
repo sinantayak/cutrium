@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Linq;
+using Cutrium.Presentation.Economy;
 using Cutrium.Presentation.Frontend;
+using Cutrium.Unity.Services;
 using Cutrium.Unity.Simulation;
 using NUnit.Framework;
 using TMPro;
@@ -15,6 +17,208 @@ namespace Cutrium.PlayModeTests
     {
         private const string ScenePath =
             "Assets/Cutrium/Scenes/VerticalSlice.unity";
+
+        [Test]
+        public void ScreenTransition_CoversOnceThenRevealsAndUnblocks()
+        {
+            var root = new GameObject(
+                "ScreenTransitionTest",
+                typeof(RectTransform));
+            try
+            {
+                CanvasGroup group = root.AddComponent<CanvasGroup>();
+                ScreenTransitionPresenter presenter = root
+                    .AddComponent<ScreenTransitionPresenter>();
+                presenter.ConfigureForSetup(group, 0.1f, 0.05f, 0.2f);
+                int midpointCount = 0;
+                int rejectedCount = 0;
+
+                Assert.That(
+                    presenter.TryTransition(() => midpointCount++),
+                    Is.True);
+                Assert.That(presenter.IsTransitioning, Is.True);
+                Assert.That(group.blocksRaycasts, Is.True);
+                presenter.Advance(0.05f);
+                Assert.That(group.alpha, Is.InRange(0.49f, 0.51f));
+                Assert.That(midpointCount, Is.Zero);
+                Assert.That(
+                    presenter.TryTransition(() => rejectedCount++),
+                    Is.False);
+
+                presenter.Advance(0.05f);
+                Assert.That(midpointCount, Is.EqualTo(1));
+                Assert.That(rejectedCount, Is.Zero);
+                Assert.That(group.alpha, Is.EqualTo(1f).Within(0.001f));
+                presenter.Advance(0.05f);
+                presenter.Advance(0.1f);
+                Assert.That(group.alpha, Is.InRange(0.49f, 0.51f));
+                presenter.Advance(0.1f);
+
+                Assert.That(presenter.IsTransitioning, Is.False);
+                Assert.That(group.alpha, Is.Zero.Within(0.001f));
+                Assert.That(group.blocksRaycasts, Is.False);
+                Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+                    presenter.Advance(-0.01f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void CoinHud_AnimatedReleaseCountsToAuthoritativeBalance()
+        {
+            var root = new GameObject(
+                "CoinHudCountTest",
+                typeof(RectTransform));
+            try
+            {
+                CloudServicesBootstrap cloud = root
+                    .AddComponent<CloudServicesBootstrap>();
+                var iconObject = new GameObject(
+                    "CoinIcon",
+                    typeof(RectTransform));
+                iconObject.transform.SetParent(root.transform, false);
+                Image icon = iconObject.AddComponent<Image>();
+                var textObject = new GameObject(
+                    "BalanceText",
+                    typeof(RectTransform));
+                textObject.transform.SetParent(root.transform, false);
+                TMP_Text text = textObject.AddComponent<TextMeshProUGUI>();
+                CoinBalanceHudPresenter hud = root
+                    .AddComponent<CoinBalanceHudPresenter>();
+                hud.ConfigureForSetup(cloud, icon, text, 0.4f);
+
+                hud.HoldDisplayedBalance(3180);
+                hud.ReleaseDisplayedBalanceAnimated(3280);
+                Assert.That(hud.DisplayHeld, Is.False);
+                Assert.That(hud.IsAnimatingDisplayedBalance, Is.True);
+                Assert.That(hud.DisplayedBalance, Is.EqualTo(3180));
+
+                hud.AdvanceDisplayAnimation(0.1f);
+                int firstStep = hud.DisplayedBalance;
+                Assert.That(firstStep, Is.GreaterThan(3180));
+                Assert.That(firstStep, Is.LessThan(3280));
+                hud.AdvanceDisplayAnimation(0.1f);
+                Assert.That(hud.DisplayedBalance, Is.GreaterThanOrEqualTo(
+                    firstStep));
+                hud.AdvanceDisplayAnimation(0.2f);
+
+                Assert.That(hud.IsAnimatingDisplayedBalance, Is.False);
+                Assert.That(hud.DisplayedBalance, Is.EqualTo(3280));
+                Assert.That(text.text, Is.EqualTo("3,280"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void StarProgressStore_ReplayOnlyRaisesPersistedBest()
+        {
+            const string stableLevelId = "test-level-star-monotonic";
+            const string prefsKey =
+                "Cutrium.Progress.LevelStars." + stableLevelId;
+            PlayerPrefs.DeleteKey(prefsKey);
+
+            try
+            {
+                var store = new PlayerProgressStore();
+                Assert.That(
+                    store.SaveBestLevelStarRating(stableLevelId, 1),
+                    Is.True);
+                Assert.That(
+                    store.SaveBestLevelStarRating(stableLevelId, 3),
+                    Is.True);
+                Assert.That(
+                    store.SaveBestLevelStarRating(stableLevelId, 1),
+                    Is.False);
+                Assert.That(
+                    store.LoadLocalBestLevelStarRating(stableLevelId),
+                    Is.EqualTo(3));
+            }
+            finally
+            {
+                PlayerPrefs.DeleteKey(prefsKey);
+                PlayerPrefs.Save();
+            }
+        }
+
+        [Test]
+        public void LevelNode_ShowsBestStarsAndHidesThemWhenLocked()
+        {
+            var root = new GameObject("StarNodeTest");
+            var texture = new Texture2D(2, 2);
+            Sprite filled = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, 2f, 2f),
+                new Vector2(0.5f, 0.5f));
+            Sprite empty = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, 2f, 2f),
+                new Vector2(0.5f, 0.5f));
+
+            try
+            {
+                FrontEndLevelNodeView node = root
+                    .AddComponent<FrontEndLevelNodeView>();
+                var stars = new Image[3];
+                for (int index = 0; index < stars.Length; index++)
+                {
+                    var starObject = new GameObject(
+                        $"Star{index + 1}",
+                        typeof(RectTransform));
+                    starObject.transform.SetParent(root.transform, false);
+                    stars[index] = starObject.AddComponent<Image>();
+                }
+
+                node.ConfigureForSetup(
+                    1,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    stars,
+                    filled,
+                    empty);
+                node.ApplyState(
+                    FrontEndLevelNodeState.Traversed,
+                    Color.gray,
+                    Color.white,
+                    Color.yellow,
+                    Color.white);
+                node.ApplyBestStarRating(2);
+
+                Assert.That(node.BestStarRating, Is.EqualTo(2));
+                Assert.That(stars[0].sprite, Is.SameAs(filled));
+                Assert.That(stars[1].sprite, Is.SameAs(filled));
+                Assert.That(stars[2].sprite, Is.SameAs(empty));
+                Assert.That(stars.All(star => star.gameObject.activeSelf),
+                    Is.True);
+
+                node.ApplyState(
+                    FrontEndLevelNodeState.Locked,
+                    Color.gray,
+                    Color.white,
+                    Color.yellow,
+                    Color.white);
+
+                Assert.That(stars.All(star => !star.gameObject.activeSelf),
+                    Is.True);
+                Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+                    node.ApplyBestStarRating(4));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(filled);
+                Object.DestroyImmediate(empty);
+                Object.DestroyImmediate(texture);
+            }
+        }
 
         [UnityTest]
         public IEnumerator ConfiguredSceneStartsOnHomeWithCatalogBackedMap()

@@ -55,6 +55,9 @@ namespace Cutrium.Editor.Setup
             Scene scene = OpenVerticalSliceScene();
             GameObject root = RequireRoot(scene, "VerticalSliceRoot");
             Transform canvas = RequireChild(root.transform, "Canvas");
+            ScreenTransitionPresenter screenTransition =
+                LandmarkRevealPresentationSetup
+                    .ConfigureScreenTransitionForSetup(canvas);
             FirstPlayableController controller = root
                 .GetComponentInChildren<FirstPlayableController>(true);
             FrontEndPresenter frontEnd = root
@@ -240,7 +243,12 @@ namespace Cutrium.Editor.Setup
                 musicSources,
                 true,
                 homeOpenButton,
-                localization.Service);
+                localization.Service,
+                screenTransition);
+            LandmarkRevealPresentationSetup
+                .WireScreenTransitionConsumersForSetup(
+                    root,
+                    screenTransition);
 
             Validate(
                 settingsRoot,
@@ -592,6 +600,8 @@ namespace Cutrium.Editor.Setup
                 || panelAspect.aspectMode
                     != AspectRatioFitter.AspectMode.FitInParent
                 || presenter.Controller == null
+                || presenter.ScreenTransition == null
+                || presenter.ScreenTransition.OverlayCanvasGroup == null
                 || presenter.PanelCanvasGroup == null
                 || presenter.OpenButton == null
                 || !presenter.OpenButton.interactable

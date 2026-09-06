@@ -35,6 +35,7 @@ namespace Cutrium.Presentation.Frontend
         [SerializeField] private FirstPlayableController _controller;
         [SerializeField] private PreLevelIntroPresenter _preLevelIntro;
         [SerializeField] private CanvasGroup _frontEndCanvasGroup;
+        [SerializeField] private ScreenTransitionPresenter _screenTransition;
 
         [Header("Pages")]
         [SerializeField] private CanvasGroup _shopPage;
@@ -95,6 +96,8 @@ namespace Cutrium.Presentation.Frontend
 
         public FirstPlayableController Controller => _controller;
         public CanvasGroup FrontEndCanvasGroup => _frontEndCanvasGroup;
+        public ScreenTransitionPresenter ScreenTransition =>
+            _screenTransition;
         public CanvasGroup ShopPage => _shopPage;
         public CanvasGroup HomePage => _homePage;
         public CanvasGroup ChallengePage => _challengePage;
@@ -131,7 +134,8 @@ namespace Cutrium.Presentation.Frontend
             TMP_Text challengePlayLabel,
             ScrollRect challengeScrollRect,
             FrontEndLevelNodeView[] levelNodes,
-            Image[] pathConnectors)
+            Image[] pathConnectors,
+            ScreenTransitionPresenter screenTransition = null)
         {
             Unsubscribe();
             _controller = controller;
@@ -155,6 +159,7 @@ namespace Cutrium.Presentation.Frontend
             _levelNodes = levelNodes
                 ?? Array.Empty<FrontEndLevelNodeView>();
             _pathConnectors = pathConnectors ?? Array.Empty<Image>();
+            _screenTransition = screenTransition;
             _selectedLevelNumber = GetCurrentLevelNumber();
             if (isActiveAndEnabled && Application.isPlaying)
             {
@@ -162,6 +167,13 @@ namespace Cutrium.Presentation.Frontend
             }
 
             RefreshNow();
+        }
+
+        public void ConfigureScreenTransitionForSetup(
+            ScreenTransitionPresenter screenTransition)
+        {
+            _screenTransition = screenTransition
+                ?? throw new ArgumentNullException(nameof(screenTransition));
         }
 
         public void Open(FrontEndTab tab = FrontEndTab.Home)
@@ -217,12 +229,14 @@ namespace Cutrium.Presentation.Frontend
 
         public void PlayCurrentLevel()
         {
-            StartGameplayAt(GetCurrentLevelNumber());
+            int levelNumber = GetCurrentLevelNumber();
+            RunScreenTransition(() => StartGameplayAt(levelNumber));
         }
 
         public void PlaySelectedLevel()
         {
-            StartGameplayAt(_selectedLevelNumber);
+            int levelNumber = _selectedLevelNumber;
+            RunScreenTransition(() => StartGameplayAt(levelNumber));
         }
 
         // Existing gameplay-focused Play Mode tests load the production scene
@@ -301,6 +315,11 @@ namespace Cutrium.Presentation.Frontend
             _challengeTabButton?.onClick.AddListener(OnChallengeClicked);
             _homePlayButton?.onClick.AddListener(PlayCurrentLevel);
             _challengePlayButton?.onClick.AddListener(PlaySelectedLevel);
+            if (_controller != null)
+            {
+                _controller.LevelMapProgressChanged +=
+                    OnLevelMapProgressChanged;
+            }
             foreach (FrontEndLevelNodeView node in _levelNodes)
             {
                 if (node != null)
@@ -324,6 +343,11 @@ namespace Cutrium.Presentation.Frontend
             _challengeTabButton?.onClick.RemoveListener(OnChallengeClicked);
             _homePlayButton?.onClick.RemoveListener(PlayCurrentLevel);
             _challengePlayButton?.onClick.RemoveListener(PlaySelectedLevel);
+            if (_controller != null)
+            {
+                _controller.LevelMapProgressChanged -=
+                    OnLevelMapProgressChanged;
+            }
             foreach (FrontEndLevelNodeView node in _levelNodes)
             {
                 if (node != null)
@@ -338,25 +362,51 @@ namespace Cutrium.Presentation.Frontend
         private void OnShopClicked()
         {
             _controller?.NotifyUiFeedback();
-            ShowTab(FrontEndTab.Shop);
+            TransitionToTab(FrontEndTab.Shop);
         }
 
         private void OnHomeClicked()
         {
             _controller?.NotifyUiFeedback();
-            ShowTab(FrontEndTab.Home);
+            TransitionToTab(FrontEndTab.Home);
         }
 
         private void OnChallengeClicked()
         {
             _controller?.NotifyUiFeedback();
-            ShowTab(FrontEndTab.Challenge);
+            TransitionToTab(FrontEndTab.Challenge);
         }
 
         private void OnLevelNodeClicked(FrontEndLevelNodeView node)
         {
             _controller?.NotifyUiFeedback();
             SelectLevel(node.LevelNumber);
+        }
+
+        private void OnLevelMapProgressChanged()
+        {
+            RefreshLevelMap();
+        }
+
+        private void TransitionToTab(FrontEndTab tab)
+        {
+            if (ActiveTab == tab)
+            {
+                return;
+            }
+
+            RunScreenTransition(() => ShowTab(tab));
+        }
+
+        private void RunScreenTransition(Action midpointAction)
+        {
+            if (_screenTransition != null)
+            {
+                _screenTransition.TryTransition(midpointAction);
+                return;
+            }
+
+            midpointAction();
         }
 
         private void StartGameplayAt(int oneBasedLevelNumber)
@@ -490,6 +540,11 @@ namespace Cutrium.Presentation.Frontend
                     _traversedNodeColor,
                     _selectedNodeColor,
                     _nodeNumberColor);
+                node.ApplyBestStarRating(
+                    _controller != null
+                        ? _controller.GetBestStarRatingForLevel(
+                            node.LevelNumber)
+                        : 0);
             }
 
             for (int index = 0; index < _pathConnectors.Length; index++)
